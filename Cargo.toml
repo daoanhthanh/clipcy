@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/storage",
+    "crates/platform-macos",
+    "crates/platform-windows",
+    "crates/platform-linux",
+    "apps/clipcy-macos",
+    "apps/clipcy-windows",
+    "apps/clipcy-linux",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["ThanhDA"]
+
+[workspace.dependencies]
+# Shared dependencies
+tokio = { version = "1.35", features = ["full"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+image = "0.24"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+parking_lot = "0.12"
+once_cell = "1.19"
+dirs = "5.0"
+anyhow = "1.0"
+tempfile = "3.9"

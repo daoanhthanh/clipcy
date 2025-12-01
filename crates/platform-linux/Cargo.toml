@@ -1,0 +1,7 @@
+[package]
+name = "clipcy-platform-linux"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+clipboard-core = { path = "../core" }

@@ -1,0 +1,71 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --package clipcy-windows
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipcy-windows
+          path: target/release/clipcy.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Core
+        run: cargo build --package clipboard-core
+
+      - name: Build Storage
+        run: cargo build --package clipboard-storage
+
+      - name: Test Core and Storage
+        run: cargo test --package clipboard-core --package clipboard-storage
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Core
+        run: cargo build --package clipboard-core
+
+      - name: Build Storage
+        run: cargo build --package clipboard-storage
+
+      - name: Test Core and Storage
+        run: cargo test --package clipboard-core --package clipboard-storage
