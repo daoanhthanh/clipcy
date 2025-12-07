@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Clipcy.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Clipcy"
+    xmlns:vm="using:Clipcy.ViewModels"
+    Title="Clipcy"
+    Width="400"
+    Height="500">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Search Box -->
+        <TextBox
+            x:Name="SearchBox"
+            Grid.Row="0"
+            Margin="12,12,12,8"
+            PlaceholderText="Search clipboard history..."
+            TextChanged="SearchBox_TextChanged" />
+
+        <!-- Clipboard History List -->
+        <ListView
+            x:Name="HistoryListView"
+            Grid.Row="1"
+            Margin="8,0"
+            ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}"
+            SelectionMode="Single"
+            ItemClick="HistoryListView_ItemClick"
+            IsItemClickEnabled="True">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:ClipboardItemViewModel">
+                    <Grid Padding="8,6" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Content Type Icon -->
+                        <FontIcon
+                            Grid.Column="0"
+                            FontSize="16"
+                            Glyph="{x:Bind ContentTypeIcon, Mode=OneTime}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+
+                        <!-- Preview Text -->
+                        <TextBlock
+                            Grid.Column="1"
+                            Text="{x:Bind Preview, Mode=OneTime}"
+                            TextTrimming="CharacterEllipsis"
+                            MaxLines="2" />
+
+                        <!-- Pin Icon -->
+                        <FontIcon
+                            Grid.Column="2"
+                            FontSize="12"
+                            Glyph="&#xE718;"
+                            Visibility="{x:Bind IsPinned, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                            Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- Status Bar -->
+        <Grid Grid.Row="2" Padding="12,8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock
+                Grid.Column="0"
+                Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                FontSize="12"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                VerticalAlignment="Center" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <Button
+                    Content="Settings"
+                    Click="SettingsButton_Click"
+                    Style="{StaticResource SubtleButtonStyle}"
+                    FontSize="12" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,120 @@
+namespace clipcy_core {
+};
+
+// ============================================
+// Data Transfer Objects (DTOs)
+// ============================================
+
+// Content type enum matching clipboard_core::domain::ContentType
+enum ContentTypeDto {
+    "Text",
+    "Image",
+    "Files",
+    "Html",
+    "RichText",
+};
+
+// Theme mode enum
+enum ThemeModeDto {
+    "Light",
+    "Dark",
+    "System",
+};
+
+// Clipboard item DTO - flattened for FFI
+dictionary ClipboardItemDto {
+    string id;
+    ContentTypeDto content_type;
+    string preview;
+    bytes? thumbnail;
+    string? source_app;
+    u64 created_at_timestamp;
+    boolean pinned;
+};
+
+// Settings DTO
+dictionary SettingsDto {
+    u32 max_history_items;
+    string hotkey;
+    ThemeModeDto theme;
+    boolean start_on_boot;
+    boolean show_notifications;
+    boolean show_preview_panel;
+    sequence<string> excluded_apps;
+};
+
+// Bridge events sent to UI
+[Enum]
+interface BridgeEvent {
+    HistoryUpdated();
+    HotkeyTriggered();
+    ThemeChanged(boolean is_dark);
+    ClipboardChanged(ClipboardItemDto item);
+    Error(string message);
+};
+
+// ============================================
+// Callback Interface - Implemented by UI
+// ============================================
+
+callback interface UiCallback {
+    void on_event(BridgeEvent event);
+};
+
+// ============================================
+// Bridge Error
+// ============================================
+
+[Error]
+enum BridgeError {
+    "StorageError",
+    "PlatformError",
+    "InvalidId",
+    "NotInitialized",
+    "AlreadyRunning",
+};
+
+// ============================================
+// Main Engine Object
+// ============================================
+
+interface ClipboardEngine {
+    [Throws=BridgeError]
+    constructor(string db_path);
+
+    // Lifecycle
+    [Throws=BridgeError]
+    void start(UiCallback callback);
+
+    [Throws=BridgeError]
+    void stop();
+
+    // History operations
+    sequence<ClipboardItemDto> get_history(u32 limit);
+
+    sequence<ClipboardItemDto> search(string query);
+
+    [Throws=BridgeError]
+    void paste_item(string id);
+
+    [Throws=BridgeError]
+    void delete_item(string id);
+
+    [Throws=BridgeError]
+    void clear_history();
+
+    [Throws=BridgeError]
+    void set_pinned(string id, boolean pinned);
+
+    // Get full item data (for preview)
+    bytes? get_item_data(string id);
+
+    // Settings
+    SettingsDto get_settings();
+
+    [Throws=BridgeError]
+    void save_settings(SettingsDto settings);
+
+    // Theme
+    boolean is_dark_theme();
+};

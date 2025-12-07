@@ -1,6 +1,38 @@
 # Clipcy
 
-A fast, modern clipboard manager for Windows built with Rust.
+A fast, modern clipboard manager built with a hybrid architecture: Rust backend + native UI.
+
+## Architecture
+
+Clipcy uses a "Logic Sandwich" architecture:
+- **Rust Backend**: Core clipboard logic, SQLite storage, system hooks
+- **Native UI**: Platform-specific native UI (WinUI 3 on Windows, SwiftUI on macOS)
+- **UniFFI Bridge**: Connects Rust to native languages (C#, Swift)
+
+```mermaid
+graph TD
+    subgraph Rust Core
+        Bridge[UniFFI Bridge]
+        Core[Clipboard Core]
+        Storage[SQLite Storage]
+        Platform[Platform Handlers]
+    end
+
+    subgraph Windows
+        WinUI[WinUI 3 App]
+        CS[C# Bindings]
+    end
+
+    subgraph macOS
+        SwiftUI[SwiftUI App]
+        Swift[Swift Bindings]
+    end
+
+    WinUI --> CS --> Bridge
+    SwiftUI --> Swift --> Bridge
+    Bridge --> Core --> Storage
+    Bridge --> Platform
+```
 
 ## Features
 
@@ -8,113 +40,107 @@ A fast, modern clipboard manager for Windows built with Rust.
 - Global hotkey (default: `Ctrl+Shift+V`)
 - System tray integration
 - SQLite storage
-- Modern settings UI (Tauri + Solid.js)
+- Native settings UI
 - Light/Dark/System theme support
 - Auto-start on boot
+- Mica backdrop (Windows 11)
 
-## Requirements
+## Platform Support
 
-### Development
+| Platform | UI Technology | Status |
+|----------|--------------|--------|
+| Windows | WinUI 3 (C#) | ✅ Implemented |
+| macOS | SwiftUI | 🔜 Planned |
+| Linux | GTK4 | 🔜 Planned |
 
+---
+
+## Windows
+
+### Requirements
+
+#### Development
+- Windows 10 version 1809+ (build 17763)
 - [Rust](https://rustup.rs/) 1.75+
-- [Bun](https://bun.sh/) (for settings UI)
-- Windows 10/11
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Visual Studio 2022 with "Windows App SDK" workload
 
-### Runtime
+#### Runtime
+- Windows 10 version 1809+ or Windows 11
+- Windows App SDK Runtime (bundled)
 
-- Windows 10/11
-- WebView2 Runtime (pre-installed on Windows 11, [download for Windows 10](https://developer.microsoft.com/en-us/microsoft-edge/webview2/))
+### Quick Start
 
-## Quick Start
-
-```bash
+```powershell
 # Clone the repository
 git clone https://github.com/user/clipcy.git
 cd clipcy
 
-# Run in development mode
-cargo run -p clipcy-windows
+# Build Rust library
+cargo build --release -p clipcy-bridge
+
+# Build WinUI 3 application
+cd apps/clipcy-windows-ui
+dotnet build
+
+# Run
+dotnet run
 ```
 
-## Development
+### Building
+
+#### Using Build Script
+```powershell
+# Debug build
+.\scripts\build-windows-ui.ps1
+
+# Release build
+.\scripts\build-windows-ui.ps1 -Release
+
+# Clean build
+.\scripts\build-windows-ui.ps1 -CleanBuild
+```
+
+#### Manual Build
+
+1. **Build Rust Bridge (cdylib)**
+   ```bash
+   cargo build --release -p clipcy-bridge
+   # Output: target/release/clipcy_core.dll
+   ```
+
+2. **Generate C# Bindings** (optional - placeholder included)
+   ```bash
+   # Requires uniffi-bindgen-cs
+   uniffi-bindgen-cs --library target/release/clipcy_core.dll \
+     --out-dir apps/clipcy-windows-ui/Bindings
+   ```
+
+3. **Build WinUI 3 App**
+   ```bash
+   cd apps/clipcy-windows-ui
+   dotnet build -c Release
+   ```
 
 ### Project Structure
 
 ```
 clipcy/
 ├── apps/
-│   ├── clipcy-windows/       # Main Windows application
-│   └── clipcy-settings/      # Settings window (Tauri + Solid.js)
-│       └── ui/               # Solid.js frontend
+│   ├── clipcy-windows-ui/    # WinUI 3 Windows app (C#)
+│   ├── clipcy-macos/         # macOS app (placeholder)
+│   └── clipcy-linux/         # Linux app (placeholder)
 ├── crates/
-│   ├── core/                 # Domain logic and port definitions
+│   ├── bridge/               # UniFFI bridge for native UI
+│   ├── core/                 # Domain logic and ports
 │   ├── storage/              # SQLite repository
-│   ├── platform-windows/     # Windows-specific implementations
+│   ├── platform-windows/     # Windows platform handlers
 │   └── settings-common/      # Shared settings types
-└── dist/                     # Build output
+└── scripts/
+    └── build-windows-ui.ps1  # Windows build script
 ```
 
-### Running in Development
-
-```bash
-# Main app (with console logging)
-cargo run -p clipcy-windows
-
-# Build settings UI (required once before running settings)
-cd apps/clipcy-settings/ui
-bun install
-bun run build
-cd ../../..
-
-# Run settings app standalone
-cargo run -p clipcy-settings
-```
-
-### Architecture
-
-The project follows Hexagonal Architecture:
-
-- **Core**: Domain models, ports (traits), application services
-- **Adapters**: Platform-specific implementations (Windows), storage (SQLite)
-- **Apps**: Entry points that wire everything together
-
-## Building
-
-### Release Build
-
-```bash
-# Build all
-cargo build --workspace --release
-
-# Build main app only
-cargo build -p clipcy-windows --release
-
-# Build settings app
-cd apps/clipcy-settings/ui && bun run build && cd ../../..
-cargo build -p clipcy-settings --release
-```
-
-### Create Portable Package
-
-```bash
-# Build everything
-cargo build -p clipcy-windows --release
-cd apps/clipcy-settings/ui && bun run build && cd ../../..
-cargo build -p clipcy-settings --release
-
-# Create dist folder
-mkdir -p dist/clipcy-portable
-cp target/release/clipcy.exe dist/clipcy-portable/
-cp target/release/clipcy-settings.exe dist/clipcy-portable/
-
-# Create ZIP (PowerShell)
-cd dist
-powershell -Command "Compress-Archive -Path 'clipcy-portable/*' -DestinationPath 'clipcy-portable.zip' -Force"
-```
-
-Output: `dist/clipcy-portable.zip` (~6 MB)
-
-## Configuration
+### Configuration
 
 Settings are stored in `%LOCALAPPDATA%\clipcy\settings.json`:
 
@@ -132,29 +158,67 @@ Settings are stored in `%LOCALAPPDATA%\clipcy\settings.json`:
 
 Database: `%LOCALAPPDATA%\clipcy\clipcy.db`
 
-## Usage
+### Usage
 
-1. Run `clipcy.exe`
+1. Run `Clipcy.exe`
 2. Icon appears in system tray
 3. Press `Ctrl+Shift+V` to open clipboard history
-4. Right-click tray icon for menu (Settings, Exit)
+4. Click an item to paste it
+5. Right-click tray icon for menu (Settings, Clear History, Exit)
 
-## Troubleshooting
+### Troubleshooting
 
-### App doesn't start
+#### Hotkey not working
+- Check if another app is using the same hotkey
+- Modify hotkey in Settings
 
-Check `%LOCALAPPDATA%\clipcy\settings.json` - ensure `hotkey` is not empty:
-```json
-"hotkey": "Ctrl+Shift+V"
-```
+#### Tray icon not visible
+- Click the `^` arrow in Windows taskbar to see hidden icons
+- Drag the icon to the taskbar
 
-### Tray icon not visible
+#### App crashes on startup
+- Ensure .NET 8 Runtime is installed
+- Check logs in `%LOCALAPPDATA%\clipcy\logs\`
 
-Click the `^` arrow in Windows taskbar to see hidden icons.
+---
 
-### Settings window is blank
+## macOS
 
-Ensure WebView2 Runtime is installed.
+*Coming soon - SwiftUI implementation planned*
+
+### Planned Features
+- Menu bar app with `NSStatusItem`
+- `MenuBarExtra` for macOS 13+
+- Floating `NSPanel` for popup
+
+---
+
+## Linux
+
+*Coming soon - GTK4 implementation planned*
+
+---
+
+## Development
+
+### Hexagonal Architecture
+
+The project follows Hexagonal (Ports & Adapters) Architecture:
+
+- **Core**: Domain models, ports (traits), application services
+- **Adapters**: Platform-specific implementations, storage (SQLite)
+- **Bridge**: UniFFI FFI layer for native UI binding
+- **Apps**: Platform-specific native UI applications
+
+### Adding a New Platform
+
+1. Create platform handlers in `crates/platform-{os}/`
+2. Implement core traits (ClipboardMonitor, HotkeyHandler, etc.)
+3. Build the bridge: `cargo build -p clipcy-bridge`
+4. Generate bindings for your language (Swift, Kotlin, etc.)
+5. Create native UI app in `apps/clipcy-{os}/`
+
+---
 
 ## License
 

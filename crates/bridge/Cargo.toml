@@ -1,0 +1,31 @@
+[package]
+name = "clipcy-bridge"
+version.workspace = true
+edition = "2021"                                                          # UniFFI requires 2021 edition for now
+license.workspace = true
+authors.workspace = true
+description = "UniFFI bridge for Clipcy - exposes Rust core to native UI"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "clipcy_core"
+
+[dependencies]
+uniffi = "0.28"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
+parking_lot.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+
+# Internal crates
+clipboard-core = { path = "../core" }
+clipboard-storage = { path = "../storage" }
+clipcy-settings-common = { path = "../settings-common" }
+
+[target.'cfg(windows)'.dependencies]
+clipcy-platform-windows = { path = "../platform-windows" }
+
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }

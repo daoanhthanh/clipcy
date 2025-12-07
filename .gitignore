@@ -12,10 +12,70 @@
 .DS_Store
 Thumbs.db
 
+# ===================
 # Rust
+# ===================
 **/*.rs.bk
-Cargo.lock
 nul
 
-# JS
+# ===================
+# C# / .NET
+# ===================
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet
+*.nupkg
+.nuget/
+packages/
+*.nuget.props
+*.nuget.targets
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.cache
+*.rsuser
+*.userprefs
+*.sln.docstates
+*.sln.ide/
+
+# MSBuild
+*.metaproj
+*.metaproj.tmp
+
+# Project files
+*.csproj.user
+*.ilk
+*.pdb
+
+# Windows App SDK / MSIX
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.appxupload
+*.msixupload
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+
+# ===================
+# UniFFI Generated
+# ===================
+apps/clipcy-windows-ui/Bindings/*.cs
+
+# ===================
+# JS (legacy - kept for reference)
+# ===================
 *node_modules/
+tasks/
