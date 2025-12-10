@@ -358,7 +358,7 @@ public sealed partial class MainWindow : Window
     private async void PasteSelectedItem(ClipboardItemViewModel item)
     {
         // Hide popup first
-        this.HidePopup();
+        HidePopup();
 
         // Restore focus to the previous window
         if (_previousForegroundWindow != IntPtr.Zero)

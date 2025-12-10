@@ -240,14 +240,14 @@ internal class RustBridgeService : IDisposable, UiCallback
                 _ => ThemeModeDto.System,
             };
 
-            var dto = new uniffi.clipcy_core.SettingsDto(
+            var dto = new SettingsDto(
                 maxHistoryItems: settings.MaxHistoryItems,
                 hotkey: settings.Hotkey,
                 theme: theme,
                 startOnBoot: settings.StartOnBoot,
                 showNotifications: settings.ShowNotifications,
                 showPreviewPanel: settings.ShowPreviewPanel,
-                excludedApps: settings.ExcludedApps
+                excludedApps: settings.ExcludedApps.ToArray()
             );
 
             _engine?.SaveSettings(dto);
