@@ -594,7 +594,7 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
         let mut bitmap = BITMAP::default();
         if GetObjectW(
             hbitmap,
-            std::mem::size_of::<BITMAP>() as i32,
+            size_of::<BITMAP>() as i32,
             Some(&mut bitmap as *mut _ as *mut c_void),
         ) == 0
         {
@@ -604,14 +604,17 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
 
         let width = bitmap.bmWidth;
         let height = bitmap.bmHeight;
-        if width <= 0 || height <= 0 {
+        if width <= 0 || height == 0 {
             tracing::debug!("get_clipboard_image: invalid bitmap dimensions");
             return None;
         }
 
+        let abs_height = height.unsigned_abs();
+        let is_top_down = height < 0;
+
         let mut info = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
-                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biSize: size_of::<BITMAPINFOHEADER>() as u32,
                 biWidth: width,
                 biHeight: height,
                 biPlanes: 1,
@@ -622,7 +625,7 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
             ..Default::default()
         };
 
-        let buffer_size = (width as usize * 4) * (height as usize);
+        let buffer_size = (width as usize * 4) * (abs_height as usize);
         let mut buffer = vec![0u8; buffer_size];
 
         let hdc = GetDC(None);
@@ -635,7 +638,7 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
             hdc,
             hbitmap,
             0,
-            height as u32,
+            abs_height,
             Some(buffer.as_mut_ptr() as *mut c_void),
             &mut info,
             DIB_RGB_COLORS,
@@ -648,9 +651,9 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
         }
 
         if let Some(rgba) =
-            convert_bgra32_to_rgba(&buffer, width as usize, height as usize, false)
+            convert_bgra32_to_rgba(&buffer, width as usize, abs_height as usize, is_top_down)
         {
-            if let Some(png) = encode_png(&rgba, width as u32, height as u32) {
+            if let Some(png) = encode_png(&rgba, width as u32, abs_height) {
                 tracing::debug!(
                     "get_clipboard_image: converted CF_BITMAP to PNG ({} bytes)",
                     png.len()
