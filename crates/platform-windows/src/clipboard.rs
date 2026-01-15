@@ -625,7 +625,14 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
             ..Default::default()
         };
 
-        let buffer_size = (width as usize * 4) * (abs_height as usize);
+        let buffer_size = (width as usize)
+            .checked_mul(4)
+            .and_then(|v| v.checked_mul(abs_height as usize))
+            .unwrap_or(0);
+        if buffer_size == 0 {
+            tracing::debug!("get_clipboard_image: buffer_size overflow/zero");
+            return None;
+        }
         let mut buffer = vec![0u8; buffer_size];
 
         let hdc = GetDC(None);
@@ -645,8 +652,12 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
         );
         let _ = ReleaseDC(None, hdc);
 
-        if scan_lines == 0 {
-            tracing::debug!("get_clipboard_image: GetDIBits failed");
+        if scan_lines == 0 || scan_lines as u32 != abs_height {
+            tracing::debug!(
+                "get_clipboard_image: GetDIBits copied {} of {} lines",
+                scan_lines,
+                abs_height
+            );
             return None;
         }
 
