@@ -604,12 +604,12 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
 
         let width = bitmap.bmWidth;
         let height = bitmap.bmHeight;
-        let abs_height: u32 = height.unsigned_abs();
-        if width <= 0 || abs_height == 0 {
+        if width <= 0 || height == 0 {
             tracing::debug!("get_clipboard_image: invalid bitmap dimensions");
             return None;
         }
 
+        let abs_height: u32 = height.unsigned_abs();
         let is_top_down = height < 0;
 
         let mut info = BITMAPINFO {
@@ -625,8 +625,9 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
             ..Default::default()
         };
 
+        const BYTES_PER_PIXEL_RGBA: usize = 4;
         let buffer_size = (width as usize)
-            .checked_mul(4)
+            .checked_mul(BYTES_PER_PIXEL_RGBA)
             .and_then(|v| v.checked_mul(abs_height as usize));
         let buffer_size = match buffer_size {
             Some(size) if size > 0 => size,
@@ -654,7 +655,7 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
         );
         let _ = ReleaseDC(None, hdc);
 
-        if scan_lines <= 0 || scan_lines as u32 != abs_height {
+        if scan_lines != abs_height as i32 {
             tracing::debug!(
                 "get_clipboard_image: GetDIBits copied {} of {} lines",
                 scan_lines,
