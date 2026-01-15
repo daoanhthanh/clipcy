@@ -17,9 +17,16 @@ tracing-subscriber.workspace = true
 parking_lot.workspace = true
 anyhow.workspace = true
 
-[target.'cfg(windows)'.build-dependencies]
+[build-dependencies]
 winres = "0.1"
 
 [package.metadata.winres]
 ProductName = "Clipcy"
 FileDescription = "Cross-platform clipboard manager"
+LegalCopyright = "Copyright (c) 2024 ThanhDA"
+
+[package.metadata.wix]
+upgrade-guid = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890"
+path-guid = "B2C3D4E5-F678-90AB-CDEF-123456789012"
+license = false
+eula = false

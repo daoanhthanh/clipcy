@@ -526,7 +526,7 @@ fn apply_rounded_corners(hwnd: HWND) {
         let corner_preference = DWM_WINDOW_CORNER_PREFERENCE(2);
 
         #[link(name = "dwmapi")]
-        extern "system" {
+        unsafe extern "system" {
             fn DwmSetWindowAttribute(
                 hwnd: HWND,
                 dwAttribute: u32,
