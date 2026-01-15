@@ -2,7 +2,8 @@
 
 ## Project Overview
 
-Clipcy is a cross-platform clipboard manager written in Rust. It monitors clipboard changes, stores history in SQLite, and provides a native UI for quick access to clipboard history via global hotkeys.
+Clipcy is a cross-platform clipboard manager written in Rust. It monitors clipboard changes, stores history in SQLite,
+and provides a native UI for quick access to clipboard history via global hotkeys.
 
 ## Architecture
 
@@ -69,12 +70,14 @@ clipcy/
 ### Core Crate (`crates/core`)
 
 **Domain Models:**
+
 - `ClipboardItem` - Represents a clipboard entry (text, image, files)
 - `ContentType` - Enum for content types (Text, Image, Files, Html, Rtf)
 - `Settings` - Application settings (max history, hotkey, theme)
 - `Theme` - Light/Dark/System theme enum
 
 **Ports (Traits):**
+
 - `ClipboardMonitor` - Monitor clipboard changes, get/set content
 - `ClipboardRepository` - Persist clipboard items (save, get, search, prune)
 - `HotkeyHandler` - Register/unregister global hotkeys
@@ -83,6 +86,7 @@ clipcy/
 - `UIHandler` - Show/hide popup menu, handle UI events
 
 **Application Services:**
+
 - `ClipboardService` - Orchestrates clipboard monitoring and storage
 - `AppController` - Main application controller
 
@@ -139,8 +143,8 @@ The structs also implement `unsafe impl Send` and `unsafe impl Sync` manually.
 ```rust
 // CreateWindowExW returns Result
 let hwnd = match CreateWindowExW(...) {
-    Ok(h) => h,
-    Err(e) => { /* handle error */ }
+Ok(h) => h,
+Err(e) => { /* handle error */ }
 };
 
 // Many functions take Option<HWND> or Option<HANDLE>
@@ -148,7 +152,7 @@ RegisterHotKey(Some(hwnd), ...);
 SetClipboardData(format, Some(handle));
 
 // Boolean parameters use bool, not BOOL
-InsertMenuItemW(menu, index, true, &item);
+InsertMenuItemW(menu, index, true, & item);
 ```
 
 ### Async Repository
@@ -167,16 +171,16 @@ Clipboard changes are debounced (300ms) to avoid duplicate entries from rapid cl
 
 ## Dependencies
 
-| Dependency | Purpose |
-|------------|---------|
-| `windows` 0.62.2 | Windows API bindings |
-| `sqlx` 0.8 | Async SQLite |
-| `tokio` | Async runtime |
-| `parking_lot` | Fast synchronization primitives |
-| `uuid` | Unique IDs for clipboard items |
-| `chrono` | Timestamps |
-| `serde` | Serialization |
-| `tracing` | Logging |
+| Dependency       | Purpose                         |
+|------------------|---------------------------------|
+| `windows` 0.62.2 | Windows API bindings            |
+| `sqlx` 0.8       | Async SQLite                    |
+| `tokio`          | Async runtime                   |
+| `parking_lot`    | Fast synchronization primitives |
+| `uuid`           | Unique IDs for clipboard items  |
+| `chrono`         | Timestamps                      |
+| `serde`          | Serialization                   |
+| `tracing`        | Logging                         |
 
 ## Testing
 

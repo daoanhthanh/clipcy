@@ -5,11 +5,11 @@ use std::sync::Arc;
 
 use clipboard_core::application::{AppController, ClipboardService};
 use clipboard_core::domain::Settings;
+use clipboard_storage::SqliteClipboardRepository;
+use clipcy_platform_windows::ui::WindowsUIHandler;
 use clipcy_platform_windows::{
     WindowsClipboardMonitor, WindowsHotkeyHandler, WindowsPasteHandler, WindowsThemeDetector,
 };
-use clipcy_platform_windows::ui::WindowsUIHandler;
-use clipboard_storage::SqliteClipboardRepository;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

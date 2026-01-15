@@ -6,7 +6,7 @@ use parking_lot::RwLock;
 use windows::Win32::Foundation::{HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
-use windows::Win32::System::Ole::{CF_UNICODETEXT, CF_DIB, CF_BITMAP};
+use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_UNICODETEXT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 use clipboard_core::domain::{ClipboardItem, ContentType};
