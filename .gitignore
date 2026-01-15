@@ -1,0 +1,17 @@
+# Generated files
+/target/
+/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Rust
+**/*.rs.bk
+Cargo.lock

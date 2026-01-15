@@ -1,0 +1,25 @@
+[package]
+name = "clipcy-windows"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "clipcy"
+path = "src/main.rs"
+
+[dependencies]
+clipboard-core = { path = "../../crates/core" }
+clipboard-storage = { path = "../../crates/storage" }
+clipcy-platform-windows = { path = "../../crates/platform-windows" }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+parking_lot.workspace = true
+anyhow.workspace = true
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
+[package.metadata.winres]
+ProductName = "Clipcy"
+FileDescription = "Cross-platform clipboard manager"

@@ -1,0 +1,14 @@
+[package]
+name = "clipcy-linux"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "clipcy"
+path = "src/main.rs"
+
+[dependencies]
+clipboard-core = { path = "../../crates/core" }
+clipboard-storage = { path = "../../crates/storage" }
+clipcy-platform-linux = { path = "../../crates/platform-linux" }
+tokio.workspace = true
