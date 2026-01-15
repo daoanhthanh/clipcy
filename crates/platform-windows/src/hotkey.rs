@@ -78,7 +78,10 @@ impl WindowsHotkeyHandler {
                     class_name,
                     windows::core::w!("HotkeyHandler"),
                     WS_OVERLAPPED,
-                    0, 0, 0, 0,
+                    0,
+                    0,
+                    0,
+                    0,
                     None,
                     None,
                     None,
@@ -138,17 +141,31 @@ impl WindowsHotkeyHandler {
                     // Process any pending hotkey commands
                     while let Ok(cmd) = command_rx.try_recv() {
                         match cmd {
-                            HotkeyCommand::Register { id, modifiers, vk, response } => {
+                            HotkeyCommand::Register {
+                                id,
+                                modifiers,
+                                vk,
+                                response,
+                            } => {
                                 tracing::info!(
                                     "Attempting to register hotkey id={} modifiers={:?} vk={}",
-                                    id, modifiers.0, vk.0
+                                    id,
+                                    modifiers.0,
+                                    vk.0
                                 );
                                 // Use HWND(0) / NULL to post to thread message queue
                                 // This is more reliable for global hotkeys
-                                let result = RegisterHotKey(None, id as i32, modifiers, vk.0 as u32);
+                                let result =
+                                    RegisterHotKey(None, id as i32, modifiers, vk.0 as u32);
                                 match &result {
-                                    Ok(()) => tracing::info!("RegisterHotKey succeeded for id {}", id),
-                                    Err(e) => tracing::error!("RegisterHotKey failed for id {}: {:?}", id, e),
+                                    Ok(()) => {
+                                        tracing::info!("RegisterHotKey succeeded for id {}", id)
+                                    }
+                                    Err(e) => tracing::error!(
+                                        "RegisterHotKey failed for id {}: {:?}",
+                                        id,
+                                        e
+                                    ),
                                 }
                                 let _ = response.send(result.map_err(|e| e.to_string()));
                             }
@@ -217,28 +234,33 @@ unsafe impl Sync for WindowsHotkeyHandler {}
 
 impl HotkeyHandler for WindowsHotkeyHandler {
     fn register(&self, hotkey: &str, callback: HotkeyCallback) -> Result<u32> {
-        let (modifiers, vk) = Self::parse_hotkey(hotkey)
-            .ok_or_else(|| ClipboardError::HotkeyRegistration(
-                format!("Invalid hotkey format: {}", hotkey)
-            ))?;
+        let (modifiers, vk) = Self::parse_hotkey(hotkey).ok_or_else(|| {
+            ClipboardError::HotkeyRegistration(format!("Invalid hotkey format: {}", hotkey))
+        })?;
 
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
 
         let hwnd_val = self.hwnd.load(Ordering::SeqCst);
         if hwnd_val == 0 {
-            return Err(ClipboardError::HotkeyRegistration("Window not ready".to_string()));
+            return Err(ClipboardError::HotkeyRegistration(
+                "Window not ready".to_string(),
+            ));
         }
 
         let hwnd = HWND(hwnd_val as *mut std::ffi::c_void);
 
         // Send register command to the message loop thread
         let (response_tx, response_rx) = mpsc::channel();
-        self.command_tx.send(HotkeyCommand::Register {
-            id,
-            modifiers,
-            vk,
-            response: response_tx,
-        }).map_err(|_| ClipboardError::HotkeyRegistration("Failed to send command".to_string()))?;
+        self.command_tx
+            .send(HotkeyCommand::Register {
+                id,
+                modifiers,
+                vk,
+                response: response_tx,
+            })
+            .map_err(|_| {
+                ClipboardError::HotkeyRegistration("Failed to send command".to_string())
+            })?;
 
         // Post a message to wake up the message loop
         unsafe {
@@ -264,7 +286,9 @@ impl HotkeyHandler for WindowsHotkeyHandler {
     }
 
     fn unregister(&self, handle: u32) -> Result<()> {
-        let _ = self.command_tx.send(HotkeyCommand::Unregister { id: handle });
+        let _ = self
+            .command_tx
+            .send(HotkeyCommand::Unregister { id: handle });
         self.callbacks.write().remove(&handle);
         Ok(())
     }
@@ -309,3 +333,4 @@ unsafe extern "system" fn hotkey_window_proc(
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
 }
+                           

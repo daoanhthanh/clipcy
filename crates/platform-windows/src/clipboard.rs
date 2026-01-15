@@ -193,6 +193,11 @@ impl WindowsClipboardMonitor {
         // Fall back to text
         if has_text {
             if let Some(text) = Self::get_clipboard_text() {
+                // Skip whitespace-only content
+                if text.trim().is_empty() {
+                    tracing::debug!("Skipping whitespace-only clipboard content");
+                    return None;
+                }
                 tracing::debug!("Captured text: {} chars", text.len());
                 return Some(ClipboardItem::new_text(text));
             }
