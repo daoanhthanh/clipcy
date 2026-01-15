@@ -12,12 +12,30 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
-use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_UNICODETEXT};
+use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_HDROP, CF_UNICODETEXT};
+use windows::Win32::UI::Shell::DragQueryFileW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 use clipboard_core::domain::{ClipboardItem, ContentType};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
+
+use once_cell::sync::Lazy;
+
+/// Registered clipboard format for HTML Format
+static CF_HTML: Lazy<u32> = Lazy::new(|| unsafe {
+    RegisterClipboardFormatW(windows::core::w!("HTML Format"))
+});
+
+/// Registered clipboard format for Rich Text Format (RTF)
+static CF_RTF: Lazy<u32> = Lazy::new(|| unsafe {
+    RegisterClipboardFormatW(windows::core::w!("Rich Text Format"))
+});
+
+/// Registered clipboard format for PNG
+static CF_PNG: Lazy<u32> = Lazy::new(|| unsafe {
+    RegisterClipboardFormatW(windows::core::w!("PNG"))
+});
 
 /// Windows clipboard monitor implementation
 pub struct WindowsClipboardMonitor {
@@ -157,10 +175,11 @@ impl WindowsClipboardMonitor {
     fn has_image_format() -> bool {
         unsafe {
             // IsClipboardFormatAvailable doesn't require OpenClipboard
+            let has_png = IsClipboardFormatAvailable(*CF_PNG).is_ok();
             let has_dib = IsClipboardFormatAvailable(CF_DIB.0 as u32).is_ok();
             let has_dib_v5 = IsClipboardFormatAvailable(CF_DIBV5.0 as u32).is_ok();
             let has_bitmap = IsClipboardFormatAvailable(CF_BITMAP.0 as u32).is_ok();
-            has_dib || has_dib_v5 || has_bitmap
+            has_png || has_dib || has_dib_v5 || has_bitmap
         }
     }
 
@@ -171,14 +190,326 @@ impl WindowsClipboardMonitor {
         }
     }
 
-    /// Get current clipboard item, preferring images over text
-    pub fn get_current_item() -> Option<ClipboardItem> {
-        // Check for image first (higher priority)
-        let has_image = Self::has_image_format();
-        let has_text = Self::has_text_format();
-        tracing::debug!("Clipboard formats - has_image: {}, has_text: {}", has_image, has_text);
+    fn has_files_format() -> bool {
+        unsafe {
+            IsClipboardFormatAvailable(CF_HDROP.0 as u32).is_ok()
+        }
+    }
 
+    fn has_html_format() -> bool {
+        unsafe {
+            IsClipboardFormatAvailable(*CF_HTML).is_ok()
+        }
+    }
+
+    fn has_rtf_format() -> bool {
+        unsafe {
+            IsClipboardFormatAvailable(*CF_RTF).is_ok()
+        }
+    }
+
+    fn has_png_format() -> bool {
+        unsafe {
+            IsClipboardFormatAvailable(*CF_PNG).is_ok()
+        }
+    }
+
+    /// Get file paths from CF_HDROP format
+    fn get_clipboard_files() -> Option<Vec<String>> {
+        unsafe {
+            // Retry opening clipboard with small delays
+            let mut opened = false;
+            for attempt in 0..5 {
+                if OpenClipboard(None).is_ok() {
+                    opened = true;
+                    break;
+                }
+                if attempt < 4 {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+            }
+
+            if !opened {
+                tracing::debug!("get_clipboard_files: OpenClipboard failed after retries");
+                return None;
+            }
+
+            let handle = GetClipboardData(CF_HDROP.0 as u32);
+            if handle.is_err() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let handle = handle.unwrap();
+            if handle.0.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            // HDROP is a handle to a DROPFILES structure
+            let hdrop = windows::Win32::UI::Shell::HDROP(handle.0);
+
+            // Get the number of files
+            let file_count = DragQueryFileW(hdrop, 0xFFFFFFFF, None);
+
+            let mut files = Vec::with_capacity(file_count as usize);
+
+            for i in 0..file_count {
+                // Get required buffer size
+                let len = DragQueryFileW(hdrop, i, None);
+                if len == 0 {
+                    continue;
+                }
+
+                // Allocate buffer and get file path
+                let mut buffer: Vec<u16> = vec![0u16; (len + 1) as usize];
+                let actual_len = DragQueryFileW(hdrop, i, Some(&mut buffer));
+                if actual_len > 0 {
+                    let path = String::from_utf16_lossy(&buffer[..actual_len as usize]);
+                    files.push(path);
+                }
+            }
+
+            let _ = CloseClipboard();
+
+            if files.is_empty() {
+                None
+            } else {
+                tracing::debug!("get_clipboard_files: retrieved {} files", files.len());
+                Some(files)
+            }
+        }
+    }
+
+    /// Get HTML content from clipboard
+    fn get_clipboard_html() -> Option<String> {
+        unsafe {
+            // Retry opening clipboard with small delays
+            let mut opened = false;
+            for attempt in 0..5 {
+                if OpenClipboard(None).is_ok() {
+                    opened = true;
+                    break;
+                }
+                if attempt < 4 {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+            }
+
+            if !opened {
+                return None;
+            }
+
+            let handle = GetClipboardData(*CF_HTML);
+            if handle.is_err() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let handle = handle.unwrap();
+            if handle.0.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let hglobal = HGLOBAL(handle.0);
+            let ptr = GlobalLock(hglobal);
+            if ptr.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            // HTML Format is stored as UTF-8 encoded string with headers
+            let size = GlobalSize(hglobal);
+            if size == 0 {
+                let _ = GlobalUnlock(hglobal);
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let bytes = std::slice::from_raw_parts(ptr as *const u8, size);
+            // Find the null terminator
+            let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+            let html_str = String::from_utf8_lossy(&bytes[..len]).to_string();
+
+            let _ = GlobalUnlock(hglobal);
+            let _ = CloseClipboard();
+
+            // Parse HTML Format to extract the actual HTML content
+            // The format includes headers like:
+            // Version:0.9
+            // StartHTML:xxx
+            // EndHTML:xxx
+            // StartFragment:xxx
+            // EndFragment:xxx
+            if let Some(html_content) = extract_html_fragment(&html_str) {
+                tracing::debug!("get_clipboard_html: extracted {} chars", html_content.len());
+                Some(html_content)
+            } else {
+                // If parsing fails, return the whole content
+                tracing::debug!("get_clipboard_html: returning raw content {} chars", html_str.len());
+                Some(html_str)
+            }
+        }
+    }
+
+    /// Get RTF content from clipboard
+    fn get_clipboard_rtf() -> Option<String> {
+        unsafe {
+            // Retry opening clipboard with small delays
+            let mut opened = false;
+            for attempt in 0..5 {
+                if OpenClipboard(None).is_ok() {
+                    opened = true;
+                    break;
+                }
+                if attempt < 4 {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+            }
+
+            if !opened {
+                return None;
+            }
+
+            let handle = GetClipboardData(*CF_RTF);
+            if handle.is_err() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let handle = handle.unwrap();
+            if handle.0.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let hglobal = HGLOBAL(handle.0);
+            let ptr = GlobalLock(hglobal);
+            if ptr.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let size = GlobalSize(hglobal);
+            if size == 0 {
+                let _ = GlobalUnlock(hglobal);
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            // RTF is stored as ASCII/UTF-8 string
+            let bytes = std::slice::from_raw_parts(ptr as *const u8, size);
+            let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+            let rtf_str = String::from_utf8_lossy(&bytes[..len]).to_string();
+
+            let _ = GlobalUnlock(hglobal);
+            let _ = CloseClipboard();
+
+            tracing::debug!("get_clipboard_rtf: retrieved {} chars", rtf_str.len());
+            Some(rtf_str)
+        }
+    }
+
+    /// Get PNG image data directly from clipboard
+    fn get_clipboard_png() -> Option<(Vec<u8>, Option<Vec<u8>>)> {
+        unsafe {
+            // Retry opening clipboard with small delays
+            let mut opened = false;
+            for attempt in 0..5 {
+                if OpenClipboard(None).is_ok() {
+                    opened = true;
+                    break;
+                }
+                if attempt < 4 {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+            }
+
+            if !opened {
+                tracing::debug!("get_clipboard_png: OpenClipboard failed after retries");
+                return None;
+            }
+
+            let handle = GetClipboardData(*CF_PNG);
+            if handle.is_err() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let handle = handle.unwrap();
+            if handle.0.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let hglobal = HGLOBAL(handle.0);
+            let ptr = GlobalLock(hglobal);
+            if ptr.is_null() {
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let size = GlobalSize(hglobal);
+            if size == 0 {
+                let _ = GlobalUnlock(hglobal);
+                let _ = CloseClipboard();
+                return None;
+            }
+
+            let png_data = std::slice::from_raw_parts(ptr as *const u8, size).to_vec();
+
+            let _ = GlobalUnlock(hglobal);
+            let _ = CloseClipboard();
+
+            // Validate PNG magic bytes
+            if png_data.len() < 8 || &png_data[0..8] != b"\x89PNG\r\n\x1a\n" {
+                tracing::debug!("get_clipboard_png: invalid PNG magic bytes");
+                return None;
+            }
+
+            tracing::debug!("get_clipboard_png: retrieved {} bytes", png_data.len());
+            let thumbnail = generate_thumbnail(&png_data, 64, 64);
+            Some((png_data, thumbnail))
+        }
+    }
+
+    /// Get current clipboard item, with prioritized format detection
+    /// Priority order: Files > Images (PNG > DIB > Bitmap) > HTML > RTF > Text
+    pub fn get_current_item() -> Option<ClipboardItem> {
+        // Check available formats
+        let has_files = Self::has_files_format();
+        let has_image = Self::has_image_format();
+        let has_html = Self::has_html_format();
+        let has_rtf = Self::has_rtf_format();
+        let has_text = Self::has_text_format();
+
+        tracing::debug!(
+            "Clipboard formats - files: {}, image: {}, html: {}, rtf: {}, text: {}",
+            has_files, has_image, has_html, has_rtf, has_text
+        );
+
+        // Priority 1: File drops (CF_HDROP)
+        if has_files {
+            if let Some(files) = Self::get_clipboard_files() {
+                tracing::info!("Captured {} files", files.len());
+                return Some(ClipboardItem::new_files(files));
+            } else {
+                tracing::warn!("has_files_format() returned true but get_clipboard_files() failed");
+            }
+        }
+
+        // Priority 2: Images (try PNG first, then DIB/Bitmap)
         if has_image {
+            // Try PNG format first (higher quality, no conversion needed)
+            if Self::has_png_format() {
+                if let Some((png_data, thumbnail)) = Self::get_clipboard_png() {
+                    tracing::info!("Captured PNG image: {} bytes", png_data.len());
+                    return Some(ClipboardItem::new_image(png_data, thumbnail));
+                }
+            }
+
+            // Fall back to DIB/Bitmap formats
             if let Some((png_data, thumbnail)) = Self::get_clipboard_image() {
                 tracing::info!("Captured image: {} bytes, thumbnail: {:?}", png_data.len(), thumbnail.as_ref().map(|t| t.len()));
                 return Some(ClipboardItem::new_image(png_data, thumbnail));
@@ -187,7 +518,27 @@ impl WindowsClipboardMonitor {
             }
         }
 
-        // Fall back to text
+        // Priority 3: HTML content
+        if has_html {
+            if let Some(html) = Self::get_clipboard_html() {
+                if !html.trim().is_empty() {
+                    tracing::debug!("Captured HTML: {} chars", html.len());
+                    return Some(ClipboardItem::new_html(html));
+                }
+            }
+        }
+
+        // Priority 4: RTF content
+        if has_rtf {
+            if let Some(rtf) = Self::get_clipboard_rtf() {
+                if !rtf.trim().is_empty() {
+                    tracing::debug!("Captured RTF: {} chars", rtf.len());
+                    return Some(ClipboardItem::new_rtf(rtf));
+                }
+            }
+        }
+
+        // Priority 5: Plain text (fallback)
         if has_text {
             if let Some(text) = Self::get_clipboard_text() {
                 // Skip whitespace-only content
@@ -202,6 +553,147 @@ impl WindowsClipboardMonitor {
 
         None
     }
+}
+
+/// Extract HTML content from Windows HTML Format clipboard data
+/// The format includes headers like:
+/// Version:0.9
+/// StartHTML:xxx
+/// EndHTML:xxx
+/// StartFragment:xxx
+/// EndFragment:xxx
+fn extract_html_fragment(html_format: &str) -> Option<String> {
+    // Try to find StartFragment and EndFragment markers
+    let start_frag = html_format
+        .lines()
+        .find(|l| l.starts_with("StartFragment:"))
+        .and_then(|l| l.strip_prefix("StartFragment:"))
+        .and_then(|s| s.trim().parse::<usize>().ok());
+
+    let end_frag = html_format
+        .lines()
+        .find(|l| l.starts_with("EndFragment:"))
+        .and_then(|l| l.strip_prefix("EndFragment:"))
+        .and_then(|s| s.trim().parse::<usize>().ok());
+
+    if let (Some(start), Some(end)) = (start_frag, end_frag) {
+        if start < end && end <= html_format.len() {
+            return Some(html_format[start..end].to_string());
+        }
+    }
+
+    // Fallback: try StartHTML/EndHTML
+    let start_html = html_format
+        .lines()
+        .find(|l| l.starts_with("StartHTML:"))
+        .and_then(|l| l.strip_prefix("StartHTML:"))
+        .and_then(|s| s.trim().parse::<usize>().ok());
+
+    let end_html = html_format
+        .lines()
+        .find(|l| l.starts_with("EndHTML:"))
+        .and_then(|l| l.strip_prefix("EndHTML:"))
+        .and_then(|s| s.trim().parse::<usize>().ok());
+
+    if let (Some(start), Some(end)) = (start_html, end_html) {
+        if start < end && end <= html_format.len() {
+            return Some(html_format[start..end].to_string());
+        }
+    }
+
+    None
+}
+
+/// Create HDROP data structure for file paths
+/// DROPFILES structure:
+/// - pFiles: DWORD - offset to file list
+/// - pt: POINT - drop point (we use 0,0)
+/// - fNC: BOOL - non-client area flag
+/// - fWide: BOOL - true for Unicode
+fn create_hdrop_data(paths: &[&str]) -> Option<Vec<u8>> {
+    if paths.is_empty() {
+        return None;
+    }
+
+    // DROPFILES header size (20 bytes)
+    // pFiles (4) + pt.x (4) + pt.y (4) + fNC (4) + fWide (4)
+    const DROPFILES_SIZE: usize = 20;
+
+    // Calculate total size
+    let mut total_size = DROPFILES_SIZE;
+    for path in paths {
+        // Each path as wide string + null terminator
+        total_size += (path.encode_utf16().count() + 1) * 2;
+    }
+    // Final double null terminator
+    total_size += 2;
+
+    let mut data = Vec::with_capacity(total_size);
+
+    // pFiles - offset to file list (DROPFILES_SIZE)
+    data.extend_from_slice(&(DROPFILES_SIZE as u32).to_le_bytes());
+    // pt.x
+    data.extend_from_slice(&0i32.to_le_bytes());
+    // pt.y
+    data.extend_from_slice(&0i32.to_le_bytes());
+    // fNC - non-client area flag (FALSE)
+    data.extend_from_slice(&0u32.to_le_bytes());
+    // fWide - Unicode flag (TRUE)
+    data.extend_from_slice(&1u32.to_le_bytes());
+
+    // File paths as null-terminated wide strings
+    for path in paths {
+        for wchar in path.encode_utf16() {
+            data.extend_from_slice(&wchar.to_le_bytes());
+        }
+        // Null terminator
+        data.extend_from_slice(&0u16.to_le_bytes());
+    }
+
+    // Final double null terminator
+    data.extend_from_slice(&0u16.to_le_bytes());
+
+    Some(data)
+}
+
+/// Create HTML Format clipboard data from HTML content
+/// Windows HTML Format requires specific headers with byte offsets
+fn create_html_format(html: &str) -> String {
+    // Template for HTML Format header
+    const VERSION: &str = "Version:0.9\r\n";
+    const START_HTML: &str = "StartHTML:";
+    const END_HTML: &str = "EndHTML:";
+    const START_FRAGMENT: &str = "StartFragment:";
+    const END_FRAGMENT: &str = "EndFragment:";
+
+    // Calculate header length with placeholder digits
+    // We use 10 digits for offsets to have enough room
+    let header_template = format!(
+        "{}{}0000000000\r\n{}0000000000\r\n{}0000000000\r\n{}0000000000\r\n",
+        VERSION, START_HTML, END_HTML, START_FRAGMENT, END_FRAGMENT
+    );
+
+    let header_len = header_template.len();
+
+    // HTML content with fragment markers
+    let html_start = "<!--StartFragment-->";
+    let html_end = "<!--EndFragment-->";
+    let full_html = format!("{}{}{}", html_start, html, html_end);
+
+    let start_html_offset = header_len;
+    let end_html_offset = header_len + full_html.len();
+    let start_fragment_offset = header_len + html_start.len();
+    let end_fragment_offset = header_len + html_start.len() + html.len();
+
+    format!(
+        "{}{}:{:010}\r\n{}:{:010}\r\n{}:{:010}\r\n{}:{:010}\r\n{}",
+        VERSION,
+        START_HTML, start_html_offset,
+        END_HTML, end_html_offset,
+        START_FRAGMENT, start_fragment_offset,
+        END_FRAGMENT, end_fragment_offset,
+        full_html
+    )
 }
 
 /// Convert DIB (Device Independent Bitmap) data to PNG format
@@ -526,9 +1018,84 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 }
                 Ok(())
             }
-            _ => Err(ClipboardError::ClipboardAccess(
-                format!("Content type {:?} not supported for clipboard", item.content_type)
-            )),
+            ContentType::Files => {
+                // Set files to clipboard using CF_HDROP format
+                unsafe {
+                    if OpenClipboard(None).is_err() {
+                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                    }
+
+                    let _ = EmptyClipboard();
+
+                    // Parse file paths from data
+                    let paths_str = String::from_utf8_lossy(&item.data);
+                    let paths: Vec<&str> = paths_str.lines().collect();
+
+                    if let Some(hdrop_data) = create_hdrop_data(&paths) {
+                        let handle = GlobalAlloc(GMEM_MOVEABLE, hdrop_data.len());
+                        if let Ok(handle) = handle {
+                            let ptr = GlobalLock(handle);
+                            std::ptr::copy_nonoverlapping(hdrop_data.as_ptr(), ptr as *mut u8, hdrop_data.len());
+                            let _ = GlobalUnlock(handle);
+                            let _ = SetClipboardData(CF_HDROP.0 as u32, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                        }
+                    }
+
+                    let _ = CloseClipboard();
+                }
+                Ok(())
+            }
+            ContentType::Html => {
+                // Set HTML to clipboard using HTML Format
+                unsafe {
+                    if OpenClipboard(None).is_err() {
+                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                    }
+
+                    let _ = EmptyClipboard();
+
+                    let html_str = String::from_utf8_lossy(&item.data);
+                    let html_format = create_html_format(&html_str);
+                    let data = html_format.as_bytes();
+
+                    let handle = GlobalAlloc(GMEM_MOVEABLE, data.len() + 1);
+                    if let Ok(handle) = handle {
+                        let ptr = GlobalLock(handle);
+                        std::ptr::copy_nonoverlapping(data.as_ptr(), ptr as *mut u8, data.len());
+                        // Null terminate
+                        *((ptr as *mut u8).add(data.len())) = 0;
+                        let _ = GlobalUnlock(handle);
+                        let _ = SetClipboardData(*CF_HTML, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                    }
+
+                    let _ = CloseClipboard();
+                }
+                Ok(())
+            }
+            ContentType::RichText => {
+                // Set RTF to clipboard
+                unsafe {
+                    if OpenClipboard(None).is_err() {
+                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                    }
+
+                    let _ = EmptyClipboard();
+
+                    let data = &item.data;
+                    let handle = GlobalAlloc(GMEM_MOVEABLE, data.len() + 1);
+                    if let Ok(handle) = handle {
+                        let ptr = GlobalLock(handle);
+                        std::ptr::copy_nonoverlapping(data.as_ptr(), ptr as *mut u8, data.len());
+                        // Null terminate
+                        *((ptr as *mut u8).add(data.len())) = 0;
+                        let _ = GlobalUnlock(handle);
+                        let _ = SetClipboardData(*CF_RTF, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                    }
+
+                    let _ = CloseClipboard();
+                }
+                Ok(())
+            }
         }
     }
 }
