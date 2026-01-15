@@ -1,12 +1,18 @@
+use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 
+use std::ffi::c_void;
 use parking_lot::RwLock;
 use windows::Win32::Foundation::{HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Graphics::Gdi::{
+    GetDIBits, GetDC, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+    DIB_RGB_COLORS, HBITMAP,
+};
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
-use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_UNICODETEXT};
+use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_UNICODETEXT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 use clipboard_core::domain::{ClipboardItem, ContentType};
@@ -104,57 +110,47 @@ impl WindowsClipboardMonitor {
                 return None;
             }
 
-            // Try CF_DIB first (Device Independent Bitmap)
-            let handle = GetClipboardData(CF_DIB.0 as u32);
-            if handle.is_err() {
-                tracing::debug!("get_clipboard_image: GetClipboardData(CF_DIB) failed");
-                let _ = CloseClipboard();
-                return None;
+            // Try CF_DIB / CF_DIBV5 first (Device Independent Bitmap)
+            let mut result = None;
+
+            if let Ok(handle) = GetClipboardData(CF_DIB.0 as u32)
+                .or_else(|_| GetClipboardData(CF_DIBV5.0 as u32))
+            {
+                if !handle.0.is_null() {
+                    let hglobal = HGLOBAL(handle.0);
+                    let ptr = GlobalLock(hglobal);
+                    if !ptr.is_null() {
+                        let size = GlobalSize(hglobal);
+                        if size > 0 {
+                            tracing::debug!("get_clipboard_image: DIB data size = {} bytes", size);
+                            let dib_data = std::slice::from_raw_parts(ptr as *const u8, size);
+                            if let Some(png) = dib_to_png(dib_data) {
+                                tracing::debug!(
+                                    "get_clipboard_image: PNG conversion succeeded, {} bytes",
+                                    png.len()
+                                );
+                                let thumbnail = generate_thumbnail(&png, 64, 64);
+                                result = Some((png, thumbnail));
+                            } else {
+                                tracing::debug!("get_clipboard_image: dib_to_png failed");
+                            }
+                        }
+                        let _ = GlobalUnlock(hglobal);
+                    }
+                }
             }
 
-            let handle = handle.unwrap();
-            if handle.0.is_null() {
-                tracing::debug!("get_clipboard_image: handle is null");
-                let _ = CloseClipboard();
-                return None;
+            // Fallback to CF_BITMAP for sources (like default screenshots) that only expose bitmaps
+            if result.is_none() {
+                if let Ok(handle) = GetClipboardData(CF_BITMAP.0 as u32) {
+                    if !handle.0.is_null() {
+                        result = get_png_from_bitmap(HBITMAP(handle.0));
+                    }
+                }
             }
 
-            let hglobal = HGLOBAL(handle.0);
-            let ptr = GlobalLock(hglobal);
-            if ptr.is_null() {
-                tracing::debug!("get_clipboard_image: GlobalLock failed");
-                let _ = CloseClipboard();
-                return None;
-            }
-
-            let size = GlobalSize(hglobal);
-            if size == 0 {
-                tracing::debug!("get_clipboard_image: GlobalSize returned 0");
-                let _ = GlobalUnlock(hglobal);
-                let _ = CloseClipboard();
-                return None;
-            }
-
-            tracing::debug!("get_clipboard_image: DIB data size = {} bytes", size);
-
-            // Read DIB data
-            let dib_data = std::slice::from_raw_parts(ptr as *const u8, size);
-
-            // Convert DIB to PNG using the image crate
-            let png_data = dib_to_png(dib_data);
-
-            let _ = GlobalUnlock(hglobal);
             let _ = CloseClipboard();
-
-            if let Some(png) = png_data {
-                tracing::debug!("get_clipboard_image: PNG conversion succeeded, {} bytes", png.len());
-                // Generate thumbnail
-                let thumbnail = generate_thumbnail(&png, 64, 64);
-                Some((png, thumbnail))
-            } else {
-                tracing::debug!("get_clipboard_image: dib_to_png failed");
-                None
-            }
+            result
         }
     }
 
@@ -162,8 +158,9 @@ impl WindowsClipboardMonitor {
         unsafe {
             // IsClipboardFormatAvailable doesn't require OpenClipboard
             let has_dib = IsClipboardFormatAvailable(CF_DIB.0 as u32).is_ok();
+            let has_dib_v5 = IsClipboardFormatAvailable(CF_DIBV5.0 as u32).is_ok();
             let has_bitmap = IsClipboardFormatAvailable(CF_BITMAP.0 as u32).is_ok();
-            has_dib || has_bitmap
+            has_dib || has_dib_v5 || has_bitmap
         }
     }
 
@@ -589,6 +586,99 @@ fn png_to_dib(png_data: &[u8]) -> Option<Vec<u8>> {
     }
 
     Some(dib)
+}
+
+/// Convert an HBITMAP clipboard handle into PNG data (with thumbnail)
+fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
+    unsafe {
+        let mut bitmap = BITMAP::default();
+        if GetObjectW(
+            hbitmap,
+            size_of::<BITMAP>() as i32,
+            Some(&mut bitmap as *mut _ as *mut c_void),
+        ) == 0
+        {
+            tracing::debug!("get_clipboard_image: GetObjectW failed");
+            return None;
+        }
+
+        let width = bitmap.bmWidth;
+        let height = bitmap.bmHeight;
+        if width <= 0 || height == 0 {
+            tracing::debug!("get_clipboard_image: invalid bitmap dimensions");
+            return None;
+        }
+
+        let abs_height: u32 = height.unsigned_abs();
+        let is_top_down = height < 0;
+
+        let mut info = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width,
+                biHeight: height,
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0 as u32,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        const BYTES_PER_PIXEL_RGBA: usize = 4;
+        let buffer_size = (width as usize)
+            .checked_mul(BYTES_PER_PIXEL_RGBA)
+            .and_then(|v| v.checked_mul(abs_height as usize));
+        let buffer_size = match buffer_size {
+            Some(size) if size > 0 => size,
+            _ => {
+                tracing::debug!("get_clipboard_image: buffer_size overflow/zero");
+                return None;
+            }
+        };
+        let mut buffer = vec![0u8; buffer_size];
+
+        let hdc = GetDC(None);
+        if hdc.0.is_null() {
+            tracing::debug!("get_clipboard_image: GetDC failed");
+            return None;
+        }
+
+        let scan_lines = GetDIBits(
+            hdc,
+            hbitmap,
+            0,
+            abs_height,
+            Some(buffer.as_mut_ptr() as *mut c_void),
+            &mut info,
+            DIB_RGB_COLORS,
+        );
+        let _ = ReleaseDC(None, hdc);
+
+        if scan_lines != abs_height as i32 {
+            tracing::debug!(
+                "get_clipboard_image: GetDIBits copied {} of {} lines",
+                scan_lines,
+                abs_height
+            );
+            return None;
+        }
+
+        if let Some(rgba) =
+            convert_bgra32_to_rgba(&buffer, width as usize, abs_height as usize, is_top_down)
+        {
+            if let Some(png) = encode_png(&rgba, width as u32, abs_height) {
+                tracing::debug!(
+                    "get_clipboard_image: converted CF_BITMAP to PNG ({} bytes)",
+                    png.len()
+                );
+                let thumbnail = generate_thumbnail(&png, 64, 64);
+                return Some((png, thumbnail));
+            }
+        }
+
+        None
+    }
 }
 
 unsafe extern "system" fn window_proc(
