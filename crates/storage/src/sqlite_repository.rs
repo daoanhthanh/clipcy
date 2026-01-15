@@ -10,6 +10,16 @@ use clipboard_core::domain::{ClipboardItem, ContentType};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::ClipboardRepository;
 
+/// Calculate a simple hash of content for deduplication
+fn calculate_content_hash(data: &[u8]) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
 /// SQLite-based clipboard repository using sqlx for truly async operations
 pub struct SqliteClipboardRepository {
     pool: SqlitePool,
@@ -58,7 +68,8 @@ impl SqliteClipboardRepository {
                 thumbnail BLOB,
                 source_app TEXT,
                 created_at TEXT NOT NULL,
-                pinned INTEGER NOT NULL DEFAULT 0
+                pinned INTEGER NOT NULL DEFAULT 0,
+                content_hash TEXT
             )
             "#,
         )
@@ -75,6 +86,17 @@ impl SqliteClipboardRepository {
             .execute(&self.pool)
             .await
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        // Index for deduplication lookup
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_content_hash ON clipboard_items(content_hash)")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        // Add content_hash column if it doesn't exist (for existing databases)
+        let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN content_hash TEXT")
+            .execute(&self.pool)
+            .await;
 
         Ok(())
     }
@@ -121,12 +143,25 @@ impl SqliteClipboardRepository {
 impl ClipboardRepository for SqliteClipboardRepository {
     async fn save(&self, item: &ClipboardItem) -> Result<()> {
         let content_type = serde_json::to_string(&item.content_type)?;
+        let content_hash = calculate_content_hash(&item.data);
+
+        // Only deduplicate text content - images should always be kept as separate entries
+        if item.content_type == ContentType::Text {
+            // Delete any existing item with the same content hash (deduplication)
+            // This removes the old entry so the new one will be at the top when sorted by created_at
+            sqlx::query("DELETE FROM clipboard_items WHERE content_hash = $1 AND id != $2")
+                .bind(&content_hash)
+                .bind(item.id.to_string())
+                .execute(&self.pool)
+                .await
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        }
 
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO clipboard_items
-            (id, content_type, data, preview, thumbnail, source_app, created_at, pinned)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            (id, content_type, data, preview, thumbnail, source_app, created_at, pinned, content_hash)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
         )
         .bind(item.id.to_string())
@@ -137,6 +172,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
         .bind(&item.source_app)
         .bind(item.created_at.to_rfc3339())
         .bind(item.pinned as i32)
+        .bind(&content_hash)
         .execute(&self.pool)
         .await
         .map_err(|e| ClipboardError::Storage(e.to_string()))?;
