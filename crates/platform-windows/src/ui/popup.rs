@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 use windows::Win32::Foundation::*;
-use windows::Win32::Graphics::Gdi::*;
-use windows::Win32::UI::Input::KeyboardAndMouse::{SetFocus, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
+use windows::Win32::Graphics::Gdi::{PS_SOLID, *};
+use windows::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 use clipboard_core::domain::{ClipboardItem, ContentType, SearchType};
@@ -41,18 +41,23 @@ const VK_ESCAPE: u32 = 0x1B;
 
 const WM_MOUSELEAVE: u32 = 0x02A3;
 
-// Control IDs
-const ID_SEARCH_EDIT: i32 = 101;
-const ID_SEARCH_COMBO: i32 = 102;
-
-// Window messages for control colors and notifications
+// Window messages for custom controls
 const WM_COMMAND: u32 = 0x0111;
 const WM_CTLCOLOREDIT: u32 = 0x0133;
 const WM_CTLCOLORLISTBOX: u32 = 0x0134;
-const EN_CHANGE: u32 = 0x0300;
-const CBN_SELCHANGE: u32 = 1;
+const WM_TIMER: u32 = 0x0113;
+const WM_CHAR: u32 = 0x0102;
+const WM_LBUTTONDOWN: u32 = 0x0201;
 
-// Theme colors
+// Virtual key codes for text editing
+const VK_BACK: u32 = 0x08;
+const VK_DELETE: u32 = 0x2E;
+const VK_LEFT: u32 = 0x25;
+const VK_RIGHT: u32 = 0x27;
+const VK_HOME: u32 = 0x24;
+const VK_END: u32 = 0x23;
+
+// Theme colors - WinUI 3 style
 #[derive(Clone)]
 struct ThemeColors {
     background: u32,
@@ -64,7 +69,11 @@ struct ThemeColors {
     scrollbar_thumb: u32,
     search_bg: u32,
     search_border: u32,
+    search_border_focused: u32,  // WinUI 3 accent color (blue underline)
     placeholder: u32,
+    clear_button: u32,           // X button color
+    clear_button_hover: u32,     // X button hover color
+    dropdown_arrow: u32,         // Dropdown chevron color
 }
 
 impl ThemeColors {
@@ -77,9 +86,13 @@ impl ThemeColors {
             selected: 0x00505050,
             scrollbar_track: 0x003A3A3A,
             scrollbar_thumb: 0x00888888,
-            search_bg: 0x00404040,
+            search_bg: 0x00383838,
             search_border: 0x00606060,
+            search_border_focused: 0x00C67D4F,  // WinUI 3 accent blue (BGR: 0x4F7DC6)
             placeholder: 0x00888888,
+            clear_button: 0x00888888,
+            clear_button_hover: 0x00FFFFFF,
+            dropdown_arrow: 0x00AAAAAA,
         }
     }
 
@@ -94,7 +107,11 @@ impl ThemeColors {
             scrollbar_thumb: 0x00888888,
             search_bg: 0x00F5F5F5,
             search_border: 0x00D0D0D0,
+            search_border_focused: 0x00C67D4F,  // WinUI 3 accent blue (BGR: 0x4F7DC6)
             placeholder: 0x00888888,
+            clear_button: 0x00666666,
+            clear_button_hover: 0x00000000,
+            dropdown_arrow: 0x00666666,
         }
     }
 }
@@ -114,17 +131,26 @@ struct PopupData {
     items_content_height: i32,   // Total height of scrollable items
     items_visible_height: i32,   // Visible height of scrollable section
     scrollable_item_count: usize, // Number of items in scrollable section (clipboard items only)
-    // Native controls
-    edit_hwnd: HWND,
-    combo_hwnd: HWND,
-    // Edit border rect for drawing rounded border
-    edit_border_rect: RECT,
+    // WinUI 3 custom control rects
+    search_input_rect: RECT,     // Search input area (custom drawn)
+    dropdown_rect: RECT,         // Dropdown button area (custom drawn)
+    clear_button_rect: RECT,     // Clear (X) button rect inside search input
+    // WinUI 3 control states
+    search_focused: bool,        // Is search input focused
+    clear_button_hovered: bool,  // Is clear button being hovered
+    dropdown_hovered: bool,      // Is dropdown being hovered
+    dropdown_open: bool,         // Is dropdown list open
+    dropdown_item_rects: Vec<RECT>, // Rects for dropdown items
+    dropdown_hovered_index: Option<usize>, // Hovered item in dropdown
     // Brushes for control colors (owned by PopupData, must be deleted on cleanup)
     edit_bg_brush: HBRUSH,
     combo_bg_brush: HBRUSH,
     // Search fields
     search_query: String,
     search_type: SearchType,
+    // Caret/cursor
+    caret_pos: usize,            // Caret position in search query
+    caret_visible: bool,         // For caret blinking
 }
 
 struct MenuItem {
@@ -171,7 +197,7 @@ fn is_dark_mode() -> bool {
         }
 
         let mut data: u32 = 1;
-        let mut data_size: u32 = std::mem::size_of::<u32>() as u32;
+        let mut data_size: u32 = size_of::<u32>() as u32;
         let value_name = windows::core::w!("AppsUseLightTheme");
 
         let result = RegQueryValueExW(
@@ -272,7 +298,7 @@ pub fn show_modern_popup(
 
         let monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
         let mut monitor_info = MONITORINFO {
-            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            cbSize: size_of::<MONITORINFO>() as u32,
             ..Default::default()
         };
         let _ = GetMonitorInfoW(monitor, &mut monitor_info);
@@ -302,7 +328,7 @@ pub fn show_modern_popup(
         // Register popup window class
         let class_name = windows::core::w!("ClipcyModernPopup");
         let wc = WNDCLASSEXW {
-            cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
+            cbSize: size_of::<WNDCLASSEXW>() as u32,
             lpfnWndProc: Some(popup_window_proc),
             lpszClassName: class_name,
             hCursor: LoadCursorW(None, IDC_ARROW).unwrap_or_default(),
@@ -314,7 +340,7 @@ pub fn show_modern_popup(
         // Register preview window class
         let preview_class_name = windows::core::w!("ClipcyPreviewPanel");
         let preview_wc = WNDCLASSEXW {
-            cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
+            cbSize: size_of::<WNDCLASSEXW>() as u32,
             lpfnWndProc: Some(preview_window_proc),
             lpszClassName: preview_class_name,
             hCursor: LoadCursorW(None, IDC_ARROW).unwrap_or_default(),
@@ -388,91 +414,36 @@ pub fn show_modern_popup(
         POPUP_HWND.store(hwnd.0 as isize, Ordering::SeqCst);
         apply_rounded_corners(hwnd);
 
-        // Create native COMBOBOX for search type (standard dropdown)
-        let combo_class = windows::core::w!("COMBOBOX");
-        let combo_hwnd = CreateWindowExW(
-            WINDOW_EX_STYLE::default(),
-            combo_class,
-            windows::core::w!(""),
-            WINDOW_STYLE(
-                0x50000003  // WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS
-            ),
-            MENU_PADDING,
-            MENU_PADDING,
-            DROPDOWN_WIDTH,
-            SEARCH_INPUT_HEIGHT * 6, // Height includes dropdown list
-            Some(hwnd),
-            Some(HMENU(ID_SEARCH_COMBO as *mut c_void)),
-            None,
-            None,
-        ).unwrap_or(HWND(std::ptr::null_mut()));
+        // WinUI 3 style: Custom-drawn controls (no native COMBOBOX or EDIT)
+        // Calculate rects for custom WinUI 3 controls
+        let dropdown_rect = RECT {
+            left: MENU_PADDING,
+            top: MENU_PADDING,
+            right: MENU_PADDING + DROPDOWN_WIDTH,
+            bottom: MENU_PADDING + SEARCH_INPUT_HEIGHT,
+        };
 
-        // Add items to combobox
-        if !combo_hwnd.0.is_null() {
-            let fuzzy_text = windows::core::w!("Fuzzy");
-            let regex_text = windows::core::w!("Regex");
-            SendMessageW(combo_hwnd, 0x0143, Some(WPARAM(0)), Some(LPARAM(fuzzy_text.as_ptr() as isize))); // CB_ADDSTRING
-            SendMessageW(combo_hwnd, 0x0143, Some(WPARAM(0)), Some(LPARAM(regex_text.as_ptr() as isize))); // CB_ADDSTRING
-            SendMessageW(combo_hwnd, 0x014E, Some(WPARAM(0)), Some(LPARAM(0))); // CB_SETCURSEL - select first item
-        }
+        let search_input_x = MENU_PADDING + DROPDOWN_WIDTH + SEARCH_GAP;
+        let search_input_width = width - MENU_PADDING * 2 - DROPDOWN_WIDTH - SEARCH_GAP;
+        let clear_button_size = SEARCH_INPUT_HEIGHT - 8;
 
-        // Create native EDIT control for search input
-        let edit_class = windows::core::w!("EDIT");
-        let edit_x = MENU_PADDING + DROPDOWN_WIDTH + SEARCH_GAP;
-        let edit_width = width - MENU_PADDING * 2 - DROPDOWN_WIDTH - SEARCH_GAP;
-        let edit_hwnd = CreateWindowExW(
-            WINDOW_EX_STYLE::default(),
-            edit_class,
-            windows::core::w!(""),
-            WINDOW_STYLE(
-                0x50810080  // WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_LEFT
-            ),
-            edit_x + 4,  // Inset for rounded border
-            MENU_PADDING + 2,
-            edit_width - 8,  // Account for border padding
-            SEARCH_INPUT_HEIGHT - 4,
-            Some(hwnd),
-            Some(HMENU(ID_SEARCH_EDIT as *mut c_void)),
-            None,
-            None,
-        ).unwrap_or(HWND(std::ptr::null_mut()));
+        let search_input_rect = RECT {
+            left: search_input_x,
+            top: MENU_PADDING,
+            right: search_input_x + search_input_width,
+            bottom: MENU_PADDING + SEARCH_INPUT_HEIGHT,
+        };
 
-        // Create font for controls (same as menu items)
-        let control_font = CreateFontW(
-            -14, 0, 0, 0, 400, 0, 0, 0,
-            FONT_CHARSET(1), FONT_OUTPUT_PRECISION(0), FONT_CLIP_PRECISION(0), FONT_QUALITY(0),
-            0, windows::core::w!("Segoe UI"),
-        );
-
-        // Style the edit control
-        if !edit_hwnd.0.is_null() {
-            // Set font
-            SendMessageW(edit_hwnd, 0x0030, Some(WPARAM(control_font.0 as usize)), Some(LPARAM(1))); // WM_SETFONT
-
-            // Set placeholder text (cue banner)
-            let placeholder = windows::core::w!("Search...");
-            SendMessageW(edit_hwnd, 0x1501, Some(WPARAM(1)), Some(LPARAM(placeholder.as_ptr() as isize))); // EM_SETCUEBANNER
-
-            // Set margins for text padding (EM_SETMARGINS)
-            SendMessageW(edit_hwnd, 0x00D3, Some(WPARAM(3)), Some(LPARAM(0x00040004))); // EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN
-        }
-
-        // Set font on combobox
-        if !combo_hwnd.0.is_null() {
-            SendMessageW(combo_hwnd, 0x0030, Some(WPARAM(control_font.0 as usize)), Some(LPARAM(1))); // WM_SETFONT
-        }
+        let clear_button_rect = RECT {
+            left: search_input_rect.right - clear_button_size - 6,
+            top: MENU_PADDING + 4,
+            right: search_input_rect.right - 6,
+            bottom: MENU_PADDING + 4 + clear_button_size,
+        };
 
         // Create brushes for control backgrounds
         let edit_bg_brush = CreateSolidBrush(COLORREF(colors.search_bg));
         let combo_bg_brush = CreateSolidBrush(COLORREF(colors.search_bg));
-
-        // Store the edit border rect for drawing rounded border
-        let edit_border_rect = RECT {
-            left: edit_x,
-            top: MENU_PADDING,
-            right: edit_x + edit_width,
-            bottom: MENU_PADDING + SEARCH_INPUT_HEIGHT,
-        };
 
         let data = Box::new(PopupData {
             items: menu_items,
@@ -489,22 +460,29 @@ pub fn show_modern_popup(
             items_content_height,
             items_visible_height,
             scrollable_item_count,
-            edit_hwnd,
-            combo_hwnd,
-            edit_border_rect,
+            search_input_rect,
+            dropdown_rect,
+            clear_button_rect,
+            search_focused: true,  // Start focused
+            clear_button_hovered: false,
+            dropdown_hovered: false,
+            dropdown_open: false,
+            dropdown_item_rects: Vec::new(),
+            dropdown_hovered_index: None,
             edit_bg_brush,
             combo_bg_brush,
             search_query: String::new(),
             search_type: SearchType::Fuzzy,
+            caret_pos: 0,
+            caret_visible: true,
         });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, Box::into_raw(data) as isize);
 
+        // Start caret blink timer (ID = 1, 500ms interval)
+        let _ = SetTimer(Some(hwnd), 1, 500, None);
+
         let _ = ShowWindow(hwnd, SW_SHOW);
         let _ = SetForegroundWindow(hwnd);
-        // Set focus to the edit control
-        if !edit_hwnd.0.is_null() {
-            let _ = SetFocus(Some(edit_hwnd));
-        }
         let _ = UpdateWindow(hwnd);
         POPUP_VISIBLE.store(true, Ordering::SeqCst);
         MOUSE_IN_POPUP.store(false, Ordering::SeqCst);
@@ -561,21 +539,14 @@ fn apply_rounded_corners(hwnd: HWND) {
             hwnd,
             DWMWA_WINDOW_CORNER_PREFERENCE,
             &corner_preference as *const _ as *const c_void,
-            std::mem::size_of::<DWM_WINDOW_CORNER_PREFERENCE>() as u32,
+            size_of::<DWM_WINDOW_CORNER_PREFERENCE>() as u32,
         );
     }
 }
 
-fn calculate_menu_height(items: &[MenuItem]) -> i32 {
-    let mut height = MENU_PADDING * 2;
-    for item in items {
-        if item.is_separator {
-            height += SEPARATOR_HEIGHT;
-        } else {
-            height += ITEM_HEIGHT;
-        }
-    }
-    height
+/// Check if a point is within a rect
+fn point_in_rect(x: i32, y: i32, rect: &RECT) -> bool {
+    x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom
 }
 
 /// Perform fuzzy search - case insensitive substring matching
@@ -951,50 +922,131 @@ unsafe extern "system" fn popup_window_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match msg {
-        WM_CTLCOLOREDIT | WM_CTLCOLORLISTBOX => {
-            // Style the EDIT and COMBOBOX list controls with theme colors
+        WM_TIMER => {
+            // Caret blink timer (ID = 1)
+            if wparam.0 == 1 {
+                let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
+                if !data_ptr.is_null() {
+                    let data = &mut *data_ptr;
+                    if data.search_focused {
+                        data.caret_visible = !data.caret_visible;
+                        let _ = InvalidateRect(Some(hwnd), Some(&data.search_input_rect), false);
+                    }
+                }
+            }
+            LRESULT(0)
+        }
+        WM_CHAR => {
             let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
             if !data_ptr.is_null() {
-                let data = &*data_ptr;
-                let hdc = HDC(wparam.0 as *mut c_void);
+                let data = &mut *data_ptr;
 
-                // Set text and background colors
-                let _ = SetTextColor(hdc, COLORREF(data.colors.text));
-                let _ = SetBkColor(hdc, COLORREF(data.colors.search_bg));
-
-                // Return the brush for background
-                return LRESULT(data.edit_bg_brush.0 as isize);
+                if data.search_focused && !data.dropdown_open {
+                    let ch = wparam.0 as u32;
+                    // Printable characters (space and above, excluding control chars)
+                    if ch >= 32 && ch != 127 {
+                        if let Some(c) = char::from_u32(ch) {
+                            // Insert character at caret position
+                            let byte_pos = data.search_query.char_indices()
+                                .nth(data.caret_pos)
+                                .map(|(i, _)| i)
+                                .unwrap_or(data.search_query.len());
+                            data.search_query.insert(byte_pos, c);
+                            data.caret_pos += 1;
+                            data.caret_visible = true;
+                            filter_items(data);
+                            let _ = InvalidateRect(Some(hwnd), None, true);
+                        }
+                    }
+                }
             }
-            return DefWindowProcW(hwnd, msg, wparam, lparam);
+            LRESULT(0)
         }
-        WM_COMMAND => {
-            let control_id = (wparam.0 & 0xFFFF) as i32;
-            let notification_code = ((wparam.0 >> 16) & 0xFFFF) as u32;
+        WM_LBUTTONDOWN => {
+            let x = (lparam.0 & 0xFFFF) as i16 as i32;
+            let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
 
             let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
             if !data_ptr.is_null() {
                 let data = &mut *data_ptr;
 
-                if control_id == ID_SEARCH_EDIT && notification_code == EN_CHANGE {
-                    // Get text from edit control
-                    let text_len = SendMessageW(data.edit_hwnd, 0x000E, None, None).0 as usize; // WM_GETTEXTLENGTH
-                    if text_len > 0 {
-                        let mut buffer: Vec<u16> = vec![0; text_len + 1];
-                        SendMessageW(data.edit_hwnd, 0x000D, Some(WPARAM(text_len + 1)), Some(LPARAM(buffer.as_mut_ptr() as isize))); // WM_GETTEXT
-                        data.search_query = String::from_utf16_lossy(&buffer[..text_len]);
-                    } else {
-                        data.search_query.clear();
+                // Check if clicking on dropdown
+                if point_in_rect(x, y, &data.dropdown_rect) {
+                    data.dropdown_open = !data.dropdown_open;
+                    data.search_focused = false;
+
+                    // Update dropdown item rects when opening
+                    if data.dropdown_open {
+                        let dropdown_list_item_height = 28;
+                        let dropdown_list_top = data.dropdown_rect.bottom + 2;
+                        let dropdown_list_left = data.dropdown_rect.left;
+                        let dropdown_list_right = data.dropdown_rect.right;
+
+                        data.dropdown_item_rects.clear();
+                        data.dropdown_item_rects.push(RECT {
+                            left: dropdown_list_left + 2,
+                            top: dropdown_list_top + 2,
+                            right: dropdown_list_right - 2,
+                            bottom: dropdown_list_top + 2 + dropdown_list_item_height,
+                        });
+                        data.dropdown_item_rects.push(RECT {
+                            left: dropdown_list_left + 2,
+                            top: dropdown_list_top + 2 + dropdown_list_item_height,
+                            right: dropdown_list_right - 2,
+                            bottom: dropdown_list_top + 2 + dropdown_list_item_height * 2,
+                        });
+                        data.dropdown_hovered_index = None;
                     }
+
+                    let _ = InvalidateRect(Some(hwnd), None, true);
+                    return LRESULT(0);
+                }
+
+                // Check if clicking on clear button
+                if point_in_rect(x, y, &data.clear_button_rect) && !data.search_query.is_empty() {
+                    data.search_query.clear();
+                    data.caret_pos = 0;
                     filter_items(data);
                     let _ = InvalidateRect(Some(hwnd), None, true);
-                } else if control_id == ID_SEARCH_COMBO && notification_code == CBN_SELCHANGE {
-                    // Get selected index from combobox
-                    let sel_idx = SendMessageW(data.combo_hwnd, 0x0147, None, None).0; // CB_GETCURSEL
-                    data.search_type = if sel_idx == 0 { SearchType::Fuzzy } else { SearchType::Regex };
-                    filter_items(data);
+                    return LRESULT(0);
+                }
+
+                // Check if clicking on search input
+                if point_in_rect(x, y, &data.search_input_rect) {
+                    data.search_focused = true;
+                    data.dropdown_open = false;
+                    data.caret_visible = true;
+                    // Set caret position based on click location (simplified: end of text)
+                    data.caret_pos = data.search_query.chars().count();
+                    let _ = InvalidateRect(Some(hwnd), None, true);
+                    return LRESULT(0);
+                }
+
+                // Check if clicking on dropdown item
+                if data.dropdown_open {
+                    for (i, rect) in data.dropdown_item_rects.iter().enumerate() {
+                        if point_in_rect(x, y, rect) {
+                            data.search_type = if i == 0 { SearchType::Fuzzy } else { SearchType::Regex };
+                            data.dropdown_open = false;
+                            filter_items(data);
+                            let _ = InvalidateRect(Some(hwnd), None, true);
+                            return LRESULT(0);
+                        }
+                    }
+                    // Clicked outside dropdown items, close it
+                    data.dropdown_open = false;
                     let _ = InvalidateRect(Some(hwnd), None, true);
                 }
             }
+            // Fall through to handle item clicks
+            DefWindowProcW(hwnd, msg, wparam, lparam)
+        }
+        WM_CTLCOLOREDIT | WM_CTLCOLORLISTBOX => {
+            // Not used anymore with custom controls, but keep for safety
+            DefWindowProcW(hwnd, msg, wparam, lparam)
+        }
+        WM_COMMAND => {
+            // Not used anymore with custom controls
             LRESULT(0)
         }
         WM_PAINT => {
@@ -1025,14 +1077,45 @@ unsafe extern "system" fn popup_window_proc(
                 KEYBOARD_NAV_ACTIVE.store(false, Ordering::SeqCst);
             }
 
+            let x = (lparam.0 & 0xFFFF) as i16 as i32;
             let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
 
             let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
             if !data_ptr.is_null() {
                 let data = &mut *data_ptr;
 
-                // Only update selection if keyboard nav is not active
-                if !KEYBOARD_NAV_ACTIVE.load(Ordering::SeqCst) {
+                // Check hover states for custom WinUI 3 controls
+                let new_clear_hover = point_in_rect(x, y, &data.clear_button_rect) && !data.search_query.is_empty();
+                let new_dropdown_hover = point_in_rect(x, y, &data.dropdown_rect);
+
+                // Check dropdown item hover
+                let mut new_dropdown_item_hover = None;
+                if data.dropdown_open {
+                    for (i, rect) in data.dropdown_item_rects.iter().enumerate() {
+                        if point_in_rect(x, y, rect) {
+                            new_dropdown_item_hover = Some(i);
+                            break;
+                        }
+                    }
+                }
+
+                // Update hover states if changed
+                let needs_redraw = new_clear_hover != data.clear_button_hovered
+                    || new_dropdown_hover != data.dropdown_hovered
+                    || new_dropdown_item_hover != data.dropdown_hovered_index;
+
+                data.clear_button_hovered = new_clear_hover;
+                data.dropdown_hovered = new_dropdown_hover;
+                if data.dropdown_open {
+                    data.dropdown_hovered_index = new_dropdown_item_hover;
+                }
+
+                if needs_redraw {
+                    let _ = InvalidateRect(Some(hwnd), None, false);
+                }
+
+                // Only update selection if keyboard nav is not active and not in control area
+                if !KEYBOARD_NAV_ACTIVE.load(Ordering::SeqCst) && y >= SEARCH_SECTION_HEIGHT {
                     // Use the new function that handles both sections correctly
                     let new_index = get_item_at_y_with_scroll(data, y);
 
@@ -1050,7 +1133,7 @@ unsafe extern "system" fn popup_window_proc(
 
                 // Track mouse leave
                 let mut tme = TRACKMOUSEEVENT {
-                    cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
+                    cbSize: size_of::<TRACKMOUSEEVENT>() as u32,
                     dwFlags: TME_LEAVE,
                     hwndTrack: hwnd,
                     dwHoverTime: 0,
@@ -1099,18 +1182,123 @@ unsafe extern "system" fn popup_window_proc(
 
                 match wparam.0 as u32 {
                     VK_ESCAPE => {
-                        POPUP_VISIBLE.store(false, Ordering::SeqCst);
-                        let _ = PostMessageW(Some(hwnd), WM_CLOSE, WPARAM(0), LPARAM(0));
+                        if data.dropdown_open {
+                            data.dropdown_open = false;
+                            let _ = InvalidateRect(Some(hwnd), None, true);
+                        } else {
+                            POPUP_VISIBLE.store(false, Ordering::SeqCst);
+                            let _ = PostMessageW(Some(hwnd), WM_CLOSE, WPARAM(0), LPARAM(0));
+                        }
                     }
                     VK_UP => {
-                        navigate_selection(data, hwnd, -1);
+                        if data.dropdown_open {
+                            // Navigate dropdown
+                            let current = data.dropdown_hovered_index.unwrap_or(1);
+                            data.dropdown_hovered_index = Some(if current == 0 { 1 } else { 0 });
+                            let _ = InvalidateRect(Some(hwnd), None, true);
+                        } else {
+                            navigate_selection(data, hwnd, -1);
+                        }
                     }
                     VK_DOWN => {
-                        navigate_selection(data, hwnd, 1);
+                        if data.dropdown_open {
+                            // Navigate dropdown
+                            let current = data.dropdown_hovered_index.unwrap_or(0);
+                            data.dropdown_hovered_index = Some(if current == 1 { 0 } else { 1 });
+                            let _ = InvalidateRect(Some(hwnd), None, true);
+                        } else {
+                            navigate_selection(data, hwnd, 1);
+                        }
                     }
                     VK_RETURN => {
-                        if let Some(index) = data.selected_index {
+                        if data.dropdown_open {
+                            // Select dropdown item
+                            if let Some(idx) = data.dropdown_hovered_index {
+                                data.search_type = if idx == 0 { SearchType::Fuzzy } else { SearchType::Regex };
+                                data.dropdown_open = false;
+                                filter_items(data);
+                                let _ = InvalidateRect(Some(hwnd), None, true);
+                            }
+                        } else if let Some(index) = data.selected_index {
                             select_item(data, index, hwnd);
+                        }
+                    }
+                    VK_BACK => {
+                        // Backspace - delete character before caret
+                        if data.search_focused && data.caret_pos > 0 {
+                            let char_count = data.search_query.chars().count();
+                            if data.caret_pos <= char_count {
+                                // Find byte position of character to remove
+                                let remove_pos = data.caret_pos - 1;
+                                let byte_start = data.search_query.char_indices()
+                                    .nth(remove_pos)
+                                    .map(|(i, _)| i)
+                                    .unwrap_or(0);
+                                let byte_end = data.search_query.char_indices()
+                                    .nth(remove_pos + 1)
+                                    .map(|(i, _)| i)
+                                    .unwrap_or(data.search_query.len());
+                                data.search_query.replace_range(byte_start..byte_end, "");
+                                data.caret_pos -= 1;
+                                data.caret_visible = true;
+                                filter_items(data);
+                                let _ = InvalidateRect(Some(hwnd), None, true);
+                            }
+                        }
+                    }
+                    VK_DELETE => {
+                        // Delete - delete character after caret
+                        if data.search_focused {
+                            let char_count = data.search_query.chars().count();
+                            if data.caret_pos < char_count {
+                                let byte_start = data.search_query.char_indices()
+                                    .nth(data.caret_pos)
+                                    .map(|(i, _)| i)
+                                    .unwrap_or(0);
+                                let byte_end = data.search_query.char_indices()
+                                    .nth(data.caret_pos + 1)
+                                    .map(|(i, _)| i)
+                                    .unwrap_or(data.search_query.len());
+                                data.search_query.replace_range(byte_start..byte_end, "");
+                                data.caret_visible = true;
+                                filter_items(data);
+                                let _ = InvalidateRect(Some(hwnd), None, true);
+                            }
+                        }
+                    }
+                    VK_LEFT => {
+                        // Move caret left
+                        if data.search_focused && data.caret_pos > 0 {
+                            data.caret_pos -= 1;
+                            data.caret_visible = true;
+                            let _ = InvalidateRect(Some(hwnd), Some(&data.search_input_rect), false);
+                        }
+                    }
+                    VK_RIGHT => {
+                        // Move caret right
+                        if data.search_focused {
+                            let char_count = data.search_query.chars().count();
+                            if data.caret_pos < char_count {
+                                data.caret_pos += 1;
+                                data.caret_visible = true;
+                                let _ = InvalidateRect(Some(hwnd), Some(&data.search_input_rect), false);
+                            }
+                        }
+                    }
+                    VK_HOME => {
+                        // Move caret to start
+                        if data.search_focused {
+                            data.caret_pos = 0;
+                            data.caret_visible = true;
+                            let _ = InvalidateRect(Some(hwnd), Some(&data.search_input_rect), false);
+                        }
+                    }
+                    VK_END => {
+                        // Move caret to end
+                        if data.search_focused {
+                            data.caret_pos = data.search_query.chars().count();
+                            data.caret_visible = true;
+                            let _ = InvalidateRect(Some(hwnd), Some(&data.search_input_rect), false);
                         }
                     }
                     _ => {}
@@ -1173,7 +1361,7 @@ unsafe extern "system" fn preview_window_proc(
             MOUSE_IN_PREVIEW.store(true, Ordering::SeqCst);
 
             let mut tme = TRACKMOUSEEVENT {
-                cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
+                cbSize: size_of::<TRACKMOUSEEVENT>() as u32,
                 dwFlags: TME_LEAVE,
                 hwndTrack: hwnd,
                 dwHoverTime: 0,
@@ -1362,17 +1550,155 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
     let old_font = SelectObject(mem_dc, font.into());
     let _ = SetBkMode(mem_dc, TRANSPARENT);
 
-    // Draw rounded border around EDIT control
-    let edit_border = &data.edit_border_rect;
-    let border_brush = CreateSolidBrush(COLORREF(data.colors.search_bg));
-    let border_rgn = CreateRoundRectRgn(
-        edit_border.left, edit_border.top,
-        edit_border.right + 1, edit_border.bottom + 1,
-        8, 8,
+    // === Draw WinUI 3 Style Search Controls ===
+
+    // Draw Dropdown (WinUI 3 ComboBox style)
+    let dropdown = &data.dropdown_rect;
+    let dropdown_bg_color = if data.dropdown_hovered || data.dropdown_open {
+        data.colors.hover
+    } else {
+        data.colors.search_bg
+    };
+    let dropdown_brush = CreateSolidBrush(COLORREF(dropdown_bg_color));
+    let dropdown_rgn = CreateRoundRectRgn(
+        dropdown.left, dropdown.top,
+        dropdown.right + 1, dropdown.bottom + 1,
+        6, 6,
     );
-    let _ = FillRgn(mem_dc, border_rgn, border_brush);
-    let _ = DeleteObject(border_rgn.into());
-    let _ = DeleteObject(border_brush.into());
+    let _ = FillRgn(mem_dc, dropdown_rgn, dropdown_brush);
+    let _ = DeleteObject(dropdown_rgn.into());
+    let _ = DeleteObject(dropdown_brush.into());
+
+    // Draw dropdown text
+    let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
+    let dropdown_text = match data.search_type {
+        SearchType::Fuzzy => "Fuzzy",
+        SearchType::Regex => "Regex",
+    };
+    let mut dropdown_text_rect = RECT {
+        left: dropdown.left + 8,
+        top: dropdown.top,
+        right: dropdown.right - 20,
+        bottom: dropdown.bottom,
+    };
+    let mut text_vec: Vec<u16> = dropdown_text.encode_utf16().chain(std::iter::once(0)).collect();
+    let _ = DrawTextW(mem_dc, &mut text_vec, &mut dropdown_text_rect,
+                      DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+    // Draw dropdown chevron (▼)
+    let chevron_x = dropdown.right - 16;
+    let chevron_y = dropdown.top + (SEARCH_INPUT_HEIGHT - 8) / 2;
+    let chevron_pen = CreatePen(PS_SOLID, 1, COLORREF(data.colors.dropdown_arrow));
+    let old_pen = SelectObject(mem_dc, chevron_pen.into());
+    // Draw chevron as two lines forming a V
+    let _ = MoveToEx(mem_dc, chevron_x, chevron_y, None);
+    let _ = LineTo(mem_dc, chevron_x + 4, chevron_y + 4);
+    let _ = MoveToEx(mem_dc, chevron_x + 4, chevron_y + 4, None);
+    let _ = LineTo(mem_dc, chevron_x + 8, chevron_y);
+    let _ = SelectObject(mem_dc, old_pen);
+    let _ = DeleteObject(chevron_pen.into());
+
+    // Draw Search Input (WinUI 3 TextBox style with underline)
+    let search_rect = &data.search_input_rect;
+    let search_brush = CreateSolidBrush(COLORREF(data.colors.search_bg));
+    let search_rgn = CreateRoundRectRgn(
+        search_rect.left, search_rect.top,
+        search_rect.right + 1, search_rect.bottom + 1,
+        6, 6,
+    );
+    let _ = FillRgn(mem_dc, search_rgn, search_brush);
+    let _ = DeleteObject(search_rgn.into());
+    let _ = DeleteObject(search_brush.into());
+
+    // Draw underline (WinUI 3 accent color when focused)
+    let underline_color = if data.search_focused {
+        data.colors.search_border_focused
+    } else {
+        data.colors.search_border
+    };
+    let underline_height = if data.search_focused { 2 } else { 1 };
+    let underline_rect = RECT {
+        left: search_rect.left + 2,
+        top: search_rect.bottom - underline_height,
+        right: search_rect.right - 2,
+        bottom: search_rect.bottom,
+    };
+    let underline_brush = CreateSolidBrush(COLORREF(underline_color));
+    let _ = FillRect(mem_dc, &underline_rect, underline_brush);
+    let _ = DeleteObject(underline_brush.into());
+
+    // Draw search text or placeholder
+    let text_padding = 10;
+    let clear_btn_width = if data.search_query.is_empty() { 0 } else { 24 };
+    let mut text_rect = RECT {
+        left: search_rect.left + text_padding,
+        top: search_rect.top,
+        right: search_rect.right - text_padding - clear_btn_width,
+        bottom: search_rect.bottom - underline_height,
+    };
+
+    if data.search_query.is_empty() {
+        // Draw placeholder
+        let _ = SetTextColor(mem_dc, COLORREF(data.colors.placeholder));
+        let placeholder = "Search...";
+        let mut placeholder_vec: Vec<u16> = placeholder.encode_utf16().chain(std::iter::once(0)).collect();
+        let _ = DrawTextW(mem_dc, &mut placeholder_vec, &mut text_rect,
+                          DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    } else {
+        // Draw search text
+        let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
+        let mut search_text_vec: Vec<u16> = data.search_query.encode_utf16().chain(std::iter::once(0)).collect();
+        let _ = DrawTextW(mem_dc, &mut search_text_vec, &mut text_rect,
+                          DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    }
+
+    // Draw caret if focused and visible
+    if data.search_focused && data.caret_visible {
+        // Calculate caret X position using GetTextExtentPoint32W for accurate measurement
+        let caret_text: String = data.search_query.chars().take(data.caret_pos).collect();
+        let caret_text_wide: Vec<u16> = caret_text.encode_utf16().collect();
+
+        let mut text_size = SIZE::default();
+        if caret_text_wide.is_empty() {
+            text_size.cx = 0;
+        } else {
+            let _ = GetTextExtentPoint32W(mem_dc, &caret_text_wide, &mut text_size);
+        }
+
+        let caret_x = text_rect.left + text_size.cx;
+        let caret_y1 = search_rect.top + 5;
+        let caret_y2 = search_rect.bottom - 5 - underline_height;
+
+        let caret_pen = CreatePen(PS_SOLID, 1, COLORREF(data.colors.text));
+        let old_pen = SelectObject(mem_dc, caret_pen.into());
+        let _ = MoveToEx(mem_dc, caret_x, caret_y1, None);
+        let _ = LineTo(mem_dc, caret_x, caret_y2);
+        let _ = SelectObject(mem_dc, old_pen);
+        let _ = DeleteObject(caret_pen.into());
+    }
+
+    // Draw clear button (X) if there's text
+    if !data.search_query.is_empty() {
+        let clear_rect = &data.clear_button_rect;
+        let clear_color = if data.clear_button_hovered {
+            data.colors.clear_button_hover
+        } else {
+            data.colors.clear_button
+        };
+
+        // Draw X
+        let x_pen = CreatePen(PS_SOLID, 1, COLORREF(clear_color));
+        let old_pen = SelectObject(mem_dc, x_pen.into());
+        let x_margin = 4;
+        // First line of X
+        let _ = MoveToEx(mem_dc, clear_rect.left + x_margin, clear_rect.top + x_margin, None);
+        let _ = LineTo(mem_dc, clear_rect.right - x_margin, clear_rect.bottom - x_margin);
+        // Second line of X
+        let _ = MoveToEx(mem_dc, clear_rect.right - x_margin, clear_rect.top + x_margin, None);
+        let _ = LineTo(mem_dc, clear_rect.left + x_margin, clear_rect.bottom - x_margin);
+        let _ = SelectObject(mem_dc, old_pen);
+        let _ = DeleteObject(x_pen.into());
+    }
 
     // === Draw Items Section ===
 
@@ -1580,6 +1906,138 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
         let _ = FillRgn(mem_dc, thumb_rgn, thumb_brush);
         let _ = DeleteObject(thumb_rgn.into());
         let _ = DeleteObject(thumb_brush.into());
+    }
+
+    // Draw dropdown list if open (drawn on top)
+    if data.dropdown_open {
+        // Recreate font for dropdown list
+        let dropdown_font = CreateFontW(
+            -14, 0, 0, 0, 400, 0, 0, 0,
+            FONT_CHARSET(1), FONT_OUTPUT_PRECISION(0), FONT_CLIP_PRECISION(0), FONT_QUALITY(0),
+            0, windows::core::w!("Segoe UI"),
+        );
+        let old_font = SelectObject(mem_dc, dropdown_font.into());
+
+        let dropdown_list_item_height = 28;
+        let dropdown_list_top = data.dropdown_rect.bottom + 2;
+        let dropdown_list_left = data.dropdown_rect.left;
+        let dropdown_list_right = data.dropdown_rect.right;
+        let dropdown_list_bottom = dropdown_list_top + dropdown_list_item_height * 2 + 4;
+
+        // Draw dropdown list background with shadow effect
+        let shadow_rect = RECT {
+            left: dropdown_list_left + 2,
+            top: dropdown_list_top + 2,
+            right: dropdown_list_right + 2,
+            bottom: dropdown_list_bottom + 2,
+        };
+        let shadow_brush = CreateSolidBrush(COLORREF(0x00202020));
+        let shadow_rgn = CreateRoundRectRgn(
+            shadow_rect.left, shadow_rect.top,
+            shadow_rect.right, shadow_rect.bottom,
+            6, 6,
+        );
+        let _ = FillRgn(mem_dc, shadow_rgn, shadow_brush);
+        let _ = DeleteObject(shadow_rgn.into());
+        let _ = DeleteObject(shadow_brush.into());
+
+        // Draw dropdown list background
+        let dropdown_list_rect = RECT {
+            left: dropdown_list_left,
+            top: dropdown_list_top,
+            right: dropdown_list_right,
+            bottom: dropdown_list_bottom,
+        };
+        let dropdown_list_brush = CreateSolidBrush(COLORREF(data.colors.background));
+        let dropdown_list_rgn = CreateRoundRectRgn(
+            dropdown_list_rect.left, dropdown_list_rect.top,
+            dropdown_list_rect.right, dropdown_list_rect.bottom,
+            6, 6,
+        );
+        let _ = FillRgn(mem_dc, dropdown_list_rgn, dropdown_list_brush);
+        let _ = DeleteObject(dropdown_list_rgn.into());
+        let _ = DeleteObject(dropdown_list_brush.into());
+
+        // Draw border
+        let border_pen = CreatePen(PS_SOLID, 1, COLORREF(data.colors.search_border));
+        let old_pen = SelectObject(mem_dc, border_pen.into());
+        let border_rgn = CreateRoundRectRgn(
+            dropdown_list_rect.left, dropdown_list_rect.top,
+            dropdown_list_rect.right, dropdown_list_rect.bottom,
+            6, 6,
+        );
+        let _ = FrameRgn(mem_dc, border_rgn, HBRUSH(border_pen.0 as *mut c_void), 1, 1);
+        let _ = DeleteObject(border_rgn.into());
+        let _ = SelectObject(mem_dc, old_pen);
+        let _ = DeleteObject(border_pen.into());
+
+        // Draw dropdown items
+        let items = ["Fuzzy", "Regex"];
+        let mut item_y = dropdown_list_top + 2;
+
+        for (i, item_text) in items.iter().enumerate() {
+            let item_rect = RECT {
+                left: dropdown_list_left + 2,
+                top: item_y,
+                right: dropdown_list_right - 2,
+                bottom: item_y + dropdown_list_item_height,
+            };
+
+            // Determine if item is selected or hovered
+            let is_current = (i == 0 && data.search_type == SearchType::Fuzzy)
+                || (i == 1 && data.search_type == SearchType::Regex);
+            let is_hovered = data.dropdown_hovered_index == Some(i);
+
+            // Draw hover/selected background
+            if is_hovered || is_current {
+                let item_bg_color = if is_hovered {
+                    data.colors.hover
+                } else {
+                    data.colors.selected
+                };
+                let item_brush = CreateSolidBrush(COLORREF(item_bg_color));
+                let item_rgn = CreateRoundRectRgn(
+                    item_rect.left, item_rect.top,
+                    item_rect.right, item_rect.bottom,
+                    4, 4,
+                );
+                let _ = FillRgn(mem_dc, item_rgn, item_brush);
+                let _ = DeleteObject(item_rgn.into());
+                let _ = DeleteObject(item_brush.into());
+            }
+
+            // Draw checkmark if current selection
+            if is_current {
+                let check_x = item_rect.left + 6;
+                let check_y = item_rect.top + dropdown_list_item_height / 2;
+                let check_pen = CreatePen(PS_SOLID, 2, COLORREF(data.colors.search_border_focused));
+                let old_pen = SelectObject(mem_dc, check_pen.into());
+                // Draw checkmark
+                let _ = MoveToEx(mem_dc, check_x, check_y, None);
+                let _ = LineTo(mem_dc, check_x + 4, check_y + 4);
+                let _ = MoveToEx(mem_dc, check_x + 4, check_y + 4, None);
+                let _ = LineTo(mem_dc, check_x + 12, check_y - 4);
+                let _ = SelectObject(mem_dc, old_pen);
+                let _ = DeleteObject(check_pen.into());
+            }
+
+            // Draw item text
+            let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
+            let mut text_item_rect = RECT {
+                left: item_rect.left + 22,
+                top: item_rect.top,
+                right: item_rect.right - 4,
+                bottom: item_rect.bottom,
+            };
+            let mut text_vec: Vec<u16> = item_text.encode_utf16().chain(std::iter::once(0)).collect();
+            let _ = DrawTextW(mem_dc, &mut text_vec, &mut text_item_rect,
+                              DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+
+            item_y += dropdown_list_item_height;
+        }
+
+        let _ = SelectObject(mem_dc, old_font);
+        let _ = DeleteObject(dropdown_font.into());
     }
 
     let _ = BitBlt(hdc, 0, 0, rect.right, rect.bottom, Some(mem_dc), 0, 0, SRCCOPY);
@@ -1885,7 +2343,7 @@ unsafe fn draw_preview_image(hdc: HDC, png_data: &[u8], rect: &RECT, padding: i3
 
     let bmi = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
-            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biSize: size_of::<BITMAPINFOHEADER>() as u32,
             biWidth: img_width,
             biHeight: -img_height,
             biPlanes: 1,
