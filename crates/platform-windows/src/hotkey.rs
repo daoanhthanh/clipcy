@@ -333,4 +333,3 @@ unsafe extern "system" fn hotkey_window_proc(
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
 }
-                           

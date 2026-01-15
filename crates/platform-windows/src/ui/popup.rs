@@ -5,19 +5,25 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
-use windows::Win32::UI::Input::KeyboardAndMouse::{TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
+use windows::Win32::UI::Input::KeyboardAndMouse::{SetFocus, TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use clipboard_core::domain::{ClipboardItem, ContentType};
+use clipboard_core::domain::{ClipboardItem, ContentType, SearchType};
 use clipboard_core::ports::{UIEvent, UIEventCallback};
 
 const ITEM_HEIGHT: i32 = 36;
 const MENU_PADDING: i32 = 4;
 const ITEM_PADDING_X: i32 = 12;
 const SEPARATOR_HEIGHT: i32 = 9;
-const POPUP_WIDTH: i32 = 280;
+const POPUP_WIDTH: i32 = 320;
 const POPUP_MAX_ITEMS_HEIGHT: i32 = 400; // Max height for scrollable items section
 const FIXED_SECTION_HEIGHT: i32 = SEPARATOR_HEIGHT + ITEM_HEIGHT * 2; // Separator + Settings + Clear History
+
+// Search section constants
+const SEARCH_SECTION_HEIGHT: i32 = 32;
+const SEARCH_INPUT_HEIGHT: i32 = 24;
+const DROPDOWN_WIDTH: i32 = 70;
+const SEARCH_GAP: i32 = 6;
 
 // Preview panel constants
 const PREVIEW_WIDTH: i32 = 400;
@@ -33,8 +39,18 @@ const VK_DOWN: u32 = 0x28;
 const VK_RETURN: u32 = 0x0D;
 const VK_ESCAPE: u32 = 0x1B;
 
-// WM_MOUSELEAVE is 0x02A3
 const WM_MOUSELEAVE: u32 = 0x02A3;
+
+// Control IDs
+const ID_SEARCH_EDIT: i32 = 101;
+const ID_SEARCH_COMBO: i32 = 102;
+
+// Window messages for control colors and notifications
+const WM_COMMAND: u32 = 0x0111;
+const WM_CTLCOLOREDIT: u32 = 0x0133;
+const WM_CTLCOLORLISTBOX: u32 = 0x0134;
+const EN_CHANGE: u32 = 0x0300;
+const CBN_SELCHANGE: u32 = 1;
 
 // Theme colors
 #[derive(Clone)]
@@ -46,6 +62,9 @@ struct ThemeColors {
     selected: u32,
     scrollbar_track: u32,
     scrollbar_thumb: u32,
+    search_bg: u32,
+    search_border: u32,
+    placeholder: u32,
 }
 
 impl ThemeColors {
@@ -58,6 +77,9 @@ impl ThemeColors {
             selected: 0x00505050,
             scrollbar_track: 0x003A3A3A,
             scrollbar_thumb: 0x00888888,
+            search_bg: 0x00404040,
+            search_border: 0x00606060,
+            placeholder: 0x00888888,
         }
     }
 
@@ -70,14 +92,18 @@ impl ThemeColors {
             selected: 0x00CCE8FF,
             scrollbar_track: 0x00F0F0F0,
             scrollbar_thumb: 0x00888888,
+            search_bg: 0x00F5F5F5,
+            search_border: 0x00D0D0D0,
+            placeholder: 0x00888888,
         }
     }
 }
 
 struct PopupData {
     items: Vec<MenuItem>,
-    hovered_index: Option<usize>,
-    selected_index: Option<usize>,
+    filtered_indices: Vec<usize>,  // Indices of items matching search
+    hovered_index: Option<usize>,  // Index in filtered_indices
+    selected_index: Option<usize>, // Index in filtered_indices
     callback: Arc<RwLock<Option<UIEventCallback>>>,
     selected_id: Option<u32>,
     colors: ThemeColors,
@@ -88,6 +114,17 @@ struct PopupData {
     items_content_height: i32,   // Total height of scrollable items
     items_visible_height: i32,   // Visible height of scrollable section
     scrollable_item_count: usize, // Number of items in scrollable section (clipboard items only)
+    // Native controls
+    edit_hwnd: HWND,
+    combo_hwnd: HWND,
+    // Edit border rect for drawing rounded border
+    edit_border_rect: RECT,
+    // Brushes for control colors (owned by PopupData, must be deleted on cleanup)
+    edit_bg_brush: HBRUSH,
+    combo_bg_brush: HBRUSH,
+    // Search fields
+    search_query: String,
+    search_type: SearchType,
 }
 
 struct MenuItem {
@@ -217,16 +254,16 @@ pub fn show_modern_popup(
         // Calculate scrollable items count (all items except separator, Settings, Clear History)
         let scrollable_item_count = menu_items.len().saturating_sub(3);
 
+        // Initialize filtered indices with all clipboard items
+        let filtered_indices: Vec<usize> = (0..scrollable_item_count).collect();
+
         // Calculate heights for scrollable section (clipboard items only)
-        let items_content_height: i32 = menu_items.iter()
-            .take(scrollable_item_count)
-            .map(|item| if item.is_separator { SEPARATOR_HEIGHT } else { ITEM_HEIGHT })
-            .sum();
+        let items_content_height: i32 = (scrollable_item_count as i32) * ITEM_HEIGHT;
 
         let items_visible_height = items_content_height.min(POPUP_MAX_ITEMS_HEIGHT);
 
-        // Total popup height = padding + scrollable section + fixed section + padding
-        let total_height = MENU_PADDING + items_visible_height + FIXED_SECTION_HEIGHT + MENU_PADDING;
+        // Total popup height = search section + padding + scrollable section + fixed section + padding
+        let total_height = SEARCH_SECTION_HEIGHT + MENU_PADDING + items_visible_height + FIXED_SECTION_HEIGHT + MENU_PADDING;
 
         let width = POPUP_WIDTH;
 
@@ -351,8 +388,95 @@ pub fn show_modern_popup(
         POPUP_HWND.store(hwnd.0 as isize, Ordering::SeqCst);
         apply_rounded_corners(hwnd);
 
+        // Create native COMBOBOX for search type (standard dropdown)
+        let combo_class = windows::core::w!("COMBOBOX");
+        let combo_hwnd = CreateWindowExW(
+            WINDOW_EX_STYLE::default(),
+            combo_class,
+            windows::core::w!(""),
+            WINDOW_STYLE(
+                0x50000003  // WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS
+            ),
+            MENU_PADDING,
+            MENU_PADDING,
+            DROPDOWN_WIDTH,
+            SEARCH_INPUT_HEIGHT * 6, // Height includes dropdown list
+            Some(hwnd),
+            Some(HMENU(ID_SEARCH_COMBO as *mut c_void)),
+            None,
+            None,
+        ).unwrap_or(HWND(std::ptr::null_mut()));
+
+        // Add items to combobox
+        if !combo_hwnd.0.is_null() {
+            let fuzzy_text = windows::core::w!("Fuzzy");
+            let regex_text = windows::core::w!("Regex");
+            SendMessageW(combo_hwnd, 0x0143, Some(WPARAM(0)), Some(LPARAM(fuzzy_text.as_ptr() as isize))); // CB_ADDSTRING
+            SendMessageW(combo_hwnd, 0x0143, Some(WPARAM(0)), Some(LPARAM(regex_text.as_ptr() as isize))); // CB_ADDSTRING
+            SendMessageW(combo_hwnd, 0x014E, Some(WPARAM(0)), Some(LPARAM(0))); // CB_SETCURSEL - select first item
+        }
+
+        // Create native EDIT control for search input
+        let edit_class = windows::core::w!("EDIT");
+        let edit_x = MENU_PADDING + DROPDOWN_WIDTH + SEARCH_GAP;
+        let edit_width = width - MENU_PADDING * 2 - DROPDOWN_WIDTH - SEARCH_GAP;
+        let edit_hwnd = CreateWindowExW(
+            WINDOW_EX_STYLE::default(),
+            edit_class,
+            windows::core::w!(""),
+            WINDOW_STYLE(
+                0x50810080  // WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_LEFT
+            ),
+            edit_x + 4,  // Inset for rounded border
+            MENU_PADDING + 2,
+            edit_width - 8,  // Account for border padding
+            SEARCH_INPUT_HEIGHT - 4,
+            Some(hwnd),
+            Some(HMENU(ID_SEARCH_EDIT as *mut c_void)),
+            None,
+            None,
+        ).unwrap_or(HWND(std::ptr::null_mut()));
+
+        // Create font for controls (same as menu items)
+        let control_font = CreateFontW(
+            -14, 0, 0, 0, 400, 0, 0, 0,
+            FONT_CHARSET(1), FONT_OUTPUT_PRECISION(0), FONT_CLIP_PRECISION(0), FONT_QUALITY(0),
+            0, windows::core::w!("Segoe UI"),
+        );
+
+        // Style the edit control
+        if !edit_hwnd.0.is_null() {
+            // Set font
+            SendMessageW(edit_hwnd, 0x0030, Some(WPARAM(control_font.0 as usize)), Some(LPARAM(1))); // WM_SETFONT
+
+            // Set placeholder text (cue banner)
+            let placeholder = windows::core::w!("Search...");
+            SendMessageW(edit_hwnd, 0x1501, Some(WPARAM(1)), Some(LPARAM(placeholder.as_ptr() as isize))); // EM_SETCUEBANNER
+
+            // Set margins for text padding (EM_SETMARGINS)
+            SendMessageW(edit_hwnd, 0x00D3, Some(WPARAM(3)), Some(LPARAM(0x00040004))); // EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN
+        }
+
+        // Set font on combobox
+        if !combo_hwnd.0.is_null() {
+            SendMessageW(combo_hwnd, 0x0030, Some(WPARAM(control_font.0 as usize)), Some(LPARAM(1))); // WM_SETFONT
+        }
+
+        // Create brushes for control backgrounds
+        let edit_bg_brush = CreateSolidBrush(COLORREF(colors.search_bg));
+        let combo_bg_brush = CreateSolidBrush(COLORREF(colors.search_bg));
+
+        // Store the edit border rect for drawing rounded border
+        let edit_border_rect = RECT {
+            left: edit_x,
+            top: MENU_PADDING,
+            right: edit_x + edit_width,
+            bottom: MENU_PADDING + SEARCH_INPUT_HEIGHT,
+        };
+
         let data = Box::new(PopupData {
             items: menu_items,
+            filtered_indices,
             hovered_index: None,
             selected_index: None,
             callback,
@@ -365,11 +489,22 @@ pub fn show_modern_popup(
             items_content_height,
             items_visible_height,
             scrollable_item_count,
+            edit_hwnd,
+            combo_hwnd,
+            edit_border_rect,
+            edit_bg_brush,
+            combo_bg_brush,
+            search_query: String::new(),
+            search_type: SearchType::Fuzzy,
         });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, Box::into_raw(data) as isize);
 
         let _ = ShowWindow(hwnd, SW_SHOW);
         let _ = SetForegroundWindow(hwnd);
+        // Set focus to the edit control
+        if !edit_hwnd.0.is_null() {
+            let _ = SetFocus(Some(edit_hwnd));
+        }
         let _ = UpdateWindow(hwnd);
         POPUP_VISIBLE.store(true, Ordering::SeqCst);
         MOUSE_IN_POPUP.store(false, Ordering::SeqCst);
@@ -386,6 +521,7 @@ pub fn show_modern_popup(
                 break;
             }
 
+            // Check if message is for dialog-like behavior (Tab, etc)
             let _ = TranslateMessage(&msg);
             DispatchMessageW(&msg);
 
@@ -442,6 +578,133 @@ fn calculate_menu_height(items: &[MenuItem]) -> i32 {
     height
 }
 
+/// Perform fuzzy search - case insensitive substring matching
+fn fuzzy_match(text: &str, query: &str) -> bool {
+    if query.is_empty() {
+        return true;
+    }
+    let text_lower = text.to_lowercase();
+    let query_lower = query.to_lowercase();
+
+    // Simple fuzzy: check if all query chars appear in order
+    let mut text_chars = text_lower.chars().peekable();
+    for qc in query_lower.chars() {
+        loop {
+            match text_chars.next() {
+                Some(tc) if tc == qc => break,
+                Some(_) => continue,
+                None => return false,
+            }
+        }
+    }
+    true
+}
+
+/// Perform regex search
+fn regex_match(text: &str, pattern: &str) -> bool {
+    if pattern.is_empty() {
+        return true;
+    }
+    // Simple regex implementation without external crate
+    // For now, treat it as case-insensitive contains
+    // A full regex would require the `regex` crate
+    match regex_simple_match(text, pattern) {
+        Ok(matched) => matched,
+        Err(_) => false, // Invalid pattern
+    }
+}
+
+/// Simple regex-like matching (supports basic patterns)
+fn regex_simple_match(text: &str, pattern: &str) -> Result<bool, ()> {
+    // Basic patterns: ^ (start), $ (end), . (any char), * (zero or more)
+    let text_lower = text.to_lowercase();
+    let pattern_lower = pattern.to_lowercase();
+
+    let must_start = pattern_lower.starts_with('^');
+    let must_end = pattern_lower.ends_with('$') && !pattern_lower.ends_with("\\$");
+
+    let pattern_clean: String = pattern_lower
+        .trim_start_matches('^')
+        .trim_end_matches('$')
+        .to_string();
+
+    if pattern_clean.is_empty() {
+        return Ok(true);
+    }
+
+    // Convert simple pattern to check
+    // For simplicity, just do contains check with . as any char
+    let pattern_escaped = pattern_clean.replace(".*", "\x00");
+    let parts: Vec<&str> = pattern_escaped.split('\x00').collect();
+
+    if parts.len() == 1 {
+        // No wildcards, simple contains
+        let _search = pattern_clean.replace(".", "?"); // . matches any single char
+        if must_start && must_end {
+            Ok(text_lower == pattern_clean || pattern_clean.contains('.') && text_lower.len() == pattern_clean.len())
+        } else if must_start {
+            Ok(text_lower.starts_with(&pattern_clean.replace(".", "")))
+        } else if must_end {
+            Ok(text_lower.ends_with(&pattern_clean.replace(".", "")))
+        } else {
+            Ok(text_lower.contains(&pattern_clean.replace(".", "")))
+        }
+    } else {
+        // Has .* wildcards - check if all parts appear in order
+        let mut pos = 0;
+        for (i, part) in parts.iter().enumerate() {
+            if part.is_empty() {
+                continue;
+            }
+            if let Some(found_pos) = text_lower[pos..].find(part) {
+                if i == 0 && must_start && found_pos != 0 {
+                    return Ok(false);
+                }
+                pos += found_pos + part.len();
+            } else {
+                return Ok(false);
+            }
+        }
+        if must_end && pos != text_lower.len() {
+            return Ok(false);
+        }
+        Ok(true)
+    }
+}
+
+/// Filter items based on search query and type
+fn filter_items(data: &mut PopupData) {
+    data.filtered_indices.clear();
+
+    let query = data.search_query.trim();
+
+    // Always include all clipboard items if query is empty
+    if query.is_empty() {
+        for i in 0..data.scrollable_item_count {
+            data.filtered_indices.push(i);
+        }
+    } else {
+        for i in 0..data.scrollable_item_count {
+            let item = &data.items[i];
+            let matches = match data.search_type {
+                SearchType::Fuzzy => fuzzy_match(&item.text, query),
+                SearchType::Regex => regex_match(&item.text, query),
+            };
+            if matches {
+                data.filtered_indices.push(i);
+            }
+        }
+    }
+
+    // Reset scroll and selection
+    data.scroll_y = 0;
+    data.selected_index = if data.filtered_indices.is_empty() { None } else { Some(0) };
+    data.hovered_index = None;
+
+    // Recalculate content height based on filtered items
+    data.items_content_height = (data.filtered_indices.len() as i32) * ITEM_HEIGHT;
+}
+
 pub fn close_popup() {
     unsafe {
         // Close preview first
@@ -461,7 +724,11 @@ pub fn close_popup() {
             let hwnd = HWND(hwnd_val as *mut c_void);
             let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
             if !data_ptr.is_null() {
-                drop(Box::from_raw(data_ptr));
+                let data = Box::from_raw(data_ptr);
+                // Clean up brushes
+                let _ = DeleteObject(data.edit_bg_brush.into());
+                let _ = DeleteObject(data.combo_bg_brush.into());
+                // Native controls are children and destroyed with parent
             }
             let _ = DestroyWindow(hwnd);
         }
@@ -608,6 +875,7 @@ fn show_preview(data: &PopupData, index: usize) {
         let popup_right = data.popup_rect.right;
         let popup_left = data.popup_rect.left;
         let popup_top = data.popup_rect.top;
+        let popup_bottom = data.popup_rect.bottom;
 
         let preview_x = if popup_right + PREVIEW_GAP + PREVIEW_WIDTH <= data.work_area.right {
             popup_right + PREVIEW_GAP
@@ -615,10 +883,31 @@ fn show_preview(data: &PopupData, index: usize) {
             popup_left - PREVIEW_GAP - PREVIEW_WIDTH
         };
 
-        // Calculate Y position aligned with the selected item
-        let item_y_in_popup = get_item_y_position(&data.items, index);
-        let preview_y = (popup_top + item_y_in_popup)
+        // Calculate Y position aligned with the selected item's visible position
+        let item_y_in_content = get_item_y_position(&data.items, index);
+
+        // For scrollable items, adjust for scroll offset to get visible position
+        let visible_item_y = if index < data.scrollable_item_count {
+            // Item is in scrollable section - adjust for scroll
+            (item_y_in_content - data.scroll_y).max(MENU_PADDING)
+        } else {
+            // Item is in fixed section - calculate position relative to fixed section start
+            let fixed_section_start = MENU_PADDING + data.items_visible_height;
+            let mut y = fixed_section_start;
+            for (i, item) in data.items.iter().enumerate().skip(data.scrollable_item_count) {
+                if i == index {
+                    break;
+                }
+                y += if item.is_separator { SEPARATOR_HEIGHT } else { ITEM_HEIGHT };
+            }
+            y
+        };
+
+        // Apply max Y threshold: preview should not start below the popup's bottom
+        let max_preview_y = popup_bottom - panel_height;
+        let preview_y = (popup_top + visible_item_y)
             .max(data.work_area.top)
+            .min(max_preview_y)
             .min(data.work_area.bottom - panel_height);
 
         let _ = SetWindowPos(
@@ -662,6 +951,52 @@ unsafe extern "system" fn popup_window_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match msg {
+        WM_CTLCOLOREDIT | WM_CTLCOLORLISTBOX => {
+            // Style the EDIT and COMBOBOX list controls with theme colors
+            let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
+            if !data_ptr.is_null() {
+                let data = &*data_ptr;
+                let hdc = HDC(wparam.0 as *mut c_void);
+
+                // Set text and background colors
+                let _ = SetTextColor(hdc, COLORREF(data.colors.text));
+                let _ = SetBkColor(hdc, COLORREF(data.colors.search_bg));
+
+                // Return the brush for background
+                return LRESULT(data.edit_bg_brush.0 as isize);
+            }
+            return DefWindowProcW(hwnd, msg, wparam, lparam);
+        }
+        WM_COMMAND => {
+            let control_id = (wparam.0 & 0xFFFF) as i32;
+            let notification_code = ((wparam.0 >> 16) & 0xFFFF) as u32;
+
+            let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
+            if !data_ptr.is_null() {
+                let data = &mut *data_ptr;
+
+                if control_id == ID_SEARCH_EDIT && notification_code == EN_CHANGE {
+                    // Get text from edit control
+                    let text_len = SendMessageW(data.edit_hwnd, 0x000E, None, None).0 as usize; // WM_GETTEXTLENGTH
+                    if text_len > 0 {
+                        let mut buffer: Vec<u16> = vec![0; text_len + 1];
+                        SendMessageW(data.edit_hwnd, 0x000D, Some(WPARAM(text_len + 1)), Some(LPARAM(buffer.as_mut_ptr() as isize))); // WM_GETTEXT
+                        data.search_query = String::from_utf16_lossy(&buffer[..text_len]);
+                    } else {
+                        data.search_query.clear();
+                    }
+                    filter_items(data);
+                    let _ = InvalidateRect(Some(hwnd), None, true);
+                } else if control_id == ID_SEARCH_COMBO && notification_code == CBN_SELCHANGE {
+                    // Get selected index from combobox
+                    let sel_idx = SendMessageW(data.combo_hwnd, 0x0147, None, None).0; // CB_GETCURSEL
+                    data.search_type = if sel_idx == 0 { SearchType::Fuzzy } else { SearchType::Regex };
+                    filter_items(data);
+                    let _ = InvalidateRect(Some(hwnd), None, true);
+                }
+            }
+            LRESULT(0)
+        }
         WM_PAINT => {
             let mut ps = PAINTSTRUCT::default();
             let hdc = BeginPaint(hwnd, &mut ps);
@@ -749,7 +1084,8 @@ unsafe extern "system" fn popup_window_proc(
             let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
             if !data_ptr.is_null() {
                 let data = &mut *data_ptr;
-                // Use the new function that handles both sections correctly
+
+                // Check if click is on a menu item (native controls handle their own clicks)
                 if let Some(index) = get_item_at_y_with_scroll(data, y) {
                     select_item(data, index, hwnd);
                 }
@@ -879,13 +1215,15 @@ fn navigate_selection(data: &mut PopupData, hwnd: HWND, direction: i32) {
     // Enable keyboard navigation mode
     KEYBOARD_NAV_ACTIVE.store(true, Ordering::SeqCst);
 
-    let selectable_items: Vec<usize> = data
-        .items
-        .iter()
-        .enumerate()
-        .filter(|(_, item)| !item.is_separator)
-        .map(|(i, _)| i)
-        .collect();
+    // Build list of selectable items: filtered clipboard items + fixed items (Settings, Clear History)
+    let mut selectable_items: Vec<usize> = data.filtered_indices.clone();
+
+    // Add fixed menu items (skip separator)
+    for (i, item) in data.items.iter().enumerate().skip(data.scrollable_item_count) {
+        if !item.is_separator {
+            selectable_items.push(i);
+        }
+    }
 
     if selectable_items.is_empty() {
         return;
@@ -916,16 +1254,19 @@ fn navigate_selection(data: &mut PopupData, hwnd: HWND, direction: i32) {
 
     // Auto-scroll to keep selected item visible (only for scrollable items)
     if new_index < data.scrollable_item_count {
-        let item_y = get_item_y_position(&data.items, new_index);
-        let item_bottom = item_y + ITEM_HEIGHT;
-        let max_scroll = (data.items_content_height - data.items_visible_height).max(0);
+        // Find position in filtered_indices
+        if let Some(filter_pos) = data.filtered_indices.iter().position(|&i| i == new_index) {
+            let item_y = (filter_pos as i32) * ITEM_HEIGHT;
+            let item_bottom = item_y + ITEM_HEIGHT;
+            let max_scroll = (data.items_content_height - data.items_visible_height).max(0);
 
-        if item_y < data.scroll_y {
-            // Item is above visible area, scroll up
-            data.scroll_y = item_y.max(0);
-        } else if item_bottom > data.scroll_y + data.items_visible_height {
-            // Item is below visible area, scroll down
-            data.scroll_y = (item_bottom - data.items_visible_height).min(max_scroll);
+            if item_y < data.scroll_y {
+                // Item is above visible area, scroll up
+                data.scroll_y = item_y.max(0);
+            } else if item_bottom > data.scroll_y + data.items_visible_height {
+                // Item is below visible area, scroll down
+                data.scroll_y = (item_bottom - data.items_visible_height).min(max_scroll);
+            }
         }
     }
 
@@ -958,31 +1299,26 @@ fn select_item(data: &mut PopupData, index: usize, hwnd: HWND) {
 
 /// Get item at screen y coordinate, handling scrollable and fixed sections
 fn get_item_at_y_with_scroll(data: &PopupData, screen_y: i32) -> Option<usize> {
-    let scrollable_section_top = MENU_PADDING;
-    let scrollable_section_bottom = MENU_PADDING + data.items_visible_height;
+    // Account for search section at the top
+    let scrollable_section_top = SEARCH_SECTION_HEIGHT + MENU_PADDING;
+    let scrollable_section_bottom = scrollable_section_top + data.items_visible_height;
     let fixed_section_top = scrollable_section_bottom;
 
     if screen_y < scrollable_section_top {
         return None;
     }
 
-    // Check if in scrollable section
+    // Check if in scrollable section (filtered items)
     if screen_y < scrollable_section_bottom {
-        // Apply scroll offset for scrollable section
-        let content_y = screen_y + data.scroll_y;
-        let mut current_y = MENU_PADDING;
+        // Calculate which filtered item is at this position
+        let relative_y = screen_y - scrollable_section_top + data.scroll_y;
+        let filter_idx = relative_y / ITEM_HEIGHT;
 
-        for (i, item) in data.items.iter().take(data.scrollable_item_count).enumerate() {
-            let item_height = if item.is_separator { SEPARATOR_HEIGHT } else { ITEM_HEIGHT };
-
-            if content_y >= current_y && content_y < current_y + item_height {
-                if !item.is_separator {
-                    return Some(i);
-                }
-                return None;
+        if filter_idx >= 0 && (filter_idx as usize) < data.filtered_indices.len() {
+            let item_idx = data.filtered_indices[filter_idx as usize];
+            if !data.items[item_idx].is_separator {
+                return Some(item_idx);
             }
-
-            current_y += item_height;
         }
         return None;
     }
@@ -1017,6 +1353,29 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
     let _ = FillRect(mem_dc, &rect, bg_brush);
     let _ = DeleteObject(bg_brush.into());
 
+    // Create font
+    let font = CreateFontW(
+        -14, 0, 0, 0, 400, 0, 0, 0,
+        FONT_CHARSET(1), FONT_OUTPUT_PRECISION(0), FONT_CLIP_PRECISION(0), FONT_QUALITY(0),
+        0, windows::core::w!("Segoe UI"),
+    );
+    let old_font = SelectObject(mem_dc, font.into());
+    let _ = SetBkMode(mem_dc, TRANSPARENT);
+
+    // Draw rounded border around EDIT control
+    let edit_border = &data.edit_border_rect;
+    let border_brush = CreateSolidBrush(COLORREF(data.colors.search_bg));
+    let border_rgn = CreateRoundRectRgn(
+        edit_border.left, edit_border.top,
+        edit_border.right + 1, edit_border.bottom + 1,
+        8, 8,
+    );
+    let _ = FillRgn(mem_dc, border_rgn, border_brush);
+    let _ = DeleteObject(border_rgn.into());
+    let _ = DeleteObject(border_brush.into());
+
+    // === Draw Items Section ===
+
     let needs_scrollbar = data.items_content_height > data.items_visible_height;
     let content_right = if needs_scrollbar {
         rect.right - SCROLLBAR_WIDTH - 4
@@ -1024,130 +1383,90 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
         rect.right
     };
 
-    // Calculate section boundaries
-    let scrollable_section_top = MENU_PADDING;
-    let scrollable_section_bottom = MENU_PADDING + data.items_visible_height;
+    // Calculate section boundaries (accounting for search section)
+    let scrollable_section_top = SEARCH_SECTION_HEIGHT + MENU_PADDING;
+    let scrollable_section_bottom = scrollable_section_top + data.items_visible_height;
     let fixed_section_top = scrollable_section_bottom;
-
-    // Create font once for reuse
-    let font = CreateFontW(
-        -14,
-        0,
-        0,
-        0,
-        400,
-        0,
-        0,
-        0,
-        FONT_CHARSET(1),
-        FONT_OUTPUT_PRECISION(0),
-        FONT_CLIP_PRECISION(0),
-        FONT_QUALITY(0),
-        0,
-        windows::core::w!("Segoe UI"),
-    );
-    let old_font = SelectObject(mem_dc, font.into());
-    let _ = SetBkMode(mem_dc, TRANSPARENT);
-    let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
 
     // Set clipping region for scrollable section
     let clip_rgn = CreateRectRgn(0, scrollable_section_top, rect.right, scrollable_section_bottom);
     let _ = SelectClipRgn(mem_dc, Some(clip_rgn));
 
-    // Draw scrollable items (clipboard items only) with scroll offset
-    let mut y = MENU_PADDING - data.scroll_y;
-    for (i, item) in data.items.iter().take(data.scrollable_item_count).enumerate() {
-        let item_height = if item.is_separator { SEPARATOR_HEIGHT } else { ITEM_HEIGHT };
+    // Draw filtered scrollable items with scroll offset
+    let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
+    let mut y = scrollable_section_top - data.scroll_y;
+
+    for (_filter_idx, &item_idx) in data.filtered_indices.iter().enumerate() {
+        let item = &data.items[item_idx];
 
         // Skip items completely outside visible area
-        if y + item_height < scrollable_section_top {
-            y += item_height;
+        if y + ITEM_HEIGHT < scrollable_section_top {
+            y += ITEM_HEIGHT;
             continue;
         }
         if y >= scrollable_section_bottom {
             break;
         }
 
-        if item.is_separator {
-            let sep_rect = RECT {
-                left: ITEM_PADDING_X,
-                top: y + SEPARATOR_HEIGHT / 2,
-                right: content_right - ITEM_PADDING_X,
-                bottom: y + SEPARATOR_HEIGHT / 2 + 1,
-            };
-            let sep_brush = CreateSolidBrush(COLORREF(data.colors.separator));
-            let _ = FillRect(mem_dc, &sep_rect, sep_brush);
-            let _ = DeleteObject(sep_brush.into());
-            y += SEPARATOR_HEIGHT;
-        } else {
-            // Draw selection/hover background
-            let is_selected = data.selected_index == Some(i);
-            let is_hovered = data.hovered_index == Some(i);
+        // Draw selection/hover background - compare with actual item index
+        let is_selected = data.selected_index == Some(item_idx);
+        let is_hovered = data.hovered_index == Some(item_idx);
 
-            if is_selected || is_hovered {
-                let bg_color = if is_selected {
-                    data.colors.selected
-                } else {
-                    data.colors.hover
-                };
-
-                let hover_rect = RECT {
-                    left: MENU_PADDING,
-                    top: y,
-                    right: content_right - MENU_PADDING,
-                    bottom: y + ITEM_HEIGHT,
-                };
-
-                let hover_brush = CreateSolidBrush(COLORREF(bg_color));
-                let rgn = CreateRoundRectRgn(
-                    hover_rect.left,
-                    hover_rect.top,
-                    hover_rect.right,
-                    hover_rect.bottom,
-                    4,
-                    4,
-                );
-                let _ = FillRgn(mem_dc, rgn, hover_brush);
-                let _ = DeleteObject(rgn.into());
-                let _ = DeleteObject(hover_brush.into());
-            }
-
-            let text_left = if item.is_image && item.thumbnail.is_some() {
-                if let Some(ref thumb_data) = item.thumbnail {
-                    let slot_size = ITEM_HEIGHT - 4;
-                    draw_thumbnail_scaled(mem_dc, thumb_data, ITEM_PADDING_X, y + 2, slot_size);
-                }
-                ITEM_PADDING_X + ITEM_HEIGHT
+        if is_selected || is_hovered {
+            let bg_color = if is_selected {
+                data.colors.selected
             } else {
-                ITEM_PADDING_X
+                data.colors.hover
             };
 
-            let mut text_rect = RECT {
-                left: text_left,
+            let hover_rect = RECT {
+                left: MENU_PADDING,
                 top: y,
-                right: content_right - ITEM_PADDING_X,
+                right: content_right - MENU_PADDING,
                 bottom: y + ITEM_HEIGHT,
             };
 
-            // Trim whitespace for display only
-            let display_text = item.text.trim();
-            let mut text: Vec<u16> = display_text.encode_utf16().chain(std::iter::once(0)).collect();
-            let _ = DrawTextW(
-                mem_dc,
-                &mut text,
-                &mut text_rect,
-                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS,
+            let hover_brush = CreateSolidBrush(COLORREF(bg_color));
+            let rgn = CreateRoundRectRgn(
+                hover_rect.left, hover_rect.top,
+                hover_rect.right, hover_rect.bottom, 4, 4,
             );
-
-            y += ITEM_HEIGHT;
+            let _ = FillRgn(mem_dc, rgn, hover_brush);
+            let _ = DeleteObject(rgn.into());
+            let _ = DeleteObject(hover_brush.into());
         }
+
+        let text_left = if item.is_image && item.thumbnail.is_some() {
+            if let Some(ref thumb_data) = item.thumbnail {
+                let slot_size = ITEM_HEIGHT - 4;
+                draw_thumbnail_scaled(mem_dc, thumb_data, ITEM_PADDING_X, y + 2, slot_size);
+            }
+            ITEM_PADDING_X + ITEM_HEIGHT
+        } else {
+            ITEM_PADDING_X
+        };
+
+        let mut text_rect = RECT {
+            left: text_left,
+            top: y,
+            right: content_right - ITEM_PADDING_X,
+            bottom: y + ITEM_HEIGHT,
+        };
+
+        // Trim whitespace for display only
+        let display_text = item.text.trim();
+        let mut text: Vec<u16> = display_text.encode_utf16().chain(std::iter::once(0)).collect();
+        let _ = DrawTextW(mem_dc, &mut text, &mut text_rect,
+                          DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+        y += ITEM_HEIGHT;
     }
 
     // Remove clipping for fixed section
     let _ = SelectClipRgn(mem_dc, None);
     let _ = DeleteObject(clip_rgn.into());
 
-    // Draw fixed section (separator + Settings + Clear History) at bottom without scroll
+    // Draw fixed section (separator + Settings + Clear History)
     let mut fixed_y = fixed_section_top;
     for (i, item) in data.items.iter().enumerate().skip(data.scrollable_item_count) {
         if item.is_separator {
@@ -1162,7 +1481,7 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
             let _ = DeleteObject(sep_brush.into());
             fixed_y += SEPARATOR_HEIGHT;
         } else {
-            // Draw selection/hover background
+            // Use actual item index for comparison
             let is_selected = data.selected_index == Some(i);
             let is_hovered = data.hovered_index == Some(i);
 
@@ -1182,12 +1501,8 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
 
                 let hover_brush = CreateSolidBrush(COLORREF(bg_color));
                 let rgn = CreateRoundRectRgn(
-                    hover_rect.left,
-                    hover_rect.top,
-                    hover_rect.right,
-                    hover_rect.bottom,
-                    4,
-                    4,
+                    hover_rect.left, hover_rect.top,
+                    hover_rect.right, hover_rect.bottom, 4, 4,
                 );
                 let _ = FillRgn(mem_dc, rgn, hover_brush);
                 let _ = DeleteObject(rgn.into());
@@ -1202,12 +1517,8 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
             };
 
             let mut text: Vec<u16> = item.text.encode_utf16().chain(std::iter::once(0)).collect();
-            let _ = DrawTextW(
-                mem_dc,
-                &mut text,
-                &mut text_rect,
-                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS,
-            );
+            let _ = DrawTextW(mem_dc, &mut text, &mut text_rect,
+                              DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
             fixed_y += ITEM_HEIGHT;
         }
@@ -1232,22 +1543,18 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
         };
         let track_brush = CreateSolidBrush(COLORREF(data.colors.scrollbar_track));
         let track_rgn = CreateRoundRectRgn(
-            track_rect.left,
-            track_rect.top,
-            track_rect.right,
-            track_rect.bottom,
-            SCROLLBAR_WIDTH,
-            SCROLLBAR_WIDTH,
+            track_rect.left, track_rect.top,
+            track_rect.right, track_rect.bottom,
+            SCROLLBAR_WIDTH, SCROLLBAR_WIDTH,
         );
         let _ = FillRgn(mem_dc, track_rgn, track_brush);
         let _ = DeleteObject(track_rgn.into());
         let _ = DeleteObject(track_brush.into());
 
-        // Calculate thumb size and position
+        // Calculate thumb
         let max_scroll = (data.items_content_height - data.items_visible_height).max(0);
         let thumb_height = ((data.items_visible_height as f32 / data.items_content_height as f32)
-            * scrollbar_height as f32)
-            .max(SCROLLBAR_MIN_HEIGHT as f32) as i32;
+            * scrollbar_height as f32).max(SCROLLBAR_MIN_HEIGHT as f32) as i32;
 
         let scroll_ratio = if max_scroll > 0 {
             data.scroll_y as f32 / max_scroll as f32
@@ -1266,29 +1573,16 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
         };
         let thumb_brush = CreateSolidBrush(COLORREF(data.colors.scrollbar_thumb));
         let thumb_rgn = CreateRoundRectRgn(
-            thumb_rect.left,
-            thumb_rect.top,
-            thumb_rect.right,
-            thumb_rect.bottom,
-            SCROLLBAR_WIDTH,
-            SCROLLBAR_WIDTH,
+            thumb_rect.left, thumb_rect.top,
+            thumb_rect.right, thumb_rect.bottom,
+            SCROLLBAR_WIDTH, SCROLLBAR_WIDTH,
         );
         let _ = FillRgn(mem_dc, thumb_rgn, thumb_brush);
         let _ = DeleteObject(thumb_rgn.into());
         let _ = DeleteObject(thumb_brush.into());
     }
 
-    let _ = BitBlt(
-        hdc,
-        0,
-        0,
-        rect.right,
-        rect.bottom,
-        Some(mem_dc),
-        0,
-        0,
-        SRCCOPY,
-    );
+    let _ = BitBlt(hdc, 0, 0, rect.right, rect.bottom, Some(mem_dc), 0, 0, SRCCOPY);
 
     let _ = SelectObject(mem_dc, old_bitmap);
     let _ = DeleteObject(mem_bitmap.into());
