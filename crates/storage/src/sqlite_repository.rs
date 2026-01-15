@@ -29,7 +29,7 @@ impl SqliteClipboardRepository {
     /// Create new repository with database at specified path
     pub async fn new(path: PathBuf) -> Result<Self> {
         let path_str = path.to_string_lossy().to_string();
-        
+
         let options = SqliteConnectOptions::from_str(&format!("sqlite://{}?mode=rwc", path_str))
             .map_err(|e| ClipboardError::Storage(e.to_string()))?
             .create_if_missing(true);
@@ -73,9 +73,9 @@ impl SqliteClipboardRepository {
             )
             "#,
         )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_created_at ON clipboard_items(created_at DESC)")
             .execute(&self.pool)
@@ -164,18 +164,18 @@ impl ClipboardRepository for SqliteClipboardRepository {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             "#,
         )
-        .bind(item.id.to_string())
-        .bind(content_type)
-        .bind(&item.data)
-        .bind(&item.preview)
-        .bind(&item.thumbnail)
-        .bind(&item.source_app)
-        .bind(item.created_at.to_rfc3339())
-        .bind(item.pinned as i32)
-        .bind(&content_hash)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            .bind(item.id.to_string())
+            .bind(content_type)
+            .bind(&item.data)
+            .bind(&item.preview)
+            .bind(&item.thumbnail)
+            .bind(&item.source_app)
+            .bind(item.created_at.to_rfc3339())
+            .bind(item.pinned as i32)
+            .bind(&content_hash)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         Ok(())
     }
@@ -197,10 +197,10 @@ impl ClipboardRepository for SqliteClipboardRepository {
         let rows = sqlx::query(
             "SELECT * FROM clipboard_items ORDER BY created_at DESC LIMIT $1"
         )
-        .bind(limit as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
@@ -242,11 +242,11 @@ impl ClipboardRepository for SqliteClipboardRepository {
             LIMIT $2
             "#,
         )
-        .bind(pattern)
-        .bind(limit as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            .bind(pattern)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {
@@ -282,10 +282,10 @@ impl ClipboardRepository for SqliteClipboardRepository {
             )
             "#,
         )
-        .bind(max_items as i64)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            .bind(max_items as i64)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         Ok(result.rows_affected() as usize)
     }

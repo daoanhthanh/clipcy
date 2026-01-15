@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::mpsc;
 use std::sync::Arc;
 use std::thread;
-use std::sync::mpsc;
 
 use parking_lot::RwLock;
 use windows::Win32::Foundation::*;
