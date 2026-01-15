@@ -118,15 +118,10 @@ fn is_dark_mode() -> bool {
         use windows::Win32::System::Registry::*;
 
         let mut hkey = HKEY::default();
-        let subkey = windows::core::w!("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+        let subkey =
+            windows::core::w!("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
 
-        let result = RegOpenKeyExW(
-            HKEY_CURRENT_USER,
-            subkey,
-            Some(0),
-            KEY_READ,
-            &mut hkey,
-        );
+        let result = RegOpenKeyExW(HKEY_CURRENT_USER, subkey, Some(0), KEY_READ, &mut hkey);
 
         if result.is_err() {
             return true;
@@ -278,7 +273,10 @@ pub fn show_modern_popup(
             preview_class_name,
             windows::core::w!(""),
             WS_POPUP,
-            0, 0, PREVIEW_WIDTH, PREVIEW_HEIGHT,
+            0,
+            0,
+            PREVIEW_WIDTH,
+            PREVIEW_HEIGHT,
             None,
             None,
             None,
@@ -300,7 +298,11 @@ pub fn show_modern_popup(
                 scroll_y: 0,
                 content_height: 0,
             });
-            SetWindowLongPtrW(preview_hwnd, GWLP_USERDATA, Box::into_raw(preview_data) as isize);
+            SetWindowLongPtrW(
+                preview_hwnd,
+                GWLP_USERDATA,
+                Box::into_raw(preview_data) as isize,
+            );
         }
 
         // Create popup window
@@ -455,9 +457,14 @@ unsafe fn calculate_preview_height(content: &Option<PreviewContent>) -> i32 {
             // Create a temporary DC to measure text
             let screen_dc = GetDC(None);
             let font = CreateFontW(
-                -14, 0, 0, 0,
+                -14,
+                0,
+                0,
+                0,
                 400,
-                0, 0, 0,
+                0,
+                0,
+                0,
                 FONT_CHARSET(1),
                 FONT_OUTPUT_PRECISION(0),
                 FONT_CLIP_PRECISION(0),
@@ -515,8 +522,26 @@ unsafe fn calculate_preview_height(content: &Option<PreviewContent>) -> i32 {
     };
 
     // Add padding and clamp to max height
-    let panel_height = (content_height + PREVIEW_PADDING * 2).min(PREVIEW_HEIGHT).max(60);
+    let panel_height = (content_height + PREVIEW_PADDING * 2)
+        .min(PREVIEW_HEIGHT)
+        .max(60);
     panel_height
+}
+
+/// Calculate the Y position of an item within the popup
+fn get_item_y_position(items: &[MenuItem], index: usize) -> i32 {
+    let mut y = MENU_PADDING;
+    for (i, item) in items.iter().enumerate() {
+        if i == index {
+            return y;
+        }
+        if item.is_separator {
+            y += SEPARATOR_HEIGHT;
+        } else {
+            y += ITEM_HEIGHT;
+        }
+    }
+    y
 }
 
 fn show_preview(data: &PopupData, index: usize) {
@@ -535,18 +560,21 @@ fn show_preview(data: &PopupData, index: usize) {
 
         // Get preview content
         let content = if item.is_image {
-            item.original_data.as_ref().map(|d| PreviewContent::Image(d.clone()))
+            item.original_data
+                .as_ref()
+                .map(|d| PreviewContent::Image(d.clone()))
         } else {
-            item.original_data.as_ref().map(|d| {
-                PreviewContent::Text(String::from_utf8_lossy(d).to_string())
-            })
+            item.original_data
+                .as_ref()
+                .map(|d| PreviewContent::Text(String::from_utf8_lossy(d).to_string()))
         };
 
         // Calculate dynamic height based on content
         let panel_height = calculate_preview_height(&content);
 
         // Update preview data
-        let preview_data_ptr = GetWindowLongPtrW(data.preview_hwnd, GWLP_USERDATA) as *mut PreviewData;
+        let preview_data_ptr =
+            GetWindowLongPtrW(data.preview_hwnd, GWLP_USERDATA) as *mut PreviewData;
         if !preview_data_ptr.is_null() {
             let preview_data = &mut *preview_data_ptr;
             preview_data.content = content;
@@ -564,7 +592,11 @@ fn show_preview(data: &PopupData, index: usize) {
             popup_left - PREVIEW_GAP - PREVIEW_WIDTH
         };
 
-        let preview_y = popup_top.min(data.work_area.bottom - panel_height);
+        // Calculate Y position aligned with the selected item
+        let item_y_in_popup = get_item_y_position(&data.items, index);
+        let preview_y = (popup_top + item_y_in_popup)
+            .max(data.work_area.top)
+            .min(data.work_area.bottom - panel_height);
 
         let _ = SetWindowPos(
             data.preview_hwnd,
@@ -809,7 +841,8 @@ fn navigate_selection(data: &mut PopupData, hwnd: HWND, direction: i32) {
     // Enable keyboard navigation mode
     KEYBOARD_NAV_ACTIVE.store(true, Ordering::SeqCst);
 
-    let selectable_items: Vec<usize> = data.items
+    let selectable_items: Vec<usize> = data
+        .items
         .iter()
         .enumerate()
         .filter(|(_, item)| !item.is_separator)
@@ -820,9 +853,14 @@ fn navigate_selection(data: &mut PopupData, hwnd: HWND, direction: i32) {
         return;
     }
 
-    let current_pos = data.selected_index
+    let current_pos = data
+        .selected_index
         .and_then(|idx| selectable_items.iter().position(|&i| i == idx))
-        .unwrap_or(if direction > 0 { selectable_items.len() - 1 } else { 0 });
+        .unwrap_or(if direction > 0 {
+            selectable_items.len() - 1
+        } else {
+            0
+        });
 
     let new_pos = if direction > 0 {
         (current_pos + 1) % selectable_items.len()
@@ -869,7 +907,11 @@ fn get_item_at_y(items: &[MenuItem], y: i32) -> Option<usize> {
     let mut current_y = MENU_PADDING;
 
     for (i, item) in items.iter().enumerate() {
-        let item_height = if item.is_separator { SEPARATOR_HEIGHT } else { ITEM_HEIGHT };
+        let item_height = if item.is_separator {
+            SEPARATOR_HEIGHT
+        } else {
+            ITEM_HEIGHT
+        };
 
         if y >= current_y && y < current_y + item_height {
             if !item.is_separator {
@@ -935,7 +977,8 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
                     hover_rect.top,
                     hover_rect.right,
                     hover_rect.bottom,
-                    4, 4,
+                    4,
+                    4,
                 );
                 let _ = FillRgn(mem_dc, rgn, hover_brush);
                 let _ = DeleteObject(rgn.into());
@@ -946,9 +989,14 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
             let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
 
             let font = CreateFontW(
-                -14, 0, 0, 0,
+                -14,
+                0,
+                0,
+                0,
                 400,
-                0, 0, 0,
+                0,
+                0,
+                0,
                 FONT_CHARSET(1),
                 FONT_OUTPUT_PRECISION(0),
                 FONT_CLIP_PRECISION(0),
@@ -990,7 +1038,17 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
         }
     }
 
-    let _ = BitBlt(hdc, 0, 0, rect.right, rect.bottom, Some(mem_dc), 0, 0, SRCCOPY);
+    let _ = BitBlt(
+        hdc,
+        0,
+        0,
+        rect.right,
+        rect.bottom,
+        Some(mem_dc),
+        0,
+        0,
+        SRCCOPY,
+    );
 
     let _ = SelectObject(mem_dc, old_bitmap);
     let _ = DeleteObject(mem_bitmap.into());
@@ -1019,9 +1077,14 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
                 let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
 
                 let font = CreateFontW(
-                    -14, 0, 0, 0,
+                    -14,
+                    0,
+                    0,
+                    0,
                     400,
-                    0, 0, 0,
+                    0,
+                    0,
+                    0,
                     FONT_CHARSET(1),
                     FONT_OUTPUT_PRECISION(0),
                     FONT_CLIP_PRECISION(0),
@@ -1041,7 +1104,8 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
                     bottom: rect.bottom * 10, // Large enough for calculation
                 };
 
-                let mut text_wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+                let mut text_wide: Vec<u16> =
+                    text.encode_utf16().chain(std::iter::once(0)).collect();
 
                 // Calculate text height
                 let height = DrawTextW(
@@ -1098,9 +1162,12 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
         };
         let track_brush = CreateSolidBrush(COLORREF(data.colors.scrollbar_track));
         let track_rgn = CreateRoundRectRgn(
-            track_rect.left, track_rect.top,
-            track_rect.right, track_rect.bottom,
-            SCROLLBAR_WIDTH, SCROLLBAR_WIDTH,
+            track_rect.left,
+            track_rect.top,
+            track_rect.right,
+            track_rect.bottom,
+            SCROLLBAR_WIDTH,
+            SCROLLBAR_WIDTH,
         );
         let _ = FillRgn(mem_dc, track_rgn, track_brush);
         let _ = DeleteObject(track_rgn.into());
@@ -1128,16 +1195,29 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
         };
         let thumb_brush = CreateSolidBrush(COLORREF(data.colors.scrollbar_thumb));
         let thumb_rgn = CreateRoundRectRgn(
-            thumb_rect.left, thumb_rect.top,
-            thumb_rect.right, thumb_rect.bottom,
-            SCROLLBAR_WIDTH, SCROLLBAR_WIDTH,
+            thumb_rect.left,
+            thumb_rect.top,
+            thumb_rect.right,
+            thumb_rect.bottom,
+            SCROLLBAR_WIDTH,
+            SCROLLBAR_WIDTH,
         );
         let _ = FillRgn(mem_dc, thumb_rgn, thumb_brush);
         let _ = DeleteObject(thumb_rgn.into());
         let _ = DeleteObject(thumb_brush.into());
     }
 
-    let _ = BitBlt(hdc, 0, 0, rect.right, rect.bottom, Some(mem_dc), 0, 0, SRCCOPY);
+    let _ = BitBlt(
+        hdc,
+        0,
+        0,
+        rect.right,
+        rect.bottom,
+        Some(mem_dc),
+        0,
+        0,
+        SRCCOPY,
+    );
 
     let _ = SelectObject(mem_dc, old_bitmap);
     let _ = DeleteObject(mem_bitmap.into());
@@ -1193,14 +1273,7 @@ unsafe fn draw_thumbnail_scaled(hdc: HDC, png_data: &[u8], x: i32, y: i32, max_s
     };
 
     let mut bits: *mut c_void = std::ptr::null_mut();
-    let dib = CreateDIBSection(
-        Some(hdc),
-        &bmi,
-        DIB_RGB_COLORS,
-        &mut bits,
-        None,
-        0,
-    );
+    let dib = CreateDIBSection(Some(hdc), &bmi, DIB_RGB_COLORS, &mut bits, None, 0);
 
     if dib.is_err() || bits.is_null() {
         return;
@@ -1226,9 +1299,15 @@ unsafe fn draw_thumbnail_scaled(hdc: HDC, png_data: &[u8], x: i32, y: i32, max_s
     let _ = SetStretchBltMode(hdc, HALFTONE);
     let _ = StretchBlt(
         hdc,
-        draw_x, draw_y, draw_width, draw_height,
+        draw_x,
+        draw_y,
+        draw_width,
+        draw_height,
         Some(thumb_dc),
-        0, 0, img_width, img_height,
+        0,
+        0,
+        img_width,
+        img_height,
         SRCCOPY,
     );
 
@@ -1288,14 +1367,7 @@ unsafe fn draw_preview_image(hdc: HDC, png_data: &[u8], rect: &RECT, padding: i3
     };
 
     let mut bits: *mut c_void = std::ptr::null_mut();
-    let dib = CreateDIBSection(
-        Some(hdc),
-        &bmi,
-        DIB_RGB_COLORS,
-        &mut bits,
-        None,
-        0,
-    );
+    let dib = CreateDIBSection(Some(hdc), &bmi, DIB_RGB_COLORS, &mut bits, None, 0);
 
     if dib.is_err() || bits.is_null() {
         return;
@@ -1321,9 +1393,15 @@ unsafe fn draw_preview_image(hdc: HDC, png_data: &[u8], rect: &RECT, padding: i3
     let _ = SetStretchBltMode(hdc, HALFTONE);
     let _ = StretchBlt(
         hdc,
-        draw_x, draw_y, draw_width, draw_height,
+        draw_x,
+        draw_y,
+        draw_width,
+        draw_height,
         Some(img_dc),
-        0, 0, img_width, img_height,
+        0,
+        0,
+        img_width,
+        img_height,
         SRCCOPY,
     );
 
