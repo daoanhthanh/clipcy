@@ -7,7 +7,7 @@ use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Gdi::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use clipboard_core::domain::ClipboardItem;
+use clipboard_core::domain::{ClipboardItem, ContentType};
 use clipboard_core::ports::{UIEvent, UIEventCallback};
 
 const ITEM_HEIGHT: i32 = 36;
@@ -61,6 +61,8 @@ struct MenuItem {
     id: u32,
     text: String,
     is_separator: bool,
+    is_image: bool,
+    thumbnail: Option<Vec<u8>>,
 }
 
 static POPUP_HWND: AtomicIsize = AtomicIsize::new(0);
@@ -127,10 +129,15 @@ pub fn show_modern_popup(
         let mut menu_items: Vec<MenuItem> = items
             .iter()
             .enumerate()
-            .map(|(i, item)| MenuItem {
-                id: (i + 1) as u32,
-                text: item.preview.chars().take(50).collect(),
-                is_separator: false,
+            .map(|(i, item)| {
+                let is_image = item.content_type == ContentType::Image;
+                MenuItem {
+                    id: (i + 1) as u32,
+                    text: item.preview.chars().take(50).collect(),
+                    is_separator: false,
+                    is_image,
+                    thumbnail: item.thumbnail.clone(),
+                }
             })
             .collect();
 
@@ -139,6 +146,8 @@ pub fn show_modern_popup(
             id: 0,
             text: String::new(),
             is_separator: true,
+            is_image: false,
+            thumbnail: None,
         });
 
         // Add Settings and Clear History
@@ -146,11 +155,15 @@ pub fn show_modern_popup(
             id: 1000,
             text: "Settings...".to_string(),
             is_separator: false,
+            is_image: false,
+            thumbnail: None,
         });
         menu_items.push(MenuItem {
             id: 1001,
             text: "Clear History".to_string(),
             is_separator: false,
+            is_image: false,
+            thumbnail: None,
         });
 
         // Calculate window size
@@ -498,7 +511,7 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
                 let _ = DeleteObject(hover_brush.into());
             }
 
-            // Draw text
+            // Draw text or image
             let _ = SetBkMode(mem_dc, TRANSPARENT);
             let _ = SetTextColor(mem_dc, COLORREF(data.colors.text));
 
@@ -516,8 +529,19 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
             );
             let old_font = SelectObject(mem_dc, font.into());
 
+            // Calculate text position (may be offset if showing thumbnail)
+            let text_left = if item.is_image && item.thumbnail.is_some() {
+                // Draw thumbnail
+                if let Some(ref thumb_data) = item.thumbnail {
+                    draw_thumbnail(mem_dc, thumb_data, ITEM_PADDING_X, y + 2, ITEM_HEIGHT - 4);
+                }
+                ITEM_PADDING_X + ITEM_HEIGHT // Offset text by thumbnail width
+            } else {
+                ITEM_PADDING_X
+            };
+
             let mut text_rect = RECT {
-                left: ITEM_PADDING_X,
+                left: text_left,
                 top: y,
                 right: rect.right - ITEM_PADDING_X,
                 bottom: y + ITEM_HEIGHT,
@@ -545,4 +569,90 @@ unsafe fn paint_popup(hwnd: HWND, hdc: HDC, data: &PopupData) {
     let _ = SelectObject(mem_dc, old_bitmap);
     let _ = DeleteObject(mem_bitmap.into());
     let _ = DeleteDC(mem_dc);
+}
+
+/// Draw a PNG thumbnail at the specified position
+unsafe fn draw_thumbnail(hdc: HDC, png_data: &[u8], x: i32, y: i32, size: i32) {
+    use image::io::Reader as ImageReader;
+    use std::io::Cursor;
+
+    // Decode PNG
+    let img = match ImageReader::new(Cursor::new(png_data))
+        .with_guessed_format()
+        .ok()
+        .and_then(|r| r.decode().ok())
+    {
+        Some(img) => img,
+        None => return,
+    };
+
+    let rgba = img.to_rgba8();
+    let width = rgba.width() as i32;
+    let height = rgba.height() as i32;
+
+    // Create a DIB section for the thumbnail
+    let mut bmi = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: width,
+            biHeight: -height, // Top-down
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: 0, // BI_RGB
+            biSizeImage: 0,
+            biXPelsPerMeter: 0,
+            biYPelsPerMeter: 0,
+            biClrUsed: 0,
+            biClrImportant: 0,
+        },
+        bmiColors: [RGBQUAD::default()],
+    };
+
+    let mut bits: *mut std::ffi::c_void = std::ptr::null_mut();
+    let dib = CreateDIBSection(
+        Some(hdc),
+        &bmi,
+        DIB_RGB_COLORS,
+        &mut bits,
+        None,
+        0,
+    );
+
+    if dib.is_err() || bits.is_null() {
+        return;
+    }
+
+    let dib = dib.unwrap();
+
+    // Copy RGBA data to DIB (converting RGBA to BGRA)
+    let pixel_count = (width * height) as usize;
+    let dst = std::slice::from_raw_parts_mut(bits as *mut u8, pixel_count * 4);
+
+    for i in 0..pixel_count {
+        let src_idx = i * 4;
+        let dst_idx = i * 4;
+        dst[dst_idx] = rgba.as_raw()[src_idx + 2];     // B
+        dst[dst_idx + 1] = rgba.as_raw()[src_idx + 1]; // G
+        dst[dst_idx + 2] = rgba.as_raw()[src_idx];     // R
+        dst[dst_idx + 3] = rgba.as_raw()[src_idx + 3]; // A
+    }
+
+    // Create compatible DC and select bitmap
+    let thumb_dc = CreateCompatibleDC(Some(hdc));
+    let old_bmp = SelectObject(thumb_dc, dib.into());
+
+    // Use StretchBlt to scale the thumbnail
+    let _ = SetStretchBltMode(hdc, HALFTONE);
+    let _ = StretchBlt(
+        hdc,
+        x, y, size, size,
+        Some(thumb_dc),
+        0, 0, width, height,
+        SRCCOPY,
+    );
+
+    // Cleanup
+    let _ = SelectObject(thumb_dc, old_bmp);
+    let _ = DeleteDC(thumb_dc);
+    let _ = DeleteObject(dib.into());
 }
