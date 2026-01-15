@@ -37,6 +37,10 @@ static CF_PNG: Lazy<u32> = Lazy::new(|| unsafe {
     RegisterClipboardFormatW(windows::core::w!("PNG"))
 });
 
+/// PNG file signature (magic bytes)
+/// See: https://www.w3.org/TR/PNG/#5PNG-file-signature
+const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
+
 /// Windows clipboard monitor implementation
 pub struct WindowsClipboardMonitor {
     running: Arc<AtomicBool>,
@@ -462,9 +466,9 @@ impl WindowsClipboardMonitor {
             let _ = GlobalUnlock(hglobal);
             let _ = CloseClipboard();
 
-            // Validate PNG magic bytes
-            if png_data.len() < 8 || &png_data[0..8] != b"\x89PNG\r\n\x1a\n" {
-                tracing::debug!("get_clipboard_png: invalid PNG magic bytes");
+            // Validate PNG signature
+            if png_data.len() < PNG_SIGNATURE.len() || &png_data[..PNG_SIGNATURE.len()] != PNG_SIGNATURE {
+                tracing::debug!("get_clipboard_png: invalid PNG signature");
                 return None;
             }
 
@@ -475,7 +479,7 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get current clipboard item, with prioritized format detection
-    /// Priority order: Files > Images (PNG > DIB > Bitmap) > HTML > RTF > Text
+    /// Priority order: Files > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format > Rich Text Format > CF_UNICODETEXT
     pub fn get_current_item() -> Option<ClipboardItem> {
         // Check available formats
         let has_files = Self::has_files_format();
@@ -555,6 +559,16 @@ impl WindowsClipboardMonitor {
     }
 }
 
+/// Parse an offset value from HTML Format header
+/// Returns None if the header is not found or cannot be parsed
+fn parse_html_format_offset(html_format: &str, prefix: &str) -> Option<usize> {
+    html_format
+        .lines()
+        .find(|l| l.starts_with(prefix))
+        .and_then(|l| l.strip_prefix(prefix))
+        .and_then(|s| s.trim().parse::<usize>().ok())
+}
+
 /// Extract HTML content from Windows HTML Format clipboard data
 /// The format includes headers like:
 /// Version:0.9
@@ -563,18 +577,9 @@ impl WindowsClipboardMonitor {
 /// StartFragment:xxx
 /// EndFragment:xxx
 fn extract_html_fragment(html_format: &str) -> Option<String> {
-    // Try to find StartFragment and EndFragment markers
-    let start_frag = html_format
-        .lines()
-        .find(|l| l.starts_with("StartFragment:"))
-        .and_then(|l| l.strip_prefix("StartFragment:"))
-        .and_then(|s| s.trim().parse::<usize>().ok());
-
-    let end_frag = html_format
-        .lines()
-        .find(|l| l.starts_with("EndFragment:"))
-        .and_then(|l| l.strip_prefix("EndFragment:"))
-        .and_then(|s| s.trim().parse::<usize>().ok());
+    // Try to find StartFragment and EndFragment markers first (most specific)
+    let start_frag = parse_html_format_offset(html_format, "StartFragment:");
+    let end_frag = parse_html_format_offset(html_format, "EndFragment:");
 
     if let (Some(start), Some(end)) = (start_frag, end_frag) {
         if start < end && end <= html_format.len() {
@@ -583,17 +588,8 @@ fn extract_html_fragment(html_format: &str) -> Option<String> {
     }
 
     // Fallback: try StartHTML/EndHTML
-    let start_html = html_format
-        .lines()
-        .find(|l| l.starts_with("StartHTML:"))
-        .and_then(|l| l.strip_prefix("StartHTML:"))
-        .and_then(|s| s.trim().parse::<usize>().ok());
-
-    let end_html = html_format
-        .lines()
-        .find(|l| l.starts_with("EndHTML:"))
-        .and_then(|l| l.strip_prefix("EndHTML:"))
-        .and_then(|s| s.trim().parse::<usize>().ok());
+    let start_html = parse_html_format_offset(html_format, "StartHTML:");
+    let end_html = parse_html_format_offset(html_format, "EndHTML:");
 
     if let (Some(start), Some(end)) = (start_html, end_html) {
         if start < end && end <= html_format.len() {
@@ -616,7 +612,12 @@ fn create_hdrop_data(paths: &[&str]) -> Option<Vec<u8>> {
     }
 
     // DROPFILES header size (20 bytes)
-    // pFiles (4) + pt.x (4) + pt.y (4) + fNC (4) + fWide (4)
+    // DROPFILES structure header size in bytes:
+    // - pFiles: DWORD (4 bytes) - offset to file list from start of structure
+    // - pt: POINT (8 bytes) - drop point coordinates (pt.x: 4, pt.y: 4)
+    // - fNC: BOOL (4 bytes) - non-client area flag
+    // - fWide: BOOL (4 bytes) - Unicode flag (TRUE for wide char paths)
+    // Total: 4 + 4 + 4 + 4 + 4 = 20 bytes
     const DROPFILES_SIZE: usize = 20;
 
     // Calculate total size

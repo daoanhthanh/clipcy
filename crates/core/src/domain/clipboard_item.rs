@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::content_type::ContentType;
 
 /// Simple HTML tag stripper for preview generation
-/// Removes HTML tags to extract plain text for preview
+/// Removes HTML tags and decodes common HTML entities to extract plain text
 fn strip_html_tags(html: &str) -> String {
     let mut result = String::with_capacity(html.len());
     let mut in_tag = false;
@@ -19,8 +19,22 @@ fn strip_html_tags(html: &str) -> String {
         }
     }
 
+    // Decode common HTML entities
+    let result = decode_html_entities(&result);
+
     // Collapse whitespace and trim
     result.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Decode common HTML entities to their character equivalents
+fn decode_html_entities(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&nbsp;", " ")
 }
 
 /// Represents a single clipboard history item
@@ -238,5 +252,21 @@ mod tests {
         assert_eq!(super::strip_html_tags("<div><span>A</span> <span>B</span></div>"), "A B");
         assert_eq!(super::strip_html_tags("No tags here"), "No tags here");
         assert_eq!(super::strip_html_tags("<script>alert('xss')</script>"), "alert('xss')");
+    }
+
+    #[test]
+    fn test_strip_html_tags_with_entities() {
+        assert_eq!(super::strip_html_tags("&lt;hello&gt;"), "<hello>");
+        assert_eq!(super::strip_html_tags("Tom &amp; Jerry"), "Tom & Jerry");
+        assert_eq!(super::strip_html_tags("&quot;quoted&quot;"), "\"quoted\"");
+        assert_eq!(super::strip_html_tags("It&#39;s working"), "It's working");
+        assert_eq!(super::strip_html_tags("non&nbsp;breaking"), "non breaking");
+    }
+
+    #[test]
+    fn test_decode_html_entities() {
+        assert_eq!(super::decode_html_entities("&lt;&gt;&amp;"), "<>&");
+        assert_eq!(super::decode_html_entities("&quot;&apos;"), "\"'");
+        assert_eq!(super::decode_html_entities("no entities"), "no entities");
     }
 }
