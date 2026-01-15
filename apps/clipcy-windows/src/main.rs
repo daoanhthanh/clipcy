@@ -5,10 +5,12 @@ use std::sync::Arc;
 
 use clipboard_core::application::{AppController, ClipboardService};
 use clipboard_core::domain::Settings;
+use clipboard_core::ports::AutostartHandler;
 use clipboard_storage::SqliteClipboardRepository;
 use clipcy_platform_windows::ui::WindowsUIHandler;
 use clipcy_platform_windows::{
-    WindowsClipboardMonitor, WindowsHotkeyHandler, WindowsPasteHandler, WindowsThemeDetector,
+    WindowsAutostartHandler, WindowsClipboardMonitor, WindowsHotkeyHandler, WindowsPasteHandler,
+    WindowsThemeDetector,
 };
 
 #[tokio::main]
@@ -23,6 +25,14 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     tracing::info!("Starting Clipcy...");
+
+    // Enable auto-start on Windows startup
+    let autostart_handler = WindowsAutostartHandler::new();
+    if !autostart_handler.is_enabled().unwrap_or(false) {
+        if let Err(e) = autostart_handler.enable() {
+            tracing::warn!("Failed to enable auto-start: {}", e);
+        }
+    }
 
     let repository = Arc::new(SqliteClipboardRepository::default_location().await?);
 

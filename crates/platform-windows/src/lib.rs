@@ -1,4 +1,6 @@
 #[cfg(target_os = "windows")]
+mod autostart;
+#[cfg(target_os = "windows")]
 mod clipboard;
 #[cfg(target_os = "windows")]
 mod hotkey;
@@ -9,6 +11,8 @@ mod theme;
 #[cfg(target_os = "windows")]
 pub mod ui;
 
+#[cfg(target_os = "windows")]
+pub use autostart::WindowsAutostartHandler;
 #[cfg(target_os = "windows")]
 pub use clipboard::WindowsClipboardMonitor;
 #[cfg(target_os = "windows")]

@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<!--
+  Copyright (C) 2024 ThanhDA
+
+  Clipcy installer WiX source file
+-->
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+    <Product
+        Id='*'
+        Name='Clipcy'
+        UpgradeCode='A1B2C3D4-E5F6-7890-ABCD-EF1234567890'
+        Manufacturer='ThanhDA'
+        Language='1033'
+        Codepage='1252'
+        Version='$(var.Version)'>
+
+        <Package Id='*'
+            Keywords='Installer'
+            Description='Clipcy - Cross-platform Clipboard Manager'
+            Manufacturer='ThanhDA'
+            InstallerVersion='450'
+            Languages='1033'
+            Compressed='yes'
+            InstallScope='perUser'
+            SummaryCodepage='1252'
+            Platform='x64'/>
+
+        <MajorUpgrade
+            Schedule='afterInstallInitialize'
+            DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.'/>
+
+        <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1'/>
+        <Property Id='DiskPrompt' Value='Clipcy Installation'/>
+
+        <!-- Custom welcome dialog banner image -->
+        <WixVariable Id='WixUIBannerBmp' Value='C:\Users\thanh_da\Desktop\architecture_clipboard\clipcy\apps\clipcy-windows\wix\installer-top-banner.bmp'/>
+        <WixVariable Id='WixUIDialogBmp' Value='C:\Users\thanh_da\Desktop\architecture_clipboard\clipcy\apps\clipcy-windows\wix\installer-banner.bmp'/>
+
+        <!-- Application icon -->
+        <Icon Id='ProductICO' SourceFile='C:\Users\thanh_da\Desktop\architecture_clipboard\clipcy\apps\clipcy-windows\wix\app.ico'/>
+        <Property Id='ARPPRODUCTICON' Value='ProductICO' />
+        <Property Id='ARPHELPLINK' Value='https://github.com/ThanhDA/clipcy'/>
+
+        <Directory Id='TARGETDIR' Name='SourceDir'>
+            <Directory Id='LocalAppDataFolder' Name='LocalAppData'>
+                <Directory Id='APPLICATIONFOLDER' Name='Clipcy'>
+                    <Component Id='Path' Guid='B2C3D4E5-F678-90AB-CDEF-123456789012' KeyPath='yes'>
+                        <Environment
+                            Id='PATH'
+                            Name='PATH'
+                            Value='[APPLICATIONFOLDER]'
+                            Permanent='no'
+                            Part='last'
+                            Action='set'
+                            System='no'/>
+                    </Component>
+                    <Component Id='binary0' Guid='*'>
+                        <File
+                            Id='exe0'
+                            Name='clipcy.exe'
+                            DiskId='1'
+                            Source='$(var.CargoTargetBinDir)\clipcy.exe'
+                            KeyPath='yes'/>
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id='ProgramMenuFolder'>
+                <Directory Id='ApplicationProgramsFolder' Name='Clipcy'>
+                    <Component Id='ApplicationShortcut' Guid='C3D4E5F6-7890-ABCD-EF12-345678901234'>
+                        <Shortcut Id='ApplicationStartMenuShortcut'
+                            Name='Clipcy'
+                            Description='Cross-platform Clipboard Manager'
+                            Target='[APPLICATIONFOLDER]clipcy.exe'
+                            WorkingDirectory='APPLICATIONFOLDER'
+                            Icon='ProductICO'/>
+                        <RemoveFolder Id='CleanUpShortCut' On='uninstall'/>
+                        <RegistryValue Root='HKCU' Key='Software\Clipcy' Name='installed' Type='integer' Value='1' KeyPath='yes'/>
+                    </Component>
+                </Directory>
+            </Directory>
+            <Directory Id='StartupFolder'>
+                <Component Id='StartupShortcut' Guid='D4E5F678-90AB-CDEF-1234-567890123456'>
+                    <Shortcut Id='ApplicationStartupShortcut'
+                        Name='Clipcy'
+                        Description='Cross-platform Clipboard Manager'
+                        Target='[APPLICATIONFOLDER]clipcy.exe'
+                        WorkingDirectory='APPLICATIONFOLDER'
+                        Icon='ProductICO'/>
+                    <RegistryValue Root='HKCU' Key='Software\Clipcy' Name='startup' Type='integer' Value='1' KeyPath='yes'/>
+                </Component>
+            </Directory>
+        </Directory>
+
+        <Feature
+            Id='Binaries'
+            Title='Application'
+            Description='Installs Clipcy clipboard manager.'
+            Level='1'
+            ConfigurableDirectory='APPLICATIONFOLDER'
+            AllowAdvertise='no'
+            Display='expand'
+            Absent='disallow'>
+            <ComponentRef Id='binary0'/>
+            <Feature
+                Id='Environment'
+                Title='PATH Environment Variable'
+                Description='Add the install location to the PATH system environment variable.'
+                Level='1'
+                Absent='allow'>
+                <ComponentRef Id='Path'/>
+            </Feature>
+            <Feature
+                Id='StartMenu'
+                Title='Start Menu Shortcut'
+                Description='Add a shortcut to the Start Menu.'
+                Level='1'
+                Absent='allow'>
+                <ComponentRef Id='ApplicationShortcut'/>
+            </Feature>
+            <Feature
+                Id='Startup'
+                Title='Run at Startup'
+                Description='Start Clipcy automatically when Windows starts.'
+                Level='1'
+                Absent='allow'>
+                <ComponentRef Id='StartupShortcut'/>
+            </Feature>
+        </Feature>
+
+        <SetProperty Id='ARPINSTALLLOCATION' Value='[APPLICATIONFOLDER]' After='CostFinalize'/>
+
+        <!-- UI Configuration -->
+        <UIRef Id='WixUI_FeatureTree'/>
+        <UIRef Id='WixUI_ErrorProgressText'/>
+
+        <Property Id='WIXUI_INSTALLDIR' Value='APPLICATIONFOLDER'/>
+    </Product>
+</Wix>

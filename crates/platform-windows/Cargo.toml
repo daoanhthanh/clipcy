@@ -8,6 +8,7 @@ clipboard-core = { path = "../core" }
 windows = { version = "0.62.2", features = [
     "Win32_Foundation",
     "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
     "Win32_System_Memory",
     "Win32_System_Ole",
     "Win32_System_Registry",

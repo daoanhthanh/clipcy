@@ -5,6 +5,7 @@ use std::thread;
 
 use parking_lot::RwLock;
 use windows::Win32::Foundation::*;
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -159,8 +160,20 @@ impl WindowsUIHandler {
             }
         }
 
-        // Use default application icon
-        let icon = LoadIconW(None, IDI_APPLICATION).unwrap_or_default();
+        // Load the embedded application icon from the executable's resources
+        let hinstance = GetModuleHandleW(None)
+            .ok()
+            .map(|h| HINSTANCE(h.0));
+        let icon = LoadImageW(
+            hinstance,
+            windows::core::PCWSTR(1 as *const u16), // Icon resource ID 1 (default for winres)
+            IMAGE_ICON,
+            GetSystemMetrics(SM_CXSMICON), // Small icon size for system tray
+            GetSystemMetrics(SM_CYSMICON),
+            LR_DEFAULTCOLOR,
+        )
+        .map(|h| HICON(h.0))
+        .unwrap_or_else(|_| LoadIconW(None, IDI_APPLICATION).unwrap_or_default());
 
         let mut nid = NOTIFYICONDATAW {
             cbSize: size_of::<NOTIFYICONDATAW>() as u32,
