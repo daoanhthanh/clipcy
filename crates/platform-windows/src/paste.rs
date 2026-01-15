@@ -79,7 +79,7 @@ impl PasteHandler for WindowsPasteHandler {
                 },
             ];
 
-            SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+            SendInput(&inputs, size_of::<INPUT>() as i32);
         }
 
         Ok(())

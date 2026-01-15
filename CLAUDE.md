@@ -133,7 +133,7 @@ Windows handles (`HWND`) contain raw pointers that are not `Send`/`Sync`. We use
 hwnd: Arc<AtomicIsize>,
 
 // Convert back when needed
-let hwnd = HWND(hwnd_val as *mut std::ffi::c_void);
+let hwnd = HWND(hwnd_val as * mut std::ffi::c_void);
 ```
 
 The structs also implement `unsafe impl Send` and `unsafe impl Sync` manually.

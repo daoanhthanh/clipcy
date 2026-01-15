@@ -402,7 +402,7 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 let class_name = windows::core::w!("ClipboardMonitorClass");
 
                 let wc = WNDCLASSEXW {
-                    cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
+                    cbSize: size_of::<WNDCLASSEXW>() as u32,
                     lpfnWndProc: Some(window_proc),
                     lpszClassName: class_name,
                     ..Default::default()

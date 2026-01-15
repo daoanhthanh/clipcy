@@ -80,7 +80,7 @@ impl WindowsUIHandler {
         let class_name = windows::core::w!("ClipcyTrayClass");
 
         let wc = WNDCLASSEXW {
-            cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
+            cbSize: size_of::<WNDCLASSEXW>() as u32,
             lpfnWndProc: Some(tray_window_proc),
             lpszClassName: class_name,
             ..Default::default()
@@ -163,7 +163,7 @@ impl WindowsUIHandler {
         let icon = LoadIconW(None, IDI_APPLICATION).unwrap_or_default();
 
         let mut nid = NOTIFYICONDATAW {
-            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+            cbSize: size_of::<NOTIFYICONDATAW>() as u32,
             hWnd: hwnd,
             uID: 1,
             uFlags: NIF_ICON | NIF_MESSAGE | NIF_TIP,
@@ -179,7 +179,7 @@ impl WindowsUIHandler {
 
     unsafe fn remove_tray_icon(hwnd: HWND) {
         let mut nid = NOTIFYICONDATAW {
-            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+            cbSize: size_of::<NOTIFYICONDATAW>() as u32,
             hWnd: hwnd,
             uID: 1,
             ..Default::default()
@@ -198,7 +198,7 @@ impl WindowsUIHandler {
         }
 
         let mut nid = NOTIFYICONDATAW {
-            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+            cbSize: size_of::<NOTIFYICONDATAW>() as u32,
             hWnd: hwnd,
             uID: 1,
             uFlags: NIF_TIP,
@@ -235,7 +235,7 @@ impl WindowsUIHandler {
                 .collect();
 
             let mii = MENUITEMINFOW {
-                cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+                cbSize: size_of::<MENUITEMINFOW>() as u32,
                 fMask: MIIM_STRING | MIIM_ID,
                 wID: (i + 1) as u32,
                 dwTypeData: windows::core::PWSTR(text.as_ptr() as *mut u16),
@@ -248,7 +248,7 @@ impl WindowsUIHandler {
 
         // Add separator
         let sep = MENUITEMINFOW {
-            cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
             fMask: MIIM_TYPE,
             fType: MFT_SEPARATOR,
             ..Default::default()
@@ -261,7 +261,7 @@ impl WindowsUIHandler {
             .chain(std::iter::once(0))
             .collect();
         let settings_item = MENUITEMINFOW {
-            cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
             fMask: MIIM_STRING | MIIM_ID,
             wID: 1000,
             dwTypeData: windows::core::PWSTR(settings_text.as_ptr() as *mut u16),
@@ -275,7 +275,7 @@ impl WindowsUIHandler {
             .chain(std::iter::once(0))
             .collect();
         let clear_item = MENUITEMINFOW {
-            cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
             fMask: MIIM_STRING | MIIM_ID,
             wID: 1001,
             dwTypeData: windows::core::PWSTR(clear_text.as_ptr() as *mut u16),
@@ -336,7 +336,7 @@ impl WindowsUIHandler {
             .chain(std::iter::once(0))
             .collect();
         let show_item = MENUITEMINFOW {
-            cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
             fMask: MIIM_STRING | MIIM_ID,
             wID: ID_TRAY_SHOW,
             dwTypeData: windows::core::PWSTR(show_text.as_ptr() as *mut u16),
@@ -347,7 +347,7 @@ impl WindowsUIHandler {
 
         // Add separator
         let sep = MENUITEMINFOW {
-            cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
             fMask: MIIM_TYPE,
             fType: MFT_SEPARATOR,
             ..Default::default()
@@ -360,7 +360,7 @@ impl WindowsUIHandler {
             .chain(std::iter::once(0))
             .collect();
         let exit_item = MENUITEMINFOW {
-            cbSize: std::mem::size_of::<MENUITEMINFOW>() as u32,
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
             fMask: MIIM_STRING | MIIM_ID,
             wID: ID_TRAY_EXIT,
             dwTypeData: windows::core::PWSTR(exit_text.as_ptr() as *mut u16),
