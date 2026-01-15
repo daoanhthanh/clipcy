@@ -110,6 +110,8 @@ static PREVIEW_HWND: AtomicIsize = AtomicIsize::new(0);
 static POPUP_VISIBLE: AtomicBool = AtomicBool::new(false);
 static MOUSE_IN_POPUP: AtomicBool = AtomicBool::new(false);
 static MOUSE_IN_PREVIEW: AtomicBool = AtomicBool::new(false);
+static KEYBOARD_NAV_ACTIVE: AtomicBool = AtomicBool::new(false);
+static LAST_MOUSE_POS: AtomicIsize = AtomicIsize::new(-1);
 
 fn is_dark_mode() -> bool {
     unsafe {
@@ -441,7 +443,80 @@ pub fn close_popup() {
         POPUP_VISIBLE.store(false, Ordering::SeqCst);
         MOUSE_IN_POPUP.store(false, Ordering::SeqCst);
         MOUSE_IN_PREVIEW.store(false, Ordering::SeqCst);
+        KEYBOARD_NAV_ACTIVE.store(false, Ordering::SeqCst);
+        LAST_MOUSE_POS.store(-1, Ordering::SeqCst);
     }
+}
+
+/// Calculate the height needed for content, returns (content_height, panel_height)
+unsafe fn calculate_preview_height(content: &Option<PreviewContent>) -> i32 {
+    let content_height = match content {
+        Some(PreviewContent::Text(text)) => {
+            // Create a temporary DC to measure text
+            let screen_dc = GetDC(None);
+            let font = CreateFontW(
+                -14, 0, 0, 0,
+                400,
+                0, 0, 0,
+                FONT_CHARSET(1),
+                FONT_OUTPUT_PRECISION(0),
+                FONT_CLIP_PRECISION(0),
+                FONT_QUALITY(0),
+                0,
+                windows::core::w!("Consolas"),
+            );
+            let old_font = SelectObject(screen_dc, font.into());
+
+            let text_width = PREVIEW_WIDTH - PREVIEW_PADDING * 2 - SCROLLBAR_WIDTH - 4;
+            let mut text_rect = RECT {
+                left: 0,
+                top: 0,
+                right: text_width,
+                bottom: 10000,
+            };
+
+            let mut text_wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+            let height = DrawTextW(
+                screen_dc,
+                &mut text_wide,
+                &mut text_rect,
+                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT,
+            );
+
+            let _ = SelectObject(screen_dc, old_font);
+            let _ = DeleteObject(font.into());
+            let _ = ReleaseDC(None, screen_dc);
+
+            height
+        }
+        Some(PreviewContent::Image(img_data)) => {
+            // Calculate image height based on aspect ratio
+            use image::io::Reader as ImageReader;
+            use std::io::Cursor;
+
+            if let Some(img) = ImageReader::new(Cursor::new(img_data))
+                .with_guessed_format()
+                .ok()
+                .and_then(|r| r.decode().ok())
+            {
+                let img_width = img.width() as i32;
+                let img_height = img.height() as i32;
+                let available_width = PREVIEW_WIDTH - PREVIEW_PADDING * 2;
+
+                let scale_x = available_width as f32 / img_width as f32;
+                let scale = scale_x.min(1.0); // Don't upscale
+
+                (img_height as f32 * scale) as i32
+            } else {
+                100 // Fallback height
+            }
+        }
+        None => 50, // Minimum height for empty content
+    };
+
+    // Add padding and clamp to max height
+    let panel_height = (content_height + PREVIEW_PADDING * 2).min(PREVIEW_HEIGHT).max(60);
+    panel_height
 }
 
 fn show_preview(data: &PopupData, index: usize) {
@@ -467,6 +542,9 @@ fn show_preview(data: &PopupData, index: usize) {
             })
         };
 
+        // Calculate dynamic height based on content
+        let panel_height = calculate_preview_height(&content);
+
         // Update preview data
         let preview_data_ptr = GetWindowLongPtrW(data.preview_hwnd, GWLP_USERDATA) as *mut PreviewData;
         if !preview_data_ptr.is_null() {
@@ -486,7 +564,7 @@ fn show_preview(data: &PopupData, index: usize) {
             popup_left - PREVIEW_GAP - PREVIEW_WIDTH
         };
 
-        let preview_y = popup_top.min(data.work_area.bottom - PREVIEW_HEIGHT);
+        let preview_y = popup_top.min(data.work_area.bottom - panel_height);
 
         let _ = SetWindowPos(
             data.preview_hwnd,
@@ -494,7 +572,7 @@ fn show_preview(data: &PopupData, index: usize) {
             preview_x,
             preview_y,
             PREVIEW_WIDTH,
-            PREVIEW_HEIGHT,
+            panel_height,
             SWP_NOACTIVATE | SWP_SHOWWINDOW,
         );
 
@@ -545,21 +623,37 @@ unsafe extern "system" fn popup_window_proc(
         WM_MOUSEMOVE => {
             MOUSE_IN_POPUP.store(true, Ordering::SeqCst);
 
+            let current_pos = lparam.0 as isize;
+            let last_pos = LAST_MOUSE_POS.load(Ordering::SeqCst);
+
+            // Check if mouse actually moved (not just a spurious event)
+            let mouse_moved = last_pos != current_pos;
+
+            if mouse_moved {
+                LAST_MOUSE_POS.store(current_pos, Ordering::SeqCst);
+                // Mouse moved, disable keyboard nav mode
+                KEYBOARD_NAV_ACTIVE.store(false, Ordering::SeqCst);
+            }
+
             let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
 
             let data_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut PopupData;
             if !data_ptr.is_null() {
                 let data = &mut *data_ptr;
-                let new_index = get_item_at_y(&data.items, y);
 
-                if new_index != data.hovered_index {
-                    data.hovered_index = new_index;
-                    data.selected_index = new_index;
-                    let _ = InvalidateRect(Some(hwnd), None, false);
+                // Only update selection if keyboard nav is not active
+                if !KEYBOARD_NAV_ACTIVE.load(Ordering::SeqCst) {
+                    let new_index = get_item_at_y(&data.items, y);
 
-                    // Show/update preview
-                    if let Some(idx) = new_index {
-                        show_preview(data, idx);
+                    if new_index != data.hovered_index {
+                        data.hovered_index = new_index;
+                        data.selected_index = new_index;
+                        let _ = InvalidateRect(Some(hwnd), None, false);
+
+                        // Show/update preview
+                        if let Some(idx) = new_index {
+                            show_preview(data, idx);
+                        }
                     }
                 }
 
@@ -712,6 +806,9 @@ unsafe extern "system" fn preview_window_proc(
 }
 
 fn navigate_selection(data: &mut PopupData, hwnd: HWND, direction: i32) {
+    // Enable keyboard navigation mode
+    KEYBOARD_NAV_ACTIVE.store(true, Ordering::SeqCst);
+
     let selectable_items: Vec<usize> = data.items
         .iter()
         .enumerate()
