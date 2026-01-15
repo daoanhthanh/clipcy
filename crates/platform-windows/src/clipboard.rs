@@ -604,12 +604,12 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
 
         let width = bitmap.bmWidth;
         let height = bitmap.bmHeight;
-        if width <= 0 || height == 0 {
+        let abs_height: u32 = height.unsigned_abs();
+        if width <= 0 || abs_height == 0 {
             tracing::debug!("get_clipboard_image: invalid bitmap dimensions");
             return None;
         }
 
-        let abs_height = height.unsigned_abs();
         let is_top_down = height < 0;
 
         let mut info = BITMAPINFO {
