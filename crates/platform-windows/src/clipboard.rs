@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-use core::ffi::c_void;
+use std::ffi::c_void;
 use parking_lot::RwLock;
 use windows::Win32::Foundation::{HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
