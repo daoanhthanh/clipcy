@@ -4,6 +4,39 @@ use uuid::Uuid;
 
 use super::content_type::ContentType;
 
+/// Simple HTML tag stripper for preview generation
+/// Removes HTML tags and decodes common HTML entities to extract plain text
+fn strip_html_tags(html: &str) -> String {
+    let mut result = String::with_capacity(html.len());
+    let mut in_tag = false;
+
+    for ch in html.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+
+    // Decode common HTML entities
+    let result = decode_html_entities(&result);
+
+    // Collapse whitespace and trim
+    result.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Decode common HTML entities to their character equivalents
+fn decode_html_entities(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&nbsp;", " ")
+}
+
 /// Represents a single clipboard history item
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClipboardItem {
@@ -79,6 +112,46 @@ impl ClipboardItem {
         }
     }
 
+    /// Create new HTML clipboard item
+    pub fn new_html(html: impl Into<String>) -> Self {
+        let html = html.into();
+        // Extract text preview from HTML (strip tags for preview)
+        let preview = strip_html_tags(&html).chars().take(100).collect();
+
+        Self {
+            id: Uuid::new_v4(),
+            content_type: ContentType::Html,
+            data: html.into_bytes(),
+            preview,
+            thumbnail: None,
+            source_app: None,
+            created_at: Utc::now(),
+            pinned: false,
+        }
+    }
+
+    /// Create new Rich Text (RTF) clipboard item
+    pub fn new_rtf(rtf: impl Into<String>) -> Self {
+        let rtf = rtf.into();
+        // RTF preview: show beginning of content (RTF is not human-readable, so limited preview)
+        let preview = if rtf.len() > 100 {
+            format!("[RTF] {} chars", rtf.len())
+        } else {
+            "[RTF Content]".to_string()
+        };
+
+        Self {
+            id: Uuid::new_v4(),
+            content_type: ContentType::RichText,
+            data: rtf.into_bytes(),
+            preview,
+            thumbnail: None,
+            source_app: None,
+            created_at: Utc::now(),
+            pinned: false,
+        }
+    }
+
     /// Get text content if this is a text item
     pub fn as_text(&self) -> Option<&str> {
         if self.content_type == ContentType::Text {
@@ -136,5 +209,64 @@ mod tests {
         let files = vec!["/path/to/file.txt".to_string()];
         let item = ClipboardItem::new_files(files);
         assert_eq!(item.preview, "/path/to/file.txt");
+    }
+
+    #[test]
+    fn test_new_html() {
+        let html = "<html><body><p>Hello World</p></body></html>";
+        let item = ClipboardItem::new_html(html);
+        assert_eq!(item.content_type, ContentType::Html);
+        assert_eq!(item.preview, "Hello World");
+        assert_eq!(String::from_utf8_lossy(&item.data), html);
+    }
+
+    #[test]
+    fn test_new_html_complex() {
+        let html = "<div class='test'><span>Some</span> <b>formatted</b> text</div>";
+        let item = ClipboardItem::new_html(html);
+        assert_eq!(item.content_type, ContentType::Html);
+        assert_eq!(item.preview, "Some formatted text");
+    }
+
+    #[test]
+    fn test_new_rtf() {
+        let rtf = r"{\rtf1\ansi\deff0 Hello World}";
+        let item = ClipboardItem::new_rtf(rtf);
+        assert_eq!(item.content_type, ContentType::RichText);
+        assert_eq!(item.preview, "[RTF Content]");
+        assert_eq!(String::from_utf8_lossy(&item.data), rtf);
+    }
+
+    #[test]
+    fn test_new_rtf_long() {
+        let rtf = r"{\rtf1\ansi\deff0 ".to_string() + &"a".repeat(200) + "}";
+        let item = ClipboardItem::new_rtf(&rtf);
+        assert_eq!(item.content_type, ContentType::RichText);
+        assert!(item.preview.starts_with("[RTF]"));
+        assert!(item.preview.contains("chars"));
+    }
+
+    #[test]
+    fn test_strip_html_tags() {
+        assert_eq!(super::strip_html_tags("<p>Hello</p>"), "Hello");
+        assert_eq!(super::strip_html_tags("<div><span>A</span> <span>B</span></div>"), "A B");
+        assert_eq!(super::strip_html_tags("No tags here"), "No tags here");
+        assert_eq!(super::strip_html_tags("<script>alert('xss')</script>"), "alert('xss')");
+    }
+
+    #[test]
+    fn test_strip_html_tags_with_entities() {
+        assert_eq!(super::strip_html_tags("&lt;hello&gt;"), "<hello>");
+        assert_eq!(super::strip_html_tags("Tom &amp; Jerry"), "Tom & Jerry");
+        assert_eq!(super::strip_html_tags("&quot;quoted&quot;"), "\"quoted\"");
+        assert_eq!(super::strip_html_tags("It&#39;s working"), "It's working");
+        assert_eq!(super::strip_html_tags("non&nbsp;breaking"), "non breaking");
+    }
+
+    #[test]
+    fn test_decode_html_entities() {
+        assert_eq!(super::decode_html_entities("&lt;&gt;&amp;"), "<>&");
+        assert_eq!(super::decode_html_entities("&quot;&apos;"), "\"'");
+        assert_eq!(super::decode_html_entities("no entities"), "no entities");
     }
 }
