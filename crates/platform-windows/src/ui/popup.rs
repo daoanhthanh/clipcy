@@ -224,6 +224,10 @@ pub fn show_modern_popup(
     callback: Arc<RwLock<Option<UIEventCallback>>>,
 ) -> Option<u32> {
     unsafe {
+        // Save the foreground window BEFORE we show our popup
+        // This is needed to restore focus and paste to the correct window
+        crate::save_foreground_window();
+
         close_popup();
 
         let colors = if is_dark_mode() {
@@ -2227,6 +2231,7 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
         let _ = FillRgn(mem_dc, thumb_rgn, thumb_brush);
         let _ = DeleteObject(thumb_rgn.into());
         let _ = DeleteObject(thumb_brush.into());
+        
     }
 
     let _ = BitBlt(

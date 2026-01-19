@@ -18,6 +18,6 @@ pub use clipboard::WindowsClipboardMonitor;
 #[cfg(target_os = "windows")]
 pub use hotkey::WindowsHotkeyHandler;
 #[cfg(target_os = "windows")]
-pub use paste::WindowsPasteHandler;
+pub use paste::{save_foreground_window, WindowsPasteHandler};
 #[cfg(target_os = "windows")]
 pub use theme::WindowsThemeDetector;
