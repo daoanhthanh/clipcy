@@ -176,6 +176,23 @@ pub fn run() {
             get_autostart_status,
             set_autostart,
         ])
+        .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
+
+            // Apply Mica effect on Windows 11, fallback to Acrylic on Windows 10
+            #[cfg(target_os = "windows")]
+            {
+                use window_vibrancy::{apply_mica, apply_acrylic};
+
+                // Try Mica first (Windows 11) - use dark mode variant
+                if apply_mica(&window, Some(true)).is_err() {
+                    // Fallback to Acrylic (Windows 10)
+                    let _ = apply_acrylic(&window, Some((32, 32, 32, 200)));
+                }
+            }
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

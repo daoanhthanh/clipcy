@@ -181,6 +181,17 @@ static MOUSE_IN_POPUP: AtomicBool = AtomicBool::new(false);
 static MOUSE_IN_PREVIEW: AtomicBool = AtomicBool::new(false);
 static KEYBOARD_NAV_ACTIVE: AtomicBool = AtomicBool::new(false);
 static LAST_MOUSE_POS: AtomicIsize = AtomicIsize::new(-1);
+static SHOW_PREVIEW_PANEL: AtomicBool = AtomicBool::new(true);
+
+/// Set whether the preview panel should be shown
+pub fn set_show_preview_panel(show: bool) {
+    SHOW_PREVIEW_PANEL.store(show, Ordering::SeqCst);
+}
+
+/// Get whether the preview panel should be shown
+fn should_show_preview_panel() -> bool {
+    SHOW_PREVIEW_PANEL.load(Ordering::SeqCst)
+}
 
 fn is_dark_mode() -> bool {
     unsafe {

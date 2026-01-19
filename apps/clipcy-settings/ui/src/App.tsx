@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import ToggleSwitch from './components/ToggleSwitch';
 import NumberInput from './components/NumberInput';
 import TextInput from './components/TextInput';
+import Dropdown from './components/Dropdown';
 
 declare global {
   interface Window {
@@ -14,10 +15,12 @@ declare global {
   }
 }
 
+type ThemeMode = 'light' | 'dark' | 'system';
+
 interface Settings {
   max_history_items: number;
   hotkey: string;
-  sync_theme: boolean;
+  theme: ThemeMode;
   start_on_boot: boolean;
   show_notifications: boolean;
   show_preview_panel: boolean;
@@ -27,12 +30,18 @@ interface Settings {
 const defaultSettings: Settings = {
   max_history_items: 100,
   hotkey: 'Ctrl+Shift+V',
-  sync_theme: true,
+  theme: 'system',
   start_on_boot: true,
   show_notifications: false,
   show_preview_panel: true,
   excluded_apps: [],
 };
+
+const themeOptions = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'Sync with OS' },
+];
 
 type Page = 'general' | 'clipboard' | 'hotkeys' | 'appearance' | 'about';
 
@@ -189,12 +198,13 @@ export default function App() {
               <div class="settings-card">
                 <div class="setting-item">
                   <div class="setting-info">
-                    <div class="setting-label">Sync with system theme</div>
-                    <div class="setting-description">Automatically match the Windows light or dark mode</div>
+                    <div class="setting-label">App theme</div>
+                    <div class="setting-description">Select the theme for the application</div>
                   </div>
-                  <ToggleSwitch
-                    checked={settings().sync_theme}
-                    onChange={(v) => updateSetting('sync_theme', v)}
+                  <Dropdown
+                    value={settings().theme}
+                    options={themeOptions}
+                    onChange={(v) => updateSetting('theme', v as ThemeMode)}
                   />
                 </div>
               </div>

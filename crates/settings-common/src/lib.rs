@@ -16,6 +16,16 @@ pub enum SettingsError {
 
 pub type Result<T> = std::result::Result<T, SettingsError>;
 
+/// Theme mode for the application
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    Light,
+    Dark,
+    #[default]
+    System,
+}
+
 /// Application settings
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Settings {
@@ -25,9 +35,9 @@ pub struct Settings {
     /// Hotkey combination string (e.g., "Ctrl+Shift+V")
     #[serde(default = "default_hotkey")]
     pub hotkey: String,
-    /// Whether to sync theme with system
-    #[serde(default = "default_true")]
-    pub sync_theme: bool,
+    /// Theme mode (light, dark, or system)
+    #[serde(default)]
+    pub theme: ThemeMode,
     /// Whether to start on system boot
     #[serde(default = "default_true")]
     pub start_on_boot: bool,
@@ -59,7 +69,7 @@ impl Default for Settings {
         Self {
             max_history_items: 100,
             hotkey: "Ctrl+Shift+V".to_string(),
-            sync_theme: true,
+            theme: ThemeMode::System,
             start_on_boot: true,
             show_notifications: false,
             show_preview_panel: true,

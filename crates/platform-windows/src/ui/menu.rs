@@ -454,6 +454,8 @@ impl WindowsUIHandler {
                 match selected_id {
                     ID_TRAY_EXIT => {
                         tracing::info!("Exit clicked from tray menu");
+                        // Close settings window before quitting
+                        crate::close_settings_window();
                         cb(UIEvent::QuitClicked);
                     }
                     ID_TRAY_SHOW => {

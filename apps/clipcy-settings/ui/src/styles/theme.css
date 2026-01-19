@@ -1,11 +1,12 @@
 /* WinUI 3 Design Tokens */
 :root {
-  /* Colors - Light theme */
-  --bg-solid: #f3f3f3;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f9f9f9;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f5f5f5;
+  /* Colors - Light theme (with Mica transparency) */
+  --bg-solid: transparent;
+  --bg-mica: rgba(243, 243, 243, 0.7);
+  --bg-secondary: rgba(255, 255, 255, 0.5);
+  --bg-tertiary: rgba(249, 249, 249, 0.6);
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-card-hover: rgba(245, 245, 245, 0.8);
 
   --text-primary: #000000e6;
   --text-secondary: #00000099;
@@ -21,9 +22,9 @@
   --border-strong: #00000033;
   --divider: #0000000f;
 
-  --control-bg: #ffffffb3;
+  --control-bg: rgba(255, 255, 255, 0.7);
   --control-border: #00000012;
-  --control-hover: #f9f9f980;
+  --control-hover: rgba(249, 249, 249, 0.5);
 
   --toggle-on: var(--accent);
   --toggle-off: #767676;
@@ -60,19 +61,20 @@
 
   /* Sidebar */
   --sidebar-width: 280px;
-  --sidebar-bg: var(--bg-secondary);
-  --sidebar-item-hover: #0000000a;
-  --sidebar-item-selected: #0000000f;
+  --sidebar-bg: rgba(255, 255, 255, 0.3);
+  --sidebar-item-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-item-selected: rgba(0, 0, 0, 0.06);
 }
 
 /* Dark theme */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-solid: #202020;
-    --bg-secondary: #2d2d2d;
-    --bg-tertiary: #383838;
-    --bg-card: #2d2d2d;
-    --bg-card-hover: #383838;
+    --bg-solid: transparent;
+    --bg-mica: rgba(32, 32, 32, 0.7);
+    --bg-secondary: rgba(45, 45, 45, 0.5);
+    --bg-tertiary: rgba(56, 56, 56, 0.6);
+    --bg-card: rgba(45, 45, 45, 0.7);
+    --bg-card-hover: rgba(56, 56, 56, 0.8);
 
     --text-primary: #ffffffe6;
     --text-secondary: #ffffff99;
@@ -88,9 +90,9 @@
     --border-strong: #ffffff33;
     --divider: #ffffff0f;
 
-    --control-bg: #ffffff0f;
+    --control-bg: rgba(255, 255, 255, 0.06);
     --control-border: #ffffff12;
-    --control-hover: #ffffff14;
+    --control-hover: rgba(255, 255, 255, 0.08);
 
     --toggle-on: var(--accent);
     --toggle-off: #9e9e9e;
@@ -99,8 +101,8 @@
     --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.2);
     --shadow-elevated: 0 8px 16px rgba(0, 0, 0, 0.4);
 
-    --sidebar-bg: var(--bg-secondary);
-    --sidebar-item-hover: #ffffff0a;
-    --sidebar-item-selected: #ffffff0f;
+    --sidebar-bg: rgba(45, 45, 45, 0.3);
+    --sidebar-item-hover: rgba(255, 255, 255, 0.04);
+    --sidebar-item-selected: rgba(255, 255, 255, 0.06);
   }
 }
