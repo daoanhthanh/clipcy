@@ -1161,7 +1161,7 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
     unsafe {
         let mut bitmap = BITMAP::default();
         if GetObjectW(
-            hbitmap,
+            hbitmap.into(),
             size_of::<BITMAP>() as i32,
             Some(&mut bitmap as *mut _ as *mut c_void),
         ) == 0
