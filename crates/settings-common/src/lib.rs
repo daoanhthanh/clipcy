@@ -69,6 +69,7 @@ impl Default for Settings {
 }
 
 /// Manages settings persistence
+#[derive(Debug)]
 pub struct SettingsManager {
     path: PathBuf,
 }

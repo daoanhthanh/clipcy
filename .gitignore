@@ -1,6 +1,6 @@
 # Generated files
 /target/
-/dist/
+*dist/
 
 # IDE
 .idea/
@@ -16,3 +16,6 @@ Thumbs.db
 **/*.rs.bk
 Cargo.lock
 nul
+
+# JS
+*node_modules/

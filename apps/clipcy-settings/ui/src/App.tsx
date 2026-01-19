@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, Show } from 'solid-js';
+import { createSignal, onMount, Show } from 'solid-js';
 import Sidebar from './components/Sidebar';
 import ToggleSwitch from './components/ToggleSwitch';
 import NumberInput from './components/NumberInput';
