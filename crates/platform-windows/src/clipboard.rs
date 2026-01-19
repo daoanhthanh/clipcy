@@ -479,7 +479,7 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get current clipboard item, with prioritized format detection
-    /// Priority order: Files > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format > Rich Text Format > CF_UNICODETEXT
+    /// Priority order: Files (unless single image file with image data available) > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format > Rich Text Format > CF_UNICODETEXT
     pub fn get_current_item() -> Option<ClipboardItem> {
         // Check available formats
         let has_files = Self::has_files_format();
@@ -494,10 +494,39 @@ impl WindowsClipboardMonitor {
         );
 
         // Priority 1: File drops (CF_HDROP)
+        // But if we have both files and image formats, and the file is a single image file
+        // (like from Windows Snipping Tool), prefer the image format for better preview
         if has_files {
             if let Some(files) = Self::get_clipboard_files() {
-                tracing::info!("Captured {} files", files.len());
-                return Some(ClipboardItem::new_files(files));
+                // Check if this is a single image file with image data also available
+                // Windows Snipping Tool puts screenshots in a temp folder and provides both CF_HDROP and CF_DIB
+                let should_prefer_image = has_image && files.len() == 1 && {
+                    let path = &files[0];
+                    let lower = path.to_lowercase();
+                    // Check if it's an image file extension
+                    let is_image_extension = lower.ends_with(".png")
+                        || lower.ends_with(".jpg")
+                        || lower.ends_with(".jpeg")
+                        || lower.ends_with(".bmp")
+                        || lower.ends_with(".gif");
+                    // Check if it's from Windows temp/screenshot locations
+                    let is_temp_location = lower.contains("\\appdata\\local\\")
+                        || lower.contains("\\temp\\")
+                        || lower.contains("\\tmp\\")
+                        || lower.contains("screenclip");
+                    is_image_extension && is_temp_location
+                };
+
+                if should_prefer_image {
+                    tracing::info!(
+                        "Detected single image file from temp location with image data available, preferring image format: {}",
+                        &files[0]
+                    );
+                    // Fall through to image handling below
+                } else {
+                    tracing::info!("Captured {} files", files.len());
+                    return Some(ClipboardItem::new_files(files));
+                }
             } else {
                 tracing::warn!("has_files_format() returned true but get_clipboard_files() failed");
             }
