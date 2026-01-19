@@ -748,7 +748,7 @@ unsafe fn calculate_preview_height(content: &Option<PreviewContent>) -> i32 {
                 screen_dc,
                 &mut text_wide,
                 &mut text_rect,
-                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT,
+                DT_LEFT | DT_TOP | DT_WORDBREAK | DT_EDITCONTROL | DT_CALCRECT,
             );
 
             let _ = SelectObject(screen_dc, old_font);
@@ -2099,12 +2099,12 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
                 let mut text_wide: Vec<u16> =
                     text.encode_utf16().chain(std::iter::once(0)).collect();
 
-                // Calculate text height
+                // Calculate text height (DT_EDITCONTROL ensures proper line breaking)
                 let height = DrawTextW(
                     mem_dc,
                     &mut text_wide,
                     &mut text_rect,
-                    DT_LEFT | DT_TOP | DT_WORDBREAK | DT_CALCRECT,
+                    DT_LEFT | DT_TOP | DT_WORDBREAK | DT_EDITCONTROL | DT_CALCRECT,
                 );
 
                 content_height = height;
@@ -2126,7 +2126,7 @@ unsafe fn paint_preview(hwnd: HWND, hdc: HDC, data: &PreviewData) {
                     mem_dc,
                     &mut text_wide,
                     &mut text_rect,
-                    DT_LEFT | DT_TOP | DT_WORDBREAK,
+                    DT_LEFT | DT_TOP | DT_WORDBREAK | DT_EDITCONTROL,
                 );
 
                 let _ = SelectObject(mem_dc, old_font);
