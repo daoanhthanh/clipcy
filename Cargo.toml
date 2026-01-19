@@ -3,12 +3,14 @@ resolver = "2"
 members = [
     "crates/core",
     "crates/storage",
+    "crates/settings-common",
     "crates/platform-macos",
     "crates/platform-windows",
     "crates/platform-linux",
     "apps/clipcy-macos",
     "apps/clipcy-windows",
     "apps/clipcy-linux",
+    "apps/clipcy-settings",
 ]
 
 [workspace.package]

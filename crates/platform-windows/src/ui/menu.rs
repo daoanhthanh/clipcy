@@ -9,7 +9,7 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::Shell::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use clipboard_core::domain::{ClipboardItem, Theme};
+use clipboard_core::domain::{ClipboardItem, Settings, Theme};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::{UIEvent, UIEventCallback, UIHandler};
 
@@ -25,6 +25,13 @@ enum TrayCommand {
     Hide,
     SetTooltip(String),
     ShowPopup(Vec<ClipboardItem>),
+    UpdateSettings(Settings),
+}
+
+/// Context stored in window user data for tray menu
+struct TrayContext {
+    callback: Arc<RwLock<Option<UIEventCallback>>>,
+    settings: Arc<RwLock<Settings>>,
 }
 
 /// Windows native popup menu implementation with system tray support
@@ -32,6 +39,7 @@ pub struct WindowsUIHandler {
     popup_visible: Arc<AtomicBool>,
     callback: Arc<RwLock<Option<UIEventCallback>>>,
     theme: Arc<RwLock<Theme>>,
+    settings: Arc<RwLock<Settings>>,
     tray_visible: Arc<AtomicBool>,
     tray_hwnd: Arc<AtomicIsize>,
     tray_tx: mpsc::Sender<TrayCommand>,
@@ -41,17 +49,19 @@ impl WindowsUIHandler {
     pub fn new() -> Self {
         let (tray_tx, tray_rx) = mpsc::channel();
         let callback: Arc<RwLock<Option<UIEventCallback>>> = Arc::new(RwLock::new(None));
+        let settings: Arc<RwLock<Settings>> = Arc::new(RwLock::new(Settings::default()));
         let tray_hwnd = Arc::new(AtomicIsize::new(0));
         let tray_visible = Arc::new(AtomicBool::new(false));
 
         // Start tray message loop thread
         let callback_clone = Arc::clone(&callback);
+        let settings_clone = Arc::clone(&settings);
         let hwnd_store = Arc::clone(&tray_hwnd);
         let visible_store = Arc::clone(&tray_visible);
 
         thread::spawn(move || {
             unsafe {
-                Self::tray_thread(tray_rx, callback_clone, hwnd_store, visible_store);
+                Self::tray_thread(tray_rx, callback_clone, settings_clone, hwnd_store, visible_store);
             }
         });
 
@@ -67,6 +77,7 @@ impl WindowsUIHandler {
             popup_visible: Arc::new(AtomicBool::new(false)),
             callback,
             theme: Arc::new(RwLock::new(Theme::Light)),
+            settings,
             tray_visible,
             tray_hwnd,
             tray_tx,
@@ -76,6 +87,7 @@ impl WindowsUIHandler {
     unsafe fn tray_thread(
         rx: mpsc::Receiver<TrayCommand>,
         callback: Arc<RwLock<Option<UIEventCallback>>>,
+        settings: Arc<RwLock<Settings>>,
         hwnd_store: Arc<AtomicIsize>,
         visible_store: Arc<AtomicBool>,
     ) {
@@ -110,8 +122,11 @@ impl WindowsUIHandler {
 
         hwnd_store.store(hwnd.0 as isize, Ordering::SeqCst);
 
-        // Store callback in window data
-        let ctx = Box::new(callback.clone());
+        // Store context in window data
+        let ctx = Box::new(TrayContext {
+            callback: callback.clone(),
+            settings: settings.clone(),
+        });
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, Box::into_raw(ctx) as isize);
 
         // Message loop
@@ -144,6 +159,9 @@ impl WindowsUIHandler {
                     TrayCommand::ShowPopup(items) => {
                         // Use the modern popup instead of classic TrackPopupMenu
                         popup::show_modern_popup(&items, callback.clone());
+                    }
+                    TrayCommand::UpdateSettings(new_settings) => {
+                        *settings.write() = new_settings;
                     }
                 }
             }
@@ -338,14 +356,20 @@ impl WindowsUIHandler {
         }
     }
 
-    unsafe fn show_tray_menu(hwnd: HWND, callback: &Arc<RwLock<Option<UIEventCallback>>>) {
+    unsafe fn show_tray_menu(hwnd: HWND, ctx: &TrayContext) {
         let menu = match CreatePopupMenu() {
             Ok(m) => m,
             Err(_) => return,
         };
 
-        // Add "Show Clipboard" option
-        let show_text: Vec<u16> = "Show Clipboard (Ctrl+Shift+V)"
+        let settings = ctx.settings.read();
+        let shortcut = settings.hotkey.clone();
+        drop(settings);
+
+        let mut index = 0u32;
+
+        // Add "Show Clipboard" option with current shortcut
+        let show_text: Vec<u16> = format!("Show Clipboard ({})", shortcut)
             .encode_utf16()
             .chain(std::iter::once(0))
             .collect();
@@ -357,7 +381,18 @@ impl WindowsUIHandler {
             cch: show_text.len() as u32 - 1,
             ..Default::default()
         };
-        let _ = InsertMenuItemW(menu, 0, true, &show_item);
+        let _ = InsertMenuItemW(menu, index, true, &show_item);
+        index += 1;
+
+        // Add separator
+        let sep1 = MENUITEMINFOW {
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
+            fMask: MIIM_TYPE,
+            fType: MFT_SEPARATOR,
+            ..Default::default()
+        };
+        let _ = InsertMenuItemW(menu, index, true, &sep1);
+        index += 1;
 
         // Add "Settings..." option
         let settings_text: Vec<u16> = "Settings..."
@@ -372,16 +407,8 @@ impl WindowsUIHandler {
             cch: settings_text.len() as u32 - 1,
             ..Default::default()
         };
-        let _ = InsertMenuItemW(menu, 1, true, &settings_item);
-
-        // Add separator
-        let sep = MENUITEMINFOW {
-            cbSize: size_of::<MENUITEMINFOW>() as u32,
-            fMask: MIIM_TYPE,
-            fType: MFT_SEPARATOR,
-            ..Default::default()
-        };
-        let _ = InsertMenuItemW(menu, 2, true, &sep);
+        let _ = InsertMenuItemW(menu, index, true, &settings_item);
+        index += 1;
 
         // Add "Exit" option
         let exit_text: Vec<u16> = "Exit"
@@ -396,7 +423,7 @@ impl WindowsUIHandler {
             cch: exit_text.len() as u32 - 1,
             ..Default::default()
         };
-        let _ = InsertMenuItemW(menu, 3, true, &exit_item);
+        let _ = InsertMenuItemW(menu, index, true, &exit_item);
 
         // Get cursor position
         let mut point = POINT::default();
@@ -423,7 +450,7 @@ impl WindowsUIHandler {
         // Handle selection
         let selected_id = result.0 as u32;
         if selected_id > 0 {
-            if let Some(cb) = callback.read().as_ref() {
+            if let Some(cb) = ctx.callback.read().as_ref() {
                 match selected_id {
                     ID_TRAY_EXIT => {
                         tracing::info!("Exit clicked from tray menu");
@@ -501,6 +528,17 @@ impl UIHandler for WindowsUIHandler {
             .map_err(|_| ClipboardError::UI("Failed to send tray command".to_string()))?;
         Ok(())
     }
+
+    fn update_settings(&self, settings: &Settings) -> Result<()> {
+        *self.settings.write() = settings.clone();
+        self.tray_tx.send(TrayCommand::UpdateSettings(settings.clone()))
+            .map_err(|_| ClipboardError::UI("Failed to send settings update command".to_string()))?;
+        Ok(())
+    }
+
+    fn get_settings(&self) -> Settings {
+        self.settings.read().clone()
+    }
 }
 
 unsafe extern "system" fn tray_window_proc(
@@ -513,19 +551,17 @@ unsafe extern "system" fn tray_window_proc(
         WM_TRAYICON => {
             let event = lparam.0 as u32;
             if event == WM_RBUTTONUP || event == WM_CONTEXTMENU {
-                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
-                    as *const Arc<RwLock<Option<UIEventCallback>>>;
+                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *const TrayContext;
 
                 if !ctx_ptr.is_null() {
-                    let callback = &*ctx_ptr;
-                    WindowsUIHandler::show_tray_menu(hwnd, callback);
+                    let ctx = &*ctx_ptr;
+                    WindowsUIHandler::show_tray_menu(hwnd, ctx);
                 }
             }
             LRESULT(0)
         }
         WM_DESTROY => {
-            let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
-                as *mut Arc<RwLock<Option<UIEventCallback>>>;
+            let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut TrayContext;
 
             if !ctx_ptr.is_null() {
                 drop(Box::from_raw(ctx_ptr));

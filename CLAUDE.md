@@ -38,10 +38,10 @@ The project follows **Hexagonal Architecture** (Ports and Adapters):
 │       (clipcy-windows, clipcy-macos, clipcy-linux)          │
 └─────────────────────────────────────────────────────────────┘
                               │
-┌─────────────────────────────────────────────────────────────┐
-│                    Platform Adapters                        │
-│  (platform-windows, platform-macos, platform-linux)         │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                           Platform Adapters                               │
+│  (clipcy-platform-windows, clipcy-platform-macos, clipcy-platform-linux)  │
+└───────────────────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
 │                      Core Domain                            │

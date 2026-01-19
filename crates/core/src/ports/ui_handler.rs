@@ -1,4 +1,4 @@
-use crate::domain::{ClipboardItem, Theme};
+use crate::domain::{ClipboardItem, Settings, Theme};
 use crate::error::Result;
 
 /// Menu item selection callback
@@ -11,6 +11,8 @@ pub enum UIEvent {
     ClearHistoryClicked,
     QuitClicked,
     SearchChanged(String),
+    AutostartToggled(bool),
+    PreviewPanelToggled(bool),
 }
 
 /// Callback for UI events
@@ -41,4 +43,10 @@ pub trait UIHandler: Send + Sync {
 
     /// Update tray tooltip
     fn set_tray_tooltip(&self, tooltip: &str) -> Result<()>;
+
+    /// Update settings for tray menu display
+    fn update_settings(&self, settings: &Settings) -> Result<()>;
+
+    /// Get current settings from UI handler
+    fn get_settings(&self) -> Settings;
 }

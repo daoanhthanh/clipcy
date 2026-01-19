@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use clipboard_core::application::{AppController, ClipboardService};
 use clipboard_core::domain::Settings;
-use clipboard_core::ports::AutostartHandler;
+use clipboard_core::ports::{AutostartHandler, UIHandler};
 use clipboard_storage::SqliteClipboardRepository;
 use clipcy_platform_windows::ui::WindowsUIHandler;
 use clipcy_platform_windows::{
@@ -70,14 +70,6 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting Clipcy...");
 
-    // Enable auto-start on Windows startup
-    let autostart_handler = WindowsAutostartHandler::new();
-    if !autostart_handler.is_enabled().unwrap_or(false) {
-        if let Err(e) = autostart_handler.enable() {
-            tracing::warn!("Failed to enable auto-start: {}", e);
-        }
-    }
-
     let repository = Arc::new(SqliteClipboardRepository::default_location().await?);
 
     let monitor = Arc::new(WindowsClipboardMonitor::new());
@@ -85,12 +77,18 @@ async fn main() -> anyhow::Result<()> {
     let hotkey_handler = Arc::new(WindowsHotkeyHandler::new());
     let theme_detector = Arc::new(WindowsThemeDetector::new());
     let ui_handler = Arc::new(WindowsUIHandler::new());
+    let autostart_handler = Arc::new(WindowsAutostartHandler::new());
+
+    // Initialize UI handler with current settings including autostart state
+    let mut settings = Settings::default();
+    settings.start_on_boot = autostart_handler.is_enabled().unwrap_or(true);
+    let _ = ui_handler.update_settings(&settings);
 
     let clipboard_service = Arc::new(ClipboardService::new(
         monitor,
         repository,
         paste_handler,
-        Settings::default(),
+        settings.clone(),
     ));
 
     let controller = AppController::new(
@@ -98,11 +96,11 @@ async fn main() -> anyhow::Result<()> {
         hotkey_handler,
         theme_detector,
         ui_handler,
+        autostart_handler,
     );
 
     controller.start().await?;
 
-    let settings = Settings::default();
     tracing::info!("Clipcy started. Press {} to show popup.", settings.hotkey);
 
     loop {

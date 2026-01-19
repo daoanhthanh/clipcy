@@ -24,7 +24,7 @@ winres = "0.1"
 
 [package.metadata.winres]
 ProductName = "Clipcy"
-FileDescription = "Cross-platform clipboard manager"
+FileDescription = "Clipcy"
 LegalCopyright = "Copyright (c) 2024 ThanhDA"
 
 [package.metadata.wix]

@@ -69,7 +69,7 @@
                     <Component Id='ApplicationShortcut' Guid='C3D4E5F6-7890-ABCD-EF12-345678901234'>
                         <Shortcut Id='ApplicationStartMenuShortcut'
                             Name='Clipcy'
-                            Description='Cross-platform Clipboard Manager'
+                            Description='Clipcy'
                             Target='[APPLICATIONFOLDER]clipcy.exe'
                             WorkingDirectory='APPLICATIONFOLDER'
                             Icon='ProductICO'/>
@@ -82,7 +82,7 @@
                 <Component Id='StartupShortcut' Guid='D4E5F678-90AB-CDEF-1234-567890123456'>
                     <Shortcut Id='ApplicationStartupShortcut'
                         Name='Clipcy'
-                        Description='Cross-platform Clipboard Manager'
+                        Description='Clipcy - Cross-platform Clipboard Manager'
                         Target='[APPLICATIONFOLDER]clipcy.exe'
                         WorkingDirectory='APPLICATIONFOLDER'
                         Icon='ProductICO'/>

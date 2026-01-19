@@ -1,11 +1,42 @@
 use parking_lot::RwLock;
+use std::process::Command;
 use std::sync::Arc;
 use tokio::runtime::Handle;
 
 use crate::application::ClipboardService;
 use crate::domain::Theme;
 use crate::error::Result;
-use crate::ports::{HotkeyHandler, ThemeDetector, UIEvent, UIHandler};
+use crate::ports::{AutostartHandler, HotkeyHandler, ThemeDetector, UIEvent, UIHandler};
+
+/// Open the settings window by spawning the Tauri settings app
+fn open_settings_window() {
+    // Try to find the settings executable relative to the main executable
+    let settings_exe = std::env::current_exe()
+        .ok()
+        .and_then(|exe| {
+            let dir = exe.parent()?;
+            // Try different possible locations
+            let candidates = [
+                dir.join("clipcy-settings.exe"),
+                dir.join("clipcy-settings"),
+                dir.parent()?.join("clipcy-settings").join("clipcy-settings.exe"),
+            ];
+            candidates.into_iter().find(|p| p.exists())
+        });
+
+    match settings_exe {
+        Some(exe) => {
+            tracing::info!("Launching settings window: {:?}", exe);
+            match Command::new(&exe).spawn() {
+                Ok(_) => tracing::info!("Settings window launched successfully"),
+                Err(e) => tracing::error!("Failed to launch settings window: {}", e),
+            }
+        }
+        None => {
+            tracing::warn!("Settings executable not found. Build with: cargo build -p clipcy-settings");
+        }
+    }
+}
 
 /// Main application controller - orchestrates all services
 pub struct AppController {
@@ -13,6 +44,7 @@ pub struct AppController {
     hotkey_handler: Arc<dyn HotkeyHandler>,
     theme_detector: Arc<dyn ThemeDetector>,
     ui_handler: Arc<dyn UIHandler>,
+    autostart_handler: Arc<dyn AutostartHandler>,
     current_theme: Arc<RwLock<Theme>>,
     hotkey_handle: Arc<RwLock<Option<u32>>>,
 }
@@ -23,12 +55,14 @@ impl AppController {
         hotkey_handler: Arc<dyn HotkeyHandler>,
         theme_detector: Arc<dyn ThemeDetector>,
         ui_handler: Arc<dyn UIHandler>,
+        autostart_handler: Arc<dyn AutostartHandler>,
     ) -> Self {
         Self {
             clipboard_service,
             hotkey_handler,
             theme_detector,
             ui_handler,
+            autostart_handler,
             current_theme: Arc::new(RwLock::new(Theme::default())),
             hotkey_handle: Arc::new(RwLock::new(None)),
         }
@@ -123,10 +157,12 @@ impl AppController {
     fn setup_ui_events(&self, runtime_handle: Handle) {
         let clipboard = Arc::clone(&self.clipboard_service);
         let ui = Arc::clone(&self.ui_handler);
+        let autostart = Arc::clone(&self.autostart_handler);
 
         self.ui_handler.on_event(Box::new(move |event| {
             let clipboard = Arc::clone(&clipboard);
             let ui = Arc::clone(&ui);
+            let autostart = Arc::clone(&autostart);
 
             // Use the captured runtime handle to spawn on tokio from non-tokio thread
             runtime_handle.spawn(async move {
@@ -147,8 +183,8 @@ impl AppController {
                         }
                     }
                     UIEvent::SettingsClicked => {
-                        // TODO: Open settings window
-                        tracing::info!("Settings clicked");
+                        tracing::info!("Settings clicked - opening settings window");
+                        open_settings_window();
                     }
                     UIEvent::QuitClicked => {
                         std::process::exit(0);
@@ -164,6 +200,20 @@ impl AppController {
                                 tracing::error!("Search failed: {}", e);
                             }
                         }
+                    }
+                    UIEvent::AutostartToggled(enabled) => {
+                        let result = if enabled {
+                            autostart.enable()
+                        } else {
+                            autostart.disable()
+                        };
+                        if let Err(e) = result {
+                            tracing::error!("Failed to toggle autostart: {}", e);
+                        }
+                    }
+                    UIEvent::PreviewPanelToggled(enabled) => {
+                        tracing::info!("Preview panel toggled: {}", enabled);
+                        // Settings are already updated in the UI handler
                     }
                 }
             });
