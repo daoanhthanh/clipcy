@@ -17,7 +17,7 @@ const ITEM_PADDING_X: i32 = 12;
 const SEPARATOR_HEIGHT: i32 = 9;
 const POPUP_WIDTH: i32 = 320;
 const POPUP_MAX_ITEMS_HEIGHT: i32 = 400; // Max height for scrollable items section
-const FIXED_SECTION_HEIGHT: i32 = SEPARATOR_HEIGHT + ITEM_HEIGHT * 2; // Separator + Settings + Clear History
+const FIXED_SECTION_HEIGHT: i32 = SEPARATOR_HEIGHT + ITEM_HEIGHT * 1; // Separator + Clear History
 
 // Search section constants
 const SEARCH_SECTION_HEIGHT: i32 = 32;
@@ -263,15 +263,7 @@ pub fn show_modern_popup(
             original_data: None,
         });
 
-        // Add Settings and Clear History
-        menu_items.push(MenuItem {
-            id: 1000,
-            text: "Settings...".to_string(),
-            is_separator: false,
-            is_image: false,
-            thumbnail: None,
-            original_data: None,
-        });
+        // Add Clear History
         menu_items.push(MenuItem {
             id: 1001,
             text: "Clear History".to_string(),
@@ -281,8 +273,8 @@ pub fn show_modern_popup(
             original_data: None,
         });
 
-        // Calculate scrollable items count (all items except separator, Settings, Clear History)
-        let scrollable_item_count = menu_items.len().saturating_sub(3);
+        // Calculate scrollable items count (all items except separator, Clear History)
+        let scrollable_item_count = menu_items.len().saturating_sub(2);
 
         // Initialize filtered indices with all clipboard items
         let filtered_indices: Vec<usize> = (0..scrollable_item_count).collect();
@@ -1505,7 +1497,6 @@ fn select_item(data: &mut PopupData, index: usize, hwnd: HWND) {
 
         if let Some(cb) = data.callback.read().as_ref() {
             let event = match item.id {
-                1000 => UIEvent::SettingsClicked,
                 1001 => UIEvent::ClearHistoryClicked,
                 id => UIEvent::ItemSelected((id - 1) as usize),
             };

@@ -18,6 +18,7 @@ use super::popup;
 const WM_TRAYICON: u32 = WM_USER + 1;
 const ID_TRAY_EXIT: u32 = 2000;
 const ID_TRAY_SHOW: u32 = 2001;
+const ID_TRAY_SETTINGS: u32 = 2002;
 
 enum TrayCommand {
     Show,
@@ -358,6 +359,21 @@ impl WindowsUIHandler {
         };
         let _ = InsertMenuItemW(menu, 0, true, &show_item);
 
+        // Add "Settings..." option
+        let settings_text: Vec<u16> = "Settings..."
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        let settings_item = MENUITEMINFOW {
+            cbSize: size_of::<MENUITEMINFOW>() as u32,
+            fMask: MIIM_STRING | MIIM_ID,
+            wID: ID_TRAY_SETTINGS,
+            dwTypeData: windows::core::PWSTR(settings_text.as_ptr() as *mut u16),
+            cch: settings_text.len() as u32 - 1,
+            ..Default::default()
+        };
+        let _ = InsertMenuItemW(menu, 1, true, &settings_item);
+
         // Add separator
         let sep = MENUITEMINFOW {
             cbSize: size_of::<MENUITEMINFOW>() as u32,
@@ -365,7 +381,7 @@ impl WindowsUIHandler {
             fType: MFT_SEPARATOR,
             ..Default::default()
         };
-        let _ = InsertMenuItemW(menu, 1, true, &sep);
+        let _ = InsertMenuItemW(menu, 2, true, &sep);
 
         // Add "Exit" option
         let exit_text: Vec<u16> = "Exit"
@@ -380,7 +396,7 @@ impl WindowsUIHandler {
             cch: exit_text.len() as u32 - 1,
             ..Default::default()
         };
-        let _ = InsertMenuItemW(menu, 2, true, &exit_item);
+        let _ = InsertMenuItemW(menu, 3, true, &exit_item);
 
         // Get cursor position
         let mut point = POINT::default();
@@ -416,6 +432,10 @@ impl WindowsUIHandler {
                     ID_TRAY_SHOW => {
                         tracing::info!("Show clipboard clicked from tray menu");
                         // This would trigger showing the clipboard popup
+                    }
+                    ID_TRAY_SETTINGS => {
+                        tracing::info!("Settings clicked from tray menu");
+                        cb(UIEvent::SettingsClicked);
                     }
                     _ => {}
                 }
