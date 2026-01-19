@@ -1395,6 +1395,36 @@ unsafe extern "system" fn preview_window_proc(
             }
             LRESULT(0)
         }
+        WM_KEYDOWN => {
+            // Handle ESC to close popup
+            if wparam.0 as u32 == VK_ESCAPE {
+                POPUP_VISIBLE.store(false, Ordering::SeqCst);
+                let popup_hwnd_val = POPUP_HWND.load(Ordering::SeqCst);
+                if popup_hwnd_val != 0 {
+                    let popup_hwnd = HWND(popup_hwnd_val as *mut c_void);
+                    let _ = PostMessageW(Some(popup_hwnd), WM_CLOSE, WPARAM(0), LPARAM(0));
+                }
+            }
+            LRESULT(0)
+        }
+        WM_ACTIVATE => {
+            // When preview loses focus, check if focus went to main popup
+            // If not, close everything
+            if (wparam.0 & 0xFFFF) == 0 {
+                let popup_hwnd_val = POPUP_HWND.load(Ordering::SeqCst);
+                let activating_hwnd = HWND(lparam.0 as *mut c_void);
+
+                // If activating window is not the main popup, close everything
+                if popup_hwnd_val == 0 || activating_hwnd.0 as isize != popup_hwnd_val {
+                    POPUP_VISIBLE.store(false, Ordering::SeqCst);
+                    if popup_hwnd_val != 0 {
+                        let popup_hwnd = HWND(popup_hwnd_val as *mut c_void);
+                        let _ = PostMessageW(Some(popup_hwnd), WM_CLOSE, WPARAM(0), LPARAM(0));
+                    }
+                }
+            }
+            LRESULT(0)
+        }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
 }
