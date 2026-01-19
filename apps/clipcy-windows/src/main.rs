@@ -12,17 +12,61 @@ use clipcy_platform_windows::{
     WindowsAutostartHandler, WindowsClipboardMonitor, WindowsHotkeyHandler, WindowsPasteHandler,
     WindowsThemeDetector,
 };
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+
+/// Initialize logging based on build mode:
+/// - Debug: logs to console only
+/// - Release: logs to file in %LOCALAPPDATA%/clipcy/logs/
+fn init_logging() -> Option<tracing_appender::non_blocking::WorkerGuard> {
+    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| {
+        "clipcy=debug,clipboard_core=debug,clipcy_platform_windows=debug,clipboard_storage=info"
+            .to_string()
+    });
+
+    let env_filter = tracing_subscriber::EnvFilter::new(&filter);
+
+    #[cfg(debug_assertions)]
+    {
+        // Debug mode: console only
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(tracing_subscriber::fmt::layer())
+            .init();
+        None
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        // Release mode: log to file
+        let log_dir = dirs::data_local_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("clipcy")
+            .join("logs");
+
+        // Create log directory if it doesn't exist
+        let _ = std::fs::create_dir_all(&log_dir);
+
+        let file_appender = tracing_appender::rolling::daily(&log_dir, "clipcy.log");
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_writer(non_blocking)
+                    .with_ansi(false),
+            )
+            .init();
+
+        Some(guard)
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Use RUST_LOG env var if set, otherwise use default filter
-    // Run with RUST_LOG=debug for more verbose output
-    let filter = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "clipcy=debug,clipboard_core=debug,clipcy_platform_windows=debug,clipboard_storage=info".to_string());
-
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .init();
+    // Keep the guard alive for the lifetime of the application
+    let _log_guard = init_logging();
 
     tracing::info!("Starting Clipcy...");
 
