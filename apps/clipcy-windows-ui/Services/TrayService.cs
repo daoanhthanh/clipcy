@@ -63,8 +63,8 @@ public class TrayService : IDisposable
       ContextFlyout = contextMenu
     };
 
-    // Double-click to show main window
-    _trayIcon.TrayMouseDoubleClick += (s, e) => ShowMainWindow();
+    // Note: Double-click event handler removed for compatibility with H.NotifyIcon.WinUI 2.2.0
+    // Use context menu "Show Clipcy" option or hotkey to show main window
 
     // TODO: Set icon from resources
     // _trayIcon.IconSource = new BitmapImage(new Uri("ms-appx:///Assets/icon.ico"));

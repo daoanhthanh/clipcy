@@ -17,11 +17,15 @@ public sealed partial class MainWindow : Window
   {
     this.InitializeComponent();
 
+    // Set window size
+    this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 400, Height = 500 });
+
     // Apply Mica backdrop for Windows 11 look
     SetupMicaBackdrop();
 
     ViewModel = new MainViewModel();
-    HistoryListView.DataContext = ViewModel;
+    // Set DataContext for the root Grid
+    ((FrameworkElement)this.Content).DataContext = this;
 
     // Handle window activation/deactivation
     this.Activated += MainWindow_Activated;

@@ -19,6 +19,9 @@ public sealed partial class SettingsWindow : Window
   {
     this.InitializeComponent();
 
+    // Set window size
+    this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 500, Height = 600 });
+
     // Load current settings
     _settings = App.Bridge?.GetSettings() ?? new SettingsDto();
     LoadSettingsToUI();
