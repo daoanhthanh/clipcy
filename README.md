@@ -38,12 +38,22 @@ graph TD
 
 - Clipboard history with text, images, and files support
 - Global hotkey (default: `Ctrl+Shift+V`)
-- System tray integration
+- System tray integration with icon and context menu
 - SQLite storage
 - Native settings UI
 - Light/Dark/System theme support
 - Auto-start on boot
-- Mica backdrop (Windows 11)
+- Context menu-style popup with acrylic/mica backdrop (Windows 11)
+- Borderless floating window (always on top, no taskbar entry)
+- Multi-monitor support (appears on cursor's monitor)
+- Keyboard-first navigation:
+  - First item auto-selected on open
+  - Up/Down arrows to navigate
+  - Enter to paste selected item
+  - Escape to close
+  - Auto-focus search on typing
+- Auto-hide on click outside or focus loss
+- Screen boundary detection
 
 ## Platform Support
 

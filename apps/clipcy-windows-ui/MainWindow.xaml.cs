@@ -216,6 +216,7 @@ public sealed partial class MainWindow : Window
             SearchBox.Text = string.Empty;
 
             // Focus on the list and select first item for immediate keyboard navigation
+            // Users can start typing to auto-focus search or use arrow keys to navigate
             if (ViewModel.Items.Count > 0)
             {
                 HistoryListView.SelectedIndex = 0;
@@ -223,6 +224,7 @@ public sealed partial class MainWindow : Window
             }
             else
             {
+                // If no items, focus search box
                 SearchBox.Focus(FocusState.Programmatic);
             }
 
@@ -300,6 +302,57 @@ public sealed partial class MainWindow : Window
                 SearchBox.Focus(FocusState.Programmatic);
             }
         }
+        // Auto-focus search box when user types alphanumeric characters
+        else if (SearchBox.FocusState == FocusState.Unfocused)
+        {
+            // Check if it's a character key (letter, number, space, or symbol)
+            if (IsCharacterKey(e.Key))
+            {
+                // Focus the search box - the character will be typed there
+                SearchBox.Focus(FocusState.Programmatic);
+                // Don't mark as handled so the character propagates to the search box
+            }
+        }
+    }
+
+    private bool IsCharacterKey(Windows.System.VirtualKey key)
+    {
+        // Letters (A-Z)
+        if (key >= Windows.System.VirtualKey.A && key <= Windows.System.VirtualKey.Z)
+            return true;
+
+        // Numbers (0-9)
+        if (key >= Windows.System.VirtualKey.Number0 && key <= Windows.System.VirtualKey.Number9)
+            return true;
+
+        // Numpad numbers
+        if (key >= Windows.System.VirtualKey.NumberPad0 && key <= Windows.System.VirtualKey.NumberPad9)
+            return true;
+
+        // Space
+        if (key == Windows.System.VirtualKey.Space)
+            return true;
+
+        // Common punctuation and symbols that might be typed
+        switch (key)
+        {
+            case Windows.System.VirtualKey.Subtract:
+            case Windows.System.VirtualKey.Add:
+            case (Windows.System.VirtualKey)186: // Semicolon
+            case (Windows.System.VirtualKey)187: // Equals
+            case (Windows.System.VirtualKey)188: // Comma
+            case (Windows.System.VirtualKey)189: // Minus
+            case (Windows.System.VirtualKey)190: // Period
+            case (Windows.System.VirtualKey)191: // Slash
+            case (Windows.System.VirtualKey)192: // Backtick
+            case (Windows.System.VirtualKey)219: // Open bracket
+            case (Windows.System.VirtualKey)220: // Backslash
+            case (Windows.System.VirtualKey)221: // Close bracket
+            case (Windows.System.VirtualKey)222: // Quote
+                return true;
+        }
+
+        return false;
     }
 
     public void ShowAtCursor()
