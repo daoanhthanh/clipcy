@@ -381,7 +381,7 @@ public sealed partial class MainWindow : Window
                 await Task.Delay(50);
 
                 // Simulate Ctrl+V with AutoHotkey compatibility marker
-                SimulateCtrlV();
+                SimulatePaste();
             }
             catch (Exception ex)
             {
@@ -428,7 +428,7 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void SimulateCtrlV()
+    private void SimulatePaste()
     {
         var inputs = new INPUT[4];
 
@@ -440,7 +440,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x1D,
             dwFlags = 0,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
+            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
         };
 
         // V down
@@ -451,7 +451,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x2F,
             dwFlags = 0,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
+            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
         };
 
         // V up
@@ -462,7 +462,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x2F,
             dwFlags = KEYEVENTF_KEYUP,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
+            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
         };
 
         // Ctrl up
@@ -473,7 +473,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x1D,
             dwFlags = KEYEVENTF_KEYUP,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
+            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
         };
 
         SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
@@ -717,9 +717,9 @@ public sealed partial class MainWindow : Window
             Background = new Microsoft.UI.Xaml.Media.AcrylicBrush
             {
                 TintColor = Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Microsoft.UI.Colors.Black
-                    : Microsoft.UI.Colors.White,
-                TintOpacity = 0.7,
+                    ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
+                    : Windows.UI.Color.FromArgb(255, 243, 243, 243),
+                TintOpacity = 0.15,
                 FallbackColor = Application.Current.RequestedTheme == ApplicationTheme.Dark
                     ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
                     : Windows.UI.Color.FromArgb(255, 243, 243, 243),
@@ -1169,9 +1169,58 @@ public sealed partial class MainWindow : Window
                 var transform = _previewTarget.TransformToVisual(null);
                 var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
 
-                // Position popup to the right of the target
-                popup.HorizontalOffset = targetPos.X + _previewTarget.ActualWidth + 10;
-                popup.VerticalOffset = targetPos.Y;
+                // Get window bounds
+                var windowBounds = this.AppWindow.Size;
+
+                // Popup dimensions
+                const double popupWidth = 360;
+                const double popupHeight = 400;
+                const double spacing = 10;
+
+                // Calculate available space on each side
+                double spaceRight = windowBounds.Width - (targetPos.X + _previewTarget.ActualWidth);
+                double spaceLeft = targetPos.X;
+                double spaceBottom = windowBounds.Height - (targetPos.Y + _previewTarget.ActualHeight);
+                double spaceTop = targetPos.Y;
+
+                // Determine best position based on available space
+                double horizontalOffset;
+                double verticalOffset;
+
+                // Try right first, then left
+                if (spaceRight >= popupWidth + spacing)
+                {
+                    // Position to the right
+                    horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
+                    verticalOffset = targetPos.Y;
+                }
+                else if (spaceLeft >= popupWidth + spacing)
+                {
+                    // Position to the left
+                    horizontalOffset = targetPos.X - popupWidth - spacing;
+                    verticalOffset = targetPos.Y;
+                }
+                else if (spaceBottom >= popupHeight + spacing)
+                {
+                    // Position below
+                    horizontalOffset = targetPos.X;
+                    verticalOffset = targetPos.Y + _previewTarget.ActualHeight + spacing;
+                }
+                else if (spaceTop >= popupHeight + spacing)
+                {
+                    // Position above
+                    horizontalOffset = targetPos.X;
+                    verticalOffset = targetPos.Y - popupHeight - spacing;
+                }
+                else
+                {
+                    // Default to right if no good position found
+                    horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
+                    verticalOffset = targetPos.Y;
+                }
+
+                popup.HorizontalOffset = horizontalOffset;
+                popup.VerticalOffset = verticalOffset;
 
                 popup.IsOpen = true;
             }
