@@ -20,6 +20,12 @@ public sealed partial class MainWindow : Window
     private static extern bool GetCursorPos(out POINT lpPoint);
 
     [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [DllImport("user32.dll")]
     private static extern int GetSystemMetrics(int nIndex);
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -30,6 +36,12 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
@@ -65,11 +77,32 @@ public sealed partial class MainWindow : Window
     private const int SM_CXSCREEN = 0;
     private const int SM_CYSCREEN = 1;
 
+    // Monitor constants
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {
         public int X;
         public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MONITORINFO
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
     }
 
     public MainWindow()
@@ -169,9 +202,15 @@ public sealed partial class MainWindow : Window
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated)
         {
-            this.HidePopup();
+            // Only hide if the window was previously visible
+            // This prevents hiding immediately after showing
+            if (this.AppWindow.IsVisible)
+            {
+                this.HidePopup();
+            }
         }
-        else
+        else if (args.WindowActivationState == WindowActivationState.CodeActivated ||
+                 args.WindowActivationState == WindowActivationState.PointerActivated)
         {
             ViewModel.RefreshHistory();
             SearchBox.Text = string.Empty;
@@ -186,12 +225,12 @@ public sealed partial class MainWindow : Window
             {
                 SearchBox.Focus(FocusState.Programmatic);
             }
-        }
 
-        // Keep acrylic effect active even when not focused
-        if (_configurationSource != null)
-        {
-            _configurationSource.IsInputActive = true;
+            // Keep acrylic effect active
+            if (_configurationSource != null)
+            {
+                _configurationSource.IsInputActive = true;
+            }
         }
     }
 
@@ -267,34 +306,57 @@ public sealed partial class MainWindow : Window
     {
         if (GetCursorPos(out POINT cursorPos))
         {
-            // Get screen dimensions
-            int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-            int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+            // Get the monitor where the cursor is
+            IntPtr hMonitor = MonitorFromPoint(cursorPos, MONITOR_DEFAULTTONEAREST);
+
+            MONITORINFO monitorInfo = new MONITORINFO();
+            monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
 
             int windowWidth = 400;
             int windowHeight = 500;
 
-            // Adjust position to keep window on screen
             int x = cursorPos.X;
             int y = cursorPos.Y;
 
-            if (x + windowWidth > screenWidth)
+            if (GetMonitorInfo(hMonitor, ref monitorInfo))
             {
-                x = screenWidth - windowWidth;
-            }
-            if (y + windowHeight > screenHeight)
-            {
-                y = screenHeight - windowHeight;
+                // Use work area (excludes taskbar)
+                RECT workArea = monitorInfo.rcWork;
+
+                // Adjust position to keep window on screen
+                if (x + windowWidth > workArea.Right)
+                {
+                    x = workArea.Right - windowWidth;
+                }
+                if (x < workArea.Left)
+                {
+                    x = workArea.Left;
+                }
+
+                if (y + windowHeight > workArea.Bottom)
+                {
+                    y = workArea.Bottom - windowHeight;
+                }
+                if (y < workArea.Top)
+                {
+                    y = workArea.Top;
+                }
             }
 
             this.AppWindow.Move(new Windows.Graphics.PointInt32(x, y));
         }
 
-        // Make sure it's topmost when showing
+        // Get window handle
         var hwnd = WindowNative.GetWindowHandle(this);
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
 
+        // Show and activate the window
         this.AppWindow.Show();
+
+        // Set as topmost and force foreground
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+        SetForegroundWindow(hwnd);
+
+        // Activate to ensure focus
         this.Activate();
     }
 
