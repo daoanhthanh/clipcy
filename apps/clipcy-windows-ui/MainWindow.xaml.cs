@@ -719,7 +719,7 @@ public sealed partial class MainWindow : Window
                 TintColor = Application.Current.RequestedTheme == ApplicationTheme.Dark
                     ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
                     : Windows.UI.Color.FromArgb(255, 243, 243, 243),
-                TintOpacity = 0.15,
+                TintOpacity = 0.8,
                 FallbackColor = Application.Current.RequestedTheme == ApplicationTheme.Dark
                     ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
                     : Windows.UI.Color.FromArgb(255, 243, 243, 243),
@@ -728,7 +728,7 @@ public sealed partial class MainWindow : Window
             BorderThickness = new Thickness(1),
             BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
                 Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(26, 255, 255, 255)
+                    ? Windows.UI.Color.FromArgb(51, 255, 255, 255)
                     : Windows.UI.Color.FromArgb(26, 0, 0, 0)
             ),
             Width = 360,
@@ -1165,59 +1165,16 @@ public sealed partial class MainWindow : Window
                 // Set XamlRoot for the popup (required in WinUI 3)
                 popup.XamlRoot = _previewTarget.XamlRoot;
 
-                // Get the position of the target element
+                // Get the position of the target element relative to window
                 var transform = _previewTarget.TransformToVisual(null);
                 var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
 
-                // Get window bounds
-                var windowBounds = this.AppWindow.Size;
-
                 // Popup dimensions
-                const double popupWidth = 360;
-                const double popupHeight = 400;
                 const double spacing = 10;
 
-                // Calculate available space on each side
-                double spaceRight = windowBounds.Width - (targetPos.X + _previewTarget.ActualWidth);
-                double spaceLeft = targetPos.X;
-                double spaceBottom = windowBounds.Height - (targetPos.Y + _previewTarget.ActualHeight);
-                double spaceTop = targetPos.Y;
-
-                // Determine best position based on available space
-                double horizontalOffset;
-                double verticalOffset;
-
-                // Try right first, then left
-                if (spaceRight >= popupWidth + spacing)
-                {
-                    // Position to the right
-                    horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
-                    verticalOffset = targetPos.Y;
-                }
-                else if (spaceLeft >= popupWidth + spacing)
-                {
-                    // Position to the left
-                    horizontalOffset = targetPos.X - popupWidth - spacing;
-                    verticalOffset = targetPos.Y;
-                }
-                else if (spaceBottom >= popupHeight + spacing)
-                {
-                    // Position below
-                    horizontalOffset = targetPos.X;
-                    verticalOffset = targetPos.Y + _previewTarget.ActualHeight + spacing;
-                }
-                else if (spaceTop >= popupHeight + spacing)
-                {
-                    // Position above
-                    horizontalOffset = targetPos.X;
-                    verticalOffset = targetPos.Y - popupHeight - spacing;
-                }
-                else
-                {
-                    // Default to right if no good position found
-                    horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
-                    verticalOffset = targetPos.Y;
-                }
+                // Always position to the right of the target
+                double horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
+                double verticalOffset = targetPos.Y;
 
                 popup.HorizontalOffset = horizontalOffset;
                 popup.VerticalOffset = verticalOffset;
