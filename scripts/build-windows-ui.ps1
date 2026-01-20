@@ -106,7 +106,7 @@ Write-Host "`n[5/5] Building C# WinUI 3 application..." -ForegroundColor Yellow
 Push-Location $CSharpProject
 try {
     if ($Release) {
-        dotnet build -c Release
+        dotnet publish -c Release
     } else {
         dotnet build -c Debug
     }
@@ -118,10 +118,19 @@ finally {
 Write-Host "`n=== Build Complete ===" -ForegroundColor Green
 
 $OutputDir = if ($Release) { "Release" } else { "Debug" }
-$ExePath = Join-Path $CSharpProject "bin" $OutputDir "net8.0-windows10.0.19041.0" "Clipcy.exe"
+$ExePath = if ($Release) {
+    # Check standard publish output locations
+    $Win10Path = Join-Path $CSharpProject "bin" "Release" "net8.0-windows10.0.17763.0" "win-x64" "publish" "Clipcy.exe"
+    if (Test-Path $Win10Path) { $Win10Path } else {
+        # Fallback to standard build output if publish path structure differs
+        Join-Path $CSharpProject "bin" "Release" "net8.0-windows10.0.17763.0" "Clipcy.exe"
+    }
+} else {
+    Join-Path $CSharpProject "bin" "Debug" "net8.0-windows10.0.17763.0" "Clipcy.exe"
+}
 
 if (Test-Path $ExePath) {
     Write-Host "Output: $ExePath" -ForegroundColor Cyan
 } else {
-    Write-Host "Warning: Expected output not found at: $ExePath" -ForegroundColor Yellow
+    Write-Host "Warning: Expected output not found at typical location. Check the build logs above for the specific output path." -ForegroundColor Yellow
 }
