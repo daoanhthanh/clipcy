@@ -395,6 +395,7 @@ impl ClipboardEngine {
                 self.repository.clone(),
                 self.paste_handler.clone(),
                 core_settings,
+                self.runtime.handle().clone(),
             ));
 
             // Store service reference

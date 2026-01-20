@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use parking_lot::RwLock;
+use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -17,6 +18,7 @@ pub struct ClipboardService {
     paste_handler: Arc<dyn PasteHandler>,
     settings: Arc<RwLock<Settings>>,
     debounce_tx: Arc<RwLock<Option<mpsc::UnboundedSender<ClipboardItem>>>>,
+    runtime_handle: Handle,
 }
 
 impl ClipboardService {
@@ -25,6 +27,7 @@ impl ClipboardService {
         repository: Arc<dyn ClipboardRepository>,
         paste_handler: Arc<dyn PasteHandler>,
         settings: Settings,
+        runtime_handle: Handle,
     ) -> Self {
         Self {
             monitor,
@@ -32,6 +35,7 @@ impl ClipboardService {
             paste_handler,
             settings: Arc::new(RwLock::new(settings)),
             debounce_tx: Arc::new(RwLock::new(None)),
+            runtime_handle,
         }
     }
 
@@ -42,7 +46,7 @@ impl ClipboardService {
         let repository = Arc::clone(&self.repository);
         let settings = Arc::clone(&self.settings);
 
-        Self::spawn_debounce_task(rx, repository, settings);
+        self.spawn_debounce_task(rx, repository, settings);
 
         let debounce_tx = Arc::clone(&self.debounce_tx);
         self.monitor.on_change(Box::new(move |item| {
@@ -55,11 +59,12 @@ impl ClipboardService {
     }
 
     fn spawn_debounce_task(
+        &self,
         mut rx: mpsc::UnboundedReceiver<ClipboardItem>,
         repository: Arc<dyn ClipboardRepository>,
         settings: Arc<RwLock<Settings>>,
     ) {
-        tokio::spawn(async move {
+        self.runtime_handle.spawn(async move {
             let debounce_duration = Duration::from_millis(DEBOUNCE_DURATION_MS);
             let mut pending_item: Option<ClipboardItem> = None;
 

@@ -1,124 +1,158 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Windowing;
 using Clipcy.ViewModels;
 using Clipcy.Services;
 using Windows.Foundation;
+using System.Runtime.InteropServices;
+using WinRT.Interop;
 
 namespace Clipcy;
 
-/// <summary>
-/// Main popup window that displays clipboard history
-/// </summary>
 public sealed partial class MainWindow : Window
 {
-  public MainViewModel ViewModel { get; }
+    public MainViewModel ViewModel { get; }
 
-  public MainWindow()
-  {
-    this.InitializeComponent();
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
 
-    // Set window size
-    this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 400, Height = 500 });
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
-    // Apply Mica backdrop for Windows 11 look
-    SetupMicaBackdrop();
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
 
-    ViewModel = new MainViewModel();
-    // Set DataContext for the root Grid
-    ((FrameworkElement)this.Content).DataContext = this;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWCP_ROUND = 2;
+    private const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
 
-    // Handle window activation/deactivation
-    this.Activated += MainWindow_Activated;
-
-    // Load initial data
-    ViewModel.RefreshHistory();
-  }
-
-  private void SetupMicaBackdrop()
-  {
-    // Try to apply Mica backdrop (Windows 11)
-    try
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
     {
-      if (Microsoft.UI.Composition.SystemBackdrops.MicaController.IsSupported())
-      {
-        var micaBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
-        this.SystemBackdrop = micaBackdrop;
-      }
+        public int X;
+        public int Y;
     }
-    catch
+
+    public MainWindow()
     {
-      // Fallback for older Windows versions - just use default background
-    }
-  }
+        this.InitializeComponent();
+        ConfigureAsPopup();
+        SetupAcrylicBackdrop();
+        ApplyRoundedCorners();
 
-  private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
-  {
-    if (args.WindowActivationState == WindowActivationState.Deactivated)
+        ViewModel = new MainViewModel();
+        ((FrameworkElement)this.Content).DataContext = this;
+
+        this.Activated += MainWindow_Activated;
+        ViewModel.RefreshHistory();
+    }
+
+    private void ConfigureAsPopup()
     {
-      // Hide window when it loses focus
-      this.Hide();
+        var presenter = this.AppWindow.Presenter as OverlappedPresenter;
+        if (presenter != null)
+        {
+            presenter.IsResizable = false;
+            presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
+            presenter.SetBorderAndTitleBar(false, false);
+        }
+
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 400, Height = 500 });
     }
-    else
+
+    private void SetupAcrylicBackdrop()
     {
-      // Refresh history when window is shown
-      ViewModel.RefreshHistory();
-      SearchBox.Focus(FocusState.Programmatic);
+        try
+        {
+            if (Microsoft.UI.Composition.SystemBackdrops.DesktopAcrylicController.IsSupported())
+            {
+                this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+            }
+        }
+        catch
+        {
+        }
     }
-  }
 
-  private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-  {
-    var query = SearchBox.Text;
-    ViewModel.Search(query);
-  }
-
-  private void HistoryListView_ItemClick(object sender, ItemClickEventArgs e)
-  {
-    if (e.ClickedItem is ClipboardItemViewModel item)
+    private void ApplyRoundedCorners()
     {
-      // Paste the selected item
-      ViewModel.PasteItem(item.Id);
-      this.Hide();
+        try
+        {
+            var hwnd = WindowNative.GetWindowHandle(this);
+            
+            int preference = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
+            
+            uint borderColor = DWMWA_COLOR_NONE;
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(uint));
+        }
+        catch
+        {
+        }
     }
-  }
 
-  private void SettingsButton_Click(object sender, RoutedEventArgs e)
-  {
-    // Open settings window
-    var settingsWindow = new SettingsWindow();
-    settingsWindow.Activate();
-  }
-
-  /// <summary>
-  /// Show and position the window near the cursor
-  /// </summary>
-  public void ShowAtCursor()
-  {
-    // Get cursor position and position window there
-    // For now, just center on screen
-    this.Activate();
-  }
-
-  /// <summary>
-  /// Hide the popup window
-  /// </summary>
-  public void Hide()
-  {
-    // Minimize to effectively hide (WinUI 3 doesn't have true Hide)
-    var presenter = this.AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
-    presenter?.Minimize();
-  }
-
-  /// <summary>
-  /// Check if the window is currently visible
-  /// </summary>
-  public bool IsVisible
-  {
-    get
+    private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
-      var presenter = this.AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
-      return presenter?.State != Microsoft.UI.Windowing.OverlappedPresenterState.Minimized;
+        if (args.WindowActivationState == WindowActivationState.Deactivated)
+        {
+            this.HidePopup();
+        }
+        else
+        {
+            ViewModel.RefreshHistory();
+            SearchBox.Text = string.Empty;
+            SearchBox.Focus(FocusState.Programmatic);
+        }
     }
-  }
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ViewModel.Search(SearchBox.Text);
+    }
+
+    private void HistoryListView_ItemClick(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ClipboardItemViewModel item)
+        {
+            ViewModel.PasteItem(item.Id);
+            this.HidePopup();
+        }
+    }
+
+    private void SettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var settingsWindow = new SettingsWindow();
+        settingsWindow.Activate();
+        this.HidePopup();
+    }
+
+    private void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Escape)
+        {
+            e.Handled = true;
+            this.HidePopup();
+        }
+    }
+
+    public void ShowAtCursor()
+    {
+        if (GetCursorPos(out POINT cursorPos))
+        {
+            this.AppWindow.Move(new Windows.Graphics.PointInt32(cursorPos.X, cursorPos.Y));
+        }
+
+        this.AppWindow.Show();
+        this.Activate();
+    }
+
+    public void HidePopup()
+    {
+        this.AppWindow.Hide();
+    }
+
+    public bool IsVisible => this.AppWindow.IsVisible;
 }

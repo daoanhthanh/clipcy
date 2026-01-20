@@ -52,9 +52,7 @@ public partial class App : Application
 
         // Create the main popup window (hidden initially)
         MainPopup = new MainWindow();
-        MainPopup.Hide();
 
-        // Initialize tray icon
         Tray = new TrayService(MainPopup);
 
         // The app runs in the background - tray icon is the primary UI

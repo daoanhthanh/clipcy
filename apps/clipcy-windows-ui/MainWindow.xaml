@@ -4,10 +4,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:Clipcy"
-    xmlns:vm="using:Clipcy.ViewModels"
-    Title="Clipcy">
+    xmlns:vm="using:Clipcy.ViewModels">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid x:Name="RootGrid"
+          KeyDown="RootGrid_KeyDown">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -69,8 +69,7 @@
 
         <!-- Status Bar -->
         <Grid Grid.Row="2"
-                Padding="12,8"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                Padding="12,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
