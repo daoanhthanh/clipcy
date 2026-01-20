@@ -9,9 +9,9 @@
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Search Box -->
@@ -20,7 +20,7 @@
             Grid.Row="0"
             Margin="12,12,12,8"
             PlaceholderText="Search clipboard history..."
-            TextChanged="SearchBox_TextChanged" />
+            TextChanged="SearchBox_TextChanged"/>
 
         <!-- Clipboard History List -->
         <ListView
@@ -33,11 +33,12 @@
             IsItemClickEnabled="True">
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Grid Padding="8,6" ColumnSpacing="8">
+                    <Grid Padding="8,6"
+                            ColumnSpacing="8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Content Type Icon -->
@@ -45,32 +46,34 @@
                             Grid.Column="0"
                             FontSize="16"
                             Glyph="{Binding ContentTypeIcon}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 
                         <!-- Preview Text -->
                         <TextBlock
                             Grid.Column="1"
                             Text="{Binding Preview}"
                             TextTrimming="CharacterEllipsis"
-                            MaxLines="2" />
+                            MaxLines="2"/>
 
                         <!-- Pin Icon -->
                         <FontIcon
                             Grid.Column="2"
                             FontSize="12"
                             Glyph="&#xE718;"
-                            Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibility}}"
-                            Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}" />
+                            Visibility="{Binding Pinned, Converter={StaticResource BoolToVisibility}}"
+                            Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"/>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
 
         <!-- Status Bar -->
-        <Grid Grid.Row="2" Padding="12,8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+        <Grid Grid.Row="2"
+                Padding="12,8"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock
@@ -78,14 +81,16 @@
                 Text="{Binding ViewModel.StatusText}"
                 FontSize="12"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                VerticalAlignment="Center" />
+                VerticalAlignment="Center"/>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+            <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="4">
                 <Button
                     Content="Settings"
                     Click="SettingsButton_Click"
                     Style="{StaticResource SubtleButtonStyle}"
-                    FontSize="12" />
+                    FontSize="12"/>
             </StackPanel>
         </Grid>
     </Grid>

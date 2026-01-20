@@ -11,7 +11,7 @@ public partial class App : Application
     /// <summary>
     /// Singleton instance of the Rust clipboard engine
     /// </summary>
-    public static RustBridgeService? Bridge { get; private set; }
+    internal static RustBridgeService? Bridge { get; private set; }
 
     /// <summary>
     /// The main popup window (hidden by default, shown on hotkey)
@@ -22,8 +22,6 @@ public partial class App : Application
     /// Tray service for system tray icon management
     /// </summary>
     public static TrayService? Tray { get; private set; }
-
-    private Window? _window;
 
     /// <summary>
     /// Initializes the singleton application object.

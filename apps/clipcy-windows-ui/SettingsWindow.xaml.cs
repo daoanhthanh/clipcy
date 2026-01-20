@@ -11,7 +11,7 @@ namespace Clipcy;
 /// </summary>
 public sealed partial class SettingsWindow : Window
 {
-  private SettingsDto _settings;
+  private SettingsViewModel _settings;
   private bool _isCapturingHotkey;
   private List<VirtualKey> _capturedKeys = new();
 
@@ -23,7 +23,7 @@ public sealed partial class SettingsWindow : Window
     this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 500, Height = 600 });
 
     // Load current settings
-    _settings = App.Bridge?.GetSettings() ?? new SettingsDto();
+    _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
     LoadSettingsToUI();
   }
 
@@ -137,7 +137,7 @@ public sealed partial class SettingsWindow : Window
 
   private void ResetButton_Click(object sender, RoutedEventArgs e)
   {
-    _settings = new SettingsDto();
+    _settings = new SettingsViewModel();
     LoadSettingsToUI();
   }
 

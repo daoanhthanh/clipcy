@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Clipcy.ViewModels;
+using Clipcy.Services;
 using Windows.Foundation;
 
 namespace Clipcy;
