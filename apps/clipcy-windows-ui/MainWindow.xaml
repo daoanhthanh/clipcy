@@ -6,7 +6,11 @@
   xmlns:local="using:Clipcy"
   xmlns:vm="using:Clipcy.ViewModels"
 >
-  <Grid x:Name="RootGrid" KeyDown="RootGrid_KeyDown" Background="Transparent" Padding="8">
+      <Grid x:Name="RootGrid"
+            KeyDown="RootGrid_KeyDown"
+            Background="Transparent"
+            Padding="8"
+            IsTabStop="True">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
