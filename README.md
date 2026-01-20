@@ -122,8 +122,7 @@ dotnet run
 2. **Generate C# Bindings** (optional - placeholder included)
    ```bash
    # Requires uniffi-bindgen-cs
-   uniffi-bindgen-cs --library target/release/clipcy_core.dll \
-     --out-dir apps/clipcy-windows-ui/Bindings
+   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
    ```
 
 3. **Build WinUI 3 App**
