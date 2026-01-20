@@ -11,7 +11,7 @@ crate-type = ["cdylib", "lib"]
 name = "clipcy_core"
 
 [dependencies]
-uniffi = "0.28"
+uniffi = "0.29"
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 parking_lot.workspace = true
@@ -28,4 +28,4 @@ clipcy-settings-common = { path = "../settings-common" }
 clipcy-platform-windows = { path = "../platform-windows" }
 
 [build-dependencies]
-uniffi = { version = "0.28", features = ["build"] }
+uniffi = { version = "0.29", features = ["build"] }
