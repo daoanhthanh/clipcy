@@ -78,4 +78,4 @@ apps/clipcy-windows-ui/Bindings/*.cs
 # JS (legacy - kept for reference)
 # ===================
 *node_modules/
-tasks/
+# tasks/
