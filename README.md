@@ -54,6 +54,12 @@ graph TD
   - Auto-focus search on typing
 - Auto-hide on click outside or focus loss
 - Screen boundary detection
+- Preview panel on hover/focus:
+  - Larger preview of clipboard content (text, images, files)
+  - Intelligent positioning (adapts to available space)
+  - Content-specific metadata (dimensions, file size, character/word count)
+  - Auto-dismisses when focus moves away
+  - Shows copy time, source application, and pin status
 
 ## Platform Support
 

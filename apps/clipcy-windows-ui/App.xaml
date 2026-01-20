@@ -4,31 +4,26 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Clipcy"
-  xmlns:converters="using:Clipcy.Converters">
+  xmlns:converters="using:Clipcy.Converters"
+>
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls"/>
+        <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
       </ResourceDictionary.MergedDictionaries>
 
       <!-- Converters -->
-      <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+      <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
 
       <!-- Custom styles and resources -->
-      <Style x:Key="ClipboardItemStyle"
-          TargetType="ListViewItem">
-        <Setter Property="Padding"
-            Value="8,4"/>
-        <Setter Property="Margin"
-            Value="0,1"/>
+      <Style x:Key="ClipboardItemStyle" TargetType="ListViewItem">
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Margin" Value="0,1" />
       </Style>
 
-      <Style x:Key="SubtleButtonStyle"
-          TargetType="Button">
-        <Setter Property="Background"
-            Value="Transparent"/>
-        <Setter Property="BorderThickness"
-            Value="0"/>
+      <Style x:Key="SubtleButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
       </Style>
     </ResourceDictionary>
   </Application.Resources>

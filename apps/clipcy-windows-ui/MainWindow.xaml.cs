@@ -1,12 +1,13 @@
+using System.Runtime.InteropServices;
+using Clipcy.Services;
+using Clipcy.ViewModels;
+using Microsoft.UI.Composition.SystemBackdrops;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Windowing;
-using Microsoft.UI.Composition.SystemBackdrops;
-using Clipcy.ViewModels;
-using Clipcy.Services;
 using Windows.Foundation;
-using System.Runtime.InteropServices;
+using Windows.Storage.Streams;
 using WinRT.Interop;
 
 namespace Clipcy;
@@ -36,7 +37,15 @@ public sealed partial class MainWindow : Window
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
     [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    private static extern bool SetWindowPos(
+        IntPtr hWnd,
+        IntPtr hWndInsertAfter,
+        int X,
+        int Y,
+        int cx,
+        int cy,
+        uint uFlags
+    );
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -72,10 +81,20 @@ public sealed partial class MainWindow : Window
     private const uint GMEM_MOVEABLE = 0x0002;
 
     [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+    private static extern int DwmSetWindowAttribute(
+        IntPtr hwnd,
+        int attr,
+        ref int attrValue,
+        int attrSize
+    );
 
     [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+    private static extern int DwmSetWindowAttribute(
+        IntPtr hwnd,
+        int attr,
+        ref uint attrValue,
+        int attrSize
+    );
 
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWA_BORDER_COLOR = 34;
@@ -134,8 +153,10 @@ public sealed partial class MainWindow : Window
     {
         [FieldOffset(0)]
         public MOUSEINPUT mi;
+
         [FieldOffset(0)]
         public KEYBDINPUT ki;
+
         [FieldOffset(0)]
         public HARDWAREINPUT hi;
     }
@@ -237,11 +258,17 @@ public sealed partial class MainWindow : Window
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
 
             // Set as topmost
-            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
+            SetWindowPos(
+                hwnd,
+                HWND_TOPMOST,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED
+            );
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private void SetupAcrylicBackdrop()
@@ -254,13 +281,12 @@ public sealed partial class MainWindow : Window
                 this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
 
                 // Setup configuration for keeping backdrop active
-                _configurationSource = new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
+                _configurationSource =
+                    new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
                 _configurationSource.IsInputActive = true;
             }
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private void ApplyRoundedCorners()
@@ -270,14 +296,17 @@ public sealed partial class MainWindow : Window
             var hwnd = WindowNative.GetWindowHandle(this);
 
             int preference = DWMWCP_ROUND;
-            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
+            DwmSetWindowAttribute(
+                hwnd,
+                DWMWA_WINDOW_CORNER_PREFERENCE,
+                ref preference,
+                sizeof(int)
+            );
 
             uint borderColor = DWMWA_COLOR_NONE;
             DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(uint));
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
@@ -291,24 +320,19 @@ public sealed partial class MainWindow : Window
                 this.HidePopup();
             }
         }
-        else if (args.WindowActivationState == WindowActivationState.CodeActivated ||
-                 args.WindowActivationState == WindowActivationState.PointerActivated)
+        else if (
+            args.WindowActivationState == WindowActivationState.CodeActivated
+            || args.WindowActivationState == WindowActivationState.PointerActivated
+        )
         {
-            ViewModel.RefreshHistory();
+            // Use async version to avoid blocking UI thread
+            _ = ViewModel.RefreshHistoryAsync();
             SearchBox.Text = string.Empty;
 
-            // Focus on the list and select first item for immediate keyboard navigation
-            // Users can start typing to auto-focus search or use arrow keys to navigate
-            if (ViewModel.Items.Count > 0)
-            {
-                HistoryListView.SelectedIndex = 0;
-                HistoryListView.Focus(FocusState.Programmatic);
-            }
-            else
-            {
-                // If no items, focus search box
-                SearchBox.Focus(FocusState.Programmatic);
-            }
+            // Don't set any focus - let user navigate with mouse or arrow keys
+            // Force focus to RootGrid or ListView to prevent SearchBox from getting it
+            HistoryListView.SelectedIndex = -1;
+            RootGrid.Focus(FocusState.Programmatic);
 
             // Keep acrylic effect active
             if (_configurationSource != null)
@@ -321,12 +345,6 @@ public sealed partial class MainWindow : Window
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         ViewModel.Search(SearchBox.Text);
-
-        // After search, select first item if available
-        if (ViewModel.Items.Count > 0)
-        {
-            HistoryListView.SelectedIndex = 0;
-        }
     }
 
     private async void HistoryListView_ItemClick(object sender, ItemClickEventArgs e)
@@ -422,7 +440,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x1D,
             dwFlags = 0,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO
+            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
         };
 
         // V down
@@ -433,7 +451,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x2F,
             dwFlags = 0,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO
+            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
         };
 
         // V up
@@ -444,7 +462,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x2F,
             dwFlags = KEYEVENTF_KEYUP,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO
+            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
         };
 
         // Ctrl up
@@ -455,7 +473,7 @@ public sealed partial class MainWindow : Window
             wScan = 0x1D,
             dwFlags = KEYEVENTF_KEYUP,
             time = 0,
-            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO
+            dwExtraInfo = (IntPtr)CLIPCY_EXTRA_INFO,
         };
 
         SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
@@ -491,30 +509,49 @@ public sealed partial class MainWindow : Window
         // Handle Up/Down arrow keys for navigation
         if (e.Key == Windows.System.VirtualKey.Down)
         {
-            if (SearchBox.FocusState != FocusState.Unfocused && ViewModel.Items.Count > 0)
+            // If search box has focus, move to list
+            if (SearchBox.FocusState != FocusState.Unfocused)
             {
                 e.Handled = true;
-                HistoryListView.SelectedIndex = 0;
                 HistoryListView.Focus(FocusState.Programmatic);
+                if (HistoryListView.Items.Count > 0)
+                {
+                    HistoryListView.SelectedIndex = 0;
+                }
+                return;
+            }
+
+            e.Handled = true;
+
+            if (HistoryListView.SelectedIndex < 0)
+            {
+                // No selection, select first item
+                if (ViewModel.Items.Count > 0)
+                {
+                    HistoryListView.SelectedIndex = 0;
+                    HistoryListView.Focus(FocusState.Keyboard);
+                }
+            }
+            else if (HistoryListView.SelectedIndex < ViewModel.Items.Count - 1)
+            {
+                // Move down
+                HistoryListView.SelectedIndex++;
             }
         }
         else if (e.Key == Windows.System.VirtualKey.Up)
         {
-            if (HistoryListView.SelectedIndex == 0)
+            e.Handled = true;
+
+            if (HistoryListView.SelectedIndex > 0)
             {
-                e.Handled = true;
-                SearchBox.Focus(FocusState.Programmatic);
+                // Move up
+                HistoryListView.SelectedIndex--;
             }
-        }
-        // Auto-focus search box when user types alphanumeric characters
-        else if (SearchBox.FocusState == FocusState.Unfocused)
-        {
-            // Check if it's a character key (letter, number, space, or symbol)
-            if (IsCharacterKey(e.Key))
+            else if (HistoryListView.SelectedIndex == 0)
             {
-                // Focus the search box - the character will be typed there
-                SearchBox.Focus(FocusState.Programmatic);
-                // Don't mark as handled so the character propagates to the search box
+                // At top, deselect - user can manually click search box if needed
+                HistoryListView.SelectedIndex = -1;
+                RootGrid.Focus(FocusState.Keyboard);
             }
         }
     }
@@ -530,7 +567,10 @@ public sealed partial class MainWindow : Window
             return true;
 
         // Numpad numbers
-        if (key >= Windows.System.VirtualKey.NumberPad0 && key <= Windows.System.VirtualKey.NumberPad9)
+        if (
+            key >= Windows.System.VirtualKey.NumberPad0
+            && key <= Windows.System.VirtualKey.NumberPad9
+        )
             return true;
 
         // Space
@@ -622,8 +662,414 @@ public sealed partial class MainWindow : Window
 
     public void HidePopup()
     {
+        HidePreview();
         this.AppWindow.Hide();
     }
 
     public bool IsVisible => this.AppWindow.IsVisible;
+
+    // Preview Panel Logic
+    private DispatcherTimer? _previewDelayTimer;
+    private DispatcherTimer? _hideTimer;
+    private ClipboardItemViewModel? _pendingPreviewItem;
+    private FrameworkElement? _previewTarget;
+    private Flyout? _previewFlyout;
+    private TextBlock? _previewContentType;
+    private TextBlock? _previewText;
+    private Image? _previewImage;
+    private TextBlock? _previewMetadata;
+    private bool _isPointerOverPreview = false;
+    private ClipboardItemViewModel? _currentPreviewItem;
+
+    private void HistoryListView_ContainerContentChanging(
+        ListViewBase sender,
+        ContainerContentChangingEventArgs args
+    )
+    {
+        if (args.ItemContainer is ListViewItem item)
+        {
+            // Remove old handlers first to avoid duplicates
+            item.PointerEntered -= ListViewItem_PointerEntered;
+            item.PointerExited -= ListViewItem_PointerExited;
+            item.GotFocus -= ListViewItem_GotFocus;
+            item.LostFocus -= ListViewItem_LostFocus;
+
+            // Attach new handlers
+            item.PointerEntered += ListViewItem_PointerEntered;
+            item.PointerExited += ListViewItem_PointerExited;
+            item.GotFocus += ListViewItem_GotFocus;
+            item.LostFocus += ListViewItem_LostFocus;
+        }
+    }
+
+    private Flyout CreatePreviewFlyout()
+    {
+        var flyout = new Flyout
+        {
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Right,
+            ShouldConstrainToRootBounds = false,
+        };
+
+        var grid = new Grid
+        {
+            Width = 350,
+            MaxHeight = 380,
+            RowSpacing = 8,
+        };
+
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        grid.RowDefinitions.Add(
+            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
+        );
+
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        // Track pointer over preview panel
+
+        grid.PointerEntered += (s, e) =>
+        {
+            _isPointerOverPreview = true;
+
+            _hideTimer?.Stop();
+        };
+
+        grid.PointerExited += (s, e) =>
+        {
+            _isPointerOverPreview = false;
+
+            ScheduleHidePreview();
+        };
+
+        // Header
+        _previewContentType = new TextBlock
+        {
+            FontSize = 12,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+        };
+        Grid.SetRow(_previewContentType, 0);
+        grid.Children.Add(_previewContentType);
+
+        // Content
+        var scrollViewer = new ScrollViewer
+        {
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            MaxHeight = 260,
+        };
+
+        var contentStack = new StackPanel { Spacing = 8 };
+
+        _previewText = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,
+            Visibility = Visibility.Collapsed,
+        };
+        contentStack.Children.Add(_previewText);
+
+        _previewImage = new Image
+        {
+            Stretch = Microsoft.UI.Xaml.Media.Stretch.Uniform,
+            MaxWidth = 326,
+            MaxHeight = 240,
+            Visibility = Visibility.Collapsed,
+        };
+        contentStack.Children.Add(_previewImage);
+
+        scrollViewer.Content = contentStack;
+        Grid.SetRow(scrollViewer, 1);
+        grid.Children.Add(scrollViewer);
+
+        // Metadata
+        var metadataStack = new StackPanel { Spacing = 4 };
+        var divider = new Border
+        {
+            Height = 1,
+            Margin = new Thickness(0, 4, 0, 4),
+            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Gray)
+            {
+                Opacity = 0.2,
+            },
+        };
+        metadataStack.Children.Add(divider);
+
+        _previewMetadata = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap };
+        metadataStack.Children.Add(_previewMetadata);
+
+        Grid.SetRow(metadataStack, 2);
+        grid.Children.Add(metadataStack);
+
+        flyout.Content = grid;
+        return flyout;
+    }
+
+    private Flyout PreviewFlyout
+    {
+        get
+        {
+            if (_previewFlyout == null)
+            {
+                _previewFlyout = CreatePreviewFlyout();
+            }
+            return _previewFlyout;
+        }
+    }
+
+    private void ListViewItem_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        // If SearchBox has focus, clear it by focusing the item or list
+        if (SearchBox.FocusState != FocusState.Unfocused)
+        {
+            // Focus the list view itself or the item to blur search box
+            if (sender is ListViewItem item)
+            {
+                item.Focus(FocusState.Pointer);
+            }
+        }
+
+        if (sender is ListViewItem li && li.Content is ClipboardItemViewModel viewModel)
+        {
+            // Schedule preview with delay (same as keyboard navigation)
+            ScheduleShowPreview(viewModel, li);
+        }
+    }
+
+    private void ListViewItem_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        // Cancel pending preview
+        _pendingPreviewItem = null;
+        _previewDelayTimer?.Stop();
+
+        // Schedule hide with delay
+        ScheduleHidePreview();
+    }
+
+    private void ScheduleShowPreview(ClipboardItemViewModel viewModel, FrameworkElement target)
+    {
+        // If already showing the same item, do nothing
+        if (_currentPreviewItem == viewModel && _previewFlyout?.IsOpen == true)
+            return;
+
+        _pendingPreviewItem = viewModel;
+        _previewTarget = target;
+
+        // Stop any pending hide timer
+        _hideTimer?.Stop();
+
+        // Delay preview by 300ms
+        if (_previewDelayTimer == null)
+        {
+            _previewDelayTimer = new DispatcherTimer();
+            _previewDelayTimer.Interval = TimeSpan.FromMilliseconds(300);
+            _previewDelayTimer.Tick += PreviewDelayTimer_Tick;
+        }
+
+        _previewDelayTimer.Stop();
+        _previewDelayTimer.Start();
+    }
+
+    private void ScheduleHidePreview()
+    {
+        // Create hide timer if needed
+        if (_hideTimer == null)
+        {
+            _hideTimer = new DispatcherTimer();
+            _hideTimer.Interval = TimeSpan.FromMilliseconds(150);
+            _hideTimer.Tick += (s, e) =>
+            {
+                _hideTimer?.Stop();
+                if (!_isPointerOverPreview)
+                {
+                    HidePreview();
+                }
+            };
+        }
+
+        _hideTimer.Stop();
+        _hideTimer.Start();
+    }
+
+    private void ListViewItem_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is ListViewItem item && item.Content is ClipboardItemViewModel viewModel)
+        {
+            // Treat focus same as hover - schedule preview with delay
+            ScheduleShowPreview(viewModel, item);
+        }
+    }
+
+    private void ListViewItem_LostFocus(object sender, RoutedEventArgs e)
+    {
+        // Cancel pending and schedule hide
+        _previewDelayTimer?.Stop();
+        ScheduleHidePreview();
+    }
+
+    private void PreviewDelayTimer_Tick(object? sender, object e)
+    {
+        _previewDelayTimer?.Stop();
+        if (_pendingPreviewItem != null)
+        {
+            ShowPreview(_pendingPreviewItem);
+        }
+    }
+
+    private async void ShowPreview(ClipboardItemViewModel item)
+    {
+        // Prevent showing if already visible for the same item
+        if (_currentPreviewItem == item && _previewFlyout?.IsOpen == true)
+            return;
+
+        try
+        {
+            // Stop all timers
+            _previewDelayTimer?.Stop();
+            _hideTimer?.Stop();
+
+            if (
+                _previewContentType == null
+                || _previewText == null
+                || _previewImage == null
+                || _previewMetadata == null
+            )
+                return;
+
+            // Set current preview item
+            _currentPreviewItem = item;
+
+            // Set content type header
+            _previewContentType.Text = item.ContentType;
+
+            // Reset visibility
+            _previewText.Visibility = Visibility.Collapsed;
+            _previewImage.Visibility = Visibility.Collapsed;
+
+            // Show preview based on content type
+            switch (item.ContentType)
+            {
+                case "Text":
+                case "RichText":
+                case "Html":
+                    // Get full text from bridge if available
+                    var fullText = item.Preview;
+                    if (App.Bridge != null && !string.IsNullOrEmpty(item.Id))
+                    {
+                        var data = App.Bridge.GetItemData(item.Id);
+                        if (data != null && data.Length > 0)
+                        {
+                            fullText = System.Text.Encoding.UTF8.GetString(data);
+                        }
+                    }
+                    _previewText.Text = fullText;
+                    _previewText.Visibility = Visibility.Visible;
+                    break;
+
+                case "Image":
+                    if (item.Thumbnail != null && item.Thumbnail.Length > 0)
+                    {
+                        using (var stream = new MemoryStream(item.Thumbnail))
+                        {
+                            var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
+                            await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+                            _previewImage.Source = bitmap;
+                            _previewImage.Visibility = Visibility.Visible;
+                        }
+                    }
+                    break;
+
+                case "Files":
+                    _previewText.Text = item.Preview;
+                    _previewText.Visibility = Visibility.Visible;
+                    break;
+            }
+
+            // Build metadata string
+            var metadata = new System.Text.StringBuilder();
+
+            // Created time
+            metadata.AppendLine($"Copied: {item.RelativeTime}");
+
+            // Content-specific metadata
+            switch (item.ContentType)
+            {
+                case "Text":
+                case "RichText":
+                case "Html":
+                    var charCount = _previewText.Text.Length;
+                    var wordCount = _previewText
+                        .Text.Split(
+                            new[] { ' ', '\n', '\r', '\t' },
+                            StringSplitOptions.RemoveEmptyEntries
+                        )
+                        .Length;
+                    var lineCount = _previewText.Text.Split('\n').Length;
+                    metadata.AppendLine($"Characters: {charCount:N0}");
+                    metadata.AppendLine($"Words: {wordCount:N0}");
+                    if (lineCount > 1)
+                        metadata.AppendLine($"Lines: {lineCount:N0}");
+                    break;
+
+                case "Image":
+                    if (_previewImage.Source is Microsoft.UI.Xaml.Media.Imaging.BitmapImage bmp)
+                    {
+                        metadata.AppendLine($"Dimensions: {bmp.PixelWidth} x {bmp.PixelHeight}");
+                    }
+                    if (item.Thumbnail != null)
+                    {
+                        var sizeKB = item.Thumbnail.Length / 1024.0;
+                        metadata.AppendLine($"Size: {sizeKB:N1} KB");
+                    }
+                    break;
+
+                case "Files":
+                    var files = item
+                        .Preview.Split('\n')
+                        .Where(f => !string.IsNullOrWhiteSpace(f))
+                        .ToArray();
+                    metadata.AppendLine($"Files: {files.Length}");
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(item.SourceApp))
+            {
+                metadata.AppendLine($"Source: {item.SourceApp}");
+            }
+
+            if (item.Pinned)
+            {
+                metadata.AppendLine("Pinned");
+            }
+
+            _previewMetadata.Text = metadata.ToString().TrimEnd();
+
+            // Show the flyout attached to the target element
+            if (_previewTarget != null)
+            {
+                var options = new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+                {
+                    Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.Right,
+                    ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
+                };
+                PreviewFlyout.ShowAt(_previewTarget, options);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ShowPreview error: {ex.Message}");
+            HidePreview();
+        }
+    }
+
+    private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        HidePreview();
+    }
+
+    private void HidePreview()
+    {
+        _previewDelayTimer?.Stop();
+        _hideTimer?.Stop();
+        PreviewFlyout.Hide();
+        _currentPreviewItem = null;
+    }
 }

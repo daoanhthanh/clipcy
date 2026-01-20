@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
+using Clipcy.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Clipcy.Services;
 
 namespace Clipcy.ViewModels;
 
@@ -17,14 +17,17 @@ public partial class MainViewModel : ObservableObject
     private string _searchQuery = string.Empty;
 #pragma warning restore MVVMTK0045
 
-    public void RefreshHistory()
+    public async Task RefreshHistoryAsync()
     {
         try
         {
             var bridge = App.Bridge;
-            if (bridge == null) return;
+            if (bridge == null)
+                return;
 
-            var items = bridge.GetHistory(50);
+            // Run database call on background thread
+            var items = await Task.Run(() => bridge.GetHistory(50));
+
             Items.Clear();
 
             foreach (var item in items)
@@ -40,6 +43,12 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    public void RefreshHistory()
+    {
+        // Synchronous wrapper for compatibility
+        _ = RefreshHistoryAsync();
+    }
+
     public void Search(string query)
     {
         SearchQuery = query;
@@ -53,7 +62,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var bridge = App.Bridge;
-            if (bridge == null) return;
+            if (bridge == null)
+                return;
 
             var items = bridge.Search(query);
             Items.Clear();

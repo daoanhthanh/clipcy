@@ -32,7 +32,9 @@ internal class RustBridgeService : IDisposable, UiCallback
     {
         var dbPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "clipcy", "clipcy.db");
+            "clipcy",
+            "clipcy.db"
+        );
 
         // Ensure directory exists
         var dir = Path.GetDirectoryName(dbPath);
@@ -83,7 +85,8 @@ internal class RustBridgeService : IDisposable, UiCallback
     /// </summary>
     public List<ClipboardItemViewModel> GetHistory(uint limit)
     {
-        if (_engine == null) return new List<ClipboardItemViewModel>();
+        if (_engine == null)
+            return new List<ClipboardItemViewModel>();
 
         try
         {
@@ -102,7 +105,8 @@ internal class RustBridgeService : IDisposable, UiCallback
     /// </summary>
     public List<ClipboardItemViewModel> Search(string query)
     {
-        if (_engine == null) return new List<ClipboardItemViewModel>();
+        if (_engine == null)
+            return new List<ClipboardItemViewModel>();
 
         try
         {
@@ -210,7 +214,7 @@ internal class RustBridgeService : IDisposable, UiCallback
                     StartOnBoot = settings.startOnBoot,
                     ShowNotifications = settings.showNotifications,
                     ShowPreviewPanel = settings.showPreviewPanel,
-                    ExcludedApps = settings.excludedApps.ToList()
+                    ExcludedApps = settings.excludedApps.ToList(),
                 };
             }
         }
@@ -233,7 +237,7 @@ internal class RustBridgeService : IDisposable, UiCallback
             {
                 "Light" => ThemeModeDto.Light,
                 "Dark" => ThemeModeDto.Dark,
-                _ => ThemeModeDto.System
+                _ => ThemeModeDto.System,
             };
 
             var dto = new uniffi.clipcy_core.SettingsDto(
@@ -293,13 +297,14 @@ internal class RustBridgeService : IDisposable, UiCallback
             Thumbnail = dto.thumbnail,
             SourceApp = dto.sourceApp,
             CreatedAtTimestamp = dto.createdAtTimestamp,
-            Pinned = dto.pinned
+            Pinned = dto.pinned,
         };
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         try
@@ -332,14 +337,15 @@ public class ClipboardItemViewModel
     /// <summary>
     /// Gets the icon glyph based on content type
     /// </summary>
-    public string ContentTypeIcon => ContentType switch
-    {
-        "Image" => "\uE8B9",      // Picture icon
-        "Files" => "\uE8A5",       // Folder icon
-        "Html" => "\uE8A1",        // Globe icon (web content)
-        "RichText" => "\uE8A4",    // Document icon
-        _ => "\uE8C8",             // Copy icon (text)
-    };
+    public string ContentTypeIcon =>
+        ContentType switch
+        {
+            "Image" => "\uE8B9", // Picture icon
+            "Files" => "\uE8A5", // Folder icon
+            "Html" => "\uE8A1", // Globe icon (web content)
+            "RichText" => "\uE8A4", // Document icon
+            _ => "\uE8C8", // Copy icon (text)
+        };
 
     /// <summary>
     /// Gets a formatted relative time string
@@ -356,7 +362,7 @@ public class ClipboardItemViewModel
                 < 1 => "just now",
                 < 60 => $"{(int)diff.TotalMinutes}m ago",
                 < 1440 => $"{(int)diff.TotalHours}h ago",
-                _ => $"{(int)diff.TotalDays}d ago"
+                _ => $"{(int)diff.TotalDays}d ago",
             };
         }
     }

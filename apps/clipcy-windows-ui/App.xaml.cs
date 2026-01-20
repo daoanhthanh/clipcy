@@ -1,5 +1,5 @@
-using Microsoft.UI.Xaml;
 using Clipcy.Services;
+using Microsoft.UI.Xaml;
 
 namespace Clipcy;
 
