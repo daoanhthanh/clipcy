@@ -7,7 +7,9 @@
     xmlns:vm="using:Clipcy.ViewModels">
 
     <Grid x:Name="RootGrid"
-          KeyDown="RootGrid_KeyDown">
+          KeyDown="RootGrid_KeyDown"
+          Background="Transparent"
+          Padding="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -18,23 +20,34 @@
         <TextBox
             x:Name="SearchBox"
             Grid.Row="0"
-            Margin="12,12,12,8"
+            Margin="4,4,4,4"
             PlaceholderText="Search clipboard history..."
-            TextChanged="SearchBox_TextChanged"/>
+            TextChanged="SearchBox_TextChanged"
+            BorderThickness="0"
+            Background="{ThemeResource ControlFillColorDefaultBrush}"/>
 
         <!-- Clipboard History List -->
         <ListView
             x:Name="HistoryListView"
             Grid.Row="1"
-            Margin="8,0"
+            Margin="0,4,0,0"
             ItemsSource="{Binding ViewModel.Items}"
             SelectionMode="Single"
             ItemClick="HistoryListView_ItemClick"
-            IsItemClickEnabled="True">
+            IsItemClickEnabled="True"
+            SingleSelectionFollowsFocus="True"
+            Background="Transparent">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Padding" Value="8,6"/>
+                    <Setter Property="Margin" Value="4,1"/>
+                    <Setter Property="MinHeight" Value="36"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Grid Padding="8,6"
-                            ColumnSpacing="8">
+                    <Grid ColumnSpacing="10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -44,24 +57,28 @@
                         <!-- Content Type Icon -->
                         <FontIcon
                             Grid.Column="0"
-                            FontSize="16"
+                            FontSize="14"
                             Glyph="{Binding ContentTypeIcon}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            VerticalAlignment="Center"/>
 
                         <!-- Preview Text -->
                         <TextBlock
                             Grid.Column="1"
                             Text="{Binding Preview}"
                             TextTrimming="CharacterEllipsis"
-                            MaxLines="2"/>
+                            MaxLines="1"
+                            VerticalAlignment="Center"
+                            FontSize="13"/>
 
                         <!-- Pin Icon -->
                         <FontIcon
                             Grid.Column="2"
-                            FontSize="12"
+                            FontSize="10"
                             Glyph="&#xE718;"
                             Visibility="{Binding Pinned, Converter={StaticResource BoolToVisibility}}"
-                            Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"/>
+                            Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"
+                            VerticalAlignment="Center"/>
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>
@@ -69,7 +86,8 @@
 
         <!-- Status Bar -->
         <Grid Grid.Row="2"
-                Padding="12,8">
+              Padding="8,4"
+              Margin="0,4,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -78,7 +96,7 @@
             <TextBlock
                 Grid.Column="0"
                 Text="{Binding ViewModel.StatusText}"
-                FontSize="12"
+                FontSize="11"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                 VerticalAlignment="Center"/>
 
@@ -89,7 +107,8 @@
                     Content="Settings"
                     Click="SettingsButton_Click"
                     Style="{StaticResource SubtleButtonStyle}"
-                    FontSize="12"/>
+                    FontSize="11"
+                    Padding="8,2"/>
             </StackPanel>
         </Grid>
     </Grid>

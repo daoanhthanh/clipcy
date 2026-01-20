@@ -1,6 +1,9 @@
 using H.NotifyIcon;
+using H.NotifyIcon.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using CommunityToolkit.Mvvm.Input;
+using System.Drawing;
 
 namespace Clipcy.Services;
 
@@ -63,11 +66,18 @@ public class TrayService : IDisposable
       ContextFlyout = contextMenu
     };
 
-    // Note: Double-click event handler removed for compatibility with H.NotifyIcon.WinUI 2.2.0
-    // Use context menu "Show Clipcy" option or hotkey to show main window
+    // Set the icon from the application directory
+    var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+    if (File.Exists(iconPath))
+    {
+      _trayIcon.Icon = new Icon(iconPath);
+    }
 
-    // TODO: Set icon from resources
-    // _trayIcon.IconSource = new BitmapImage(new Uri("ms-appx:///Assets/icon.ico"));
+    // Handle left click to show the main window
+    _trayIcon.LeftClickCommand = new RelayCommand(ShowMainWindow);
+
+    // Force create to show the icon immediately
+    _trayIcon.ForceCreate();
   }
 
   private void OnHotkeyTriggered()
