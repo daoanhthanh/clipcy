@@ -247,7 +247,7 @@ internal class RustBridgeService : IDisposable, UiCallback
                 startOnBoot: settings.StartOnBoot,
                 showNotifications: settings.ShowNotifications,
                 showPreviewPanel: settings.ShowPreviewPanel,
-                excludedApps: settings.ExcludedApps.ToArray()
+                excludedApps: settings.ExcludedApps
             );
 
             _engine?.SaveSettings(dto);
