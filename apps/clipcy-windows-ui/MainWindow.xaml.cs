@@ -1110,13 +1110,26 @@ public sealed partial class MainWindow : Window
                     break;
 
                 case "Image":
-                    if (item.Thumbnail != null && item.Thumbnail.Length > 0)
+                    byte[]? imageData = item.Thumbnail;
+
+                    // Try to get full image data
+                    if (App.Bridge != null && !string.IsNullOrEmpty(item.Id))
                     {
-                        using (var stream = new MemoryStream(item.Thumbnail))
+                        var fullData = await Task.Run(() => App.Bridge.GetItemData(item.Id));
+                        if (fullData != null && fullData.Length > 0)
+                        {
+                            imageData = fullData;
+                        }
+                    }
+
+                    if (imageData != null && imageData.Length > 0)
+                    {
+                        using (var stream = new MemoryStream(imageData))
                         {
                             var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
-                            await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+                            bitmap.SetSource(stream.AsRandomAccessStream());
                             _previewImage.Source = bitmap;
+                            _previewImage.Visibility = Visibility.Visible;
                             _previewImageBorder.Visibility = Visibility.Visible;
                         }
                     }
