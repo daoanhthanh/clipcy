@@ -1199,9 +1199,51 @@ public sealed partial class MainWindow : Window
 
                 // Popup dimensions
                 const double spacing = 10;
+                const double popupWidth = 360;
 
-                // Always position to the right of the target
-                double horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
+                // Determine placement based on available screen space
+                var windowPos = this.AppWindow.Position;
+                var windowSize = this.AppWindow.Size;
+
+                // Find the monitor the window is on
+                var centerPt = new POINT
+                {
+                    X = windowPos.X + (windowSize.Width / 2),
+                    Y = windowPos.Y + (windowSize.Height / 2)
+                };
+
+                var hMonitor = MonitorFromPoint(centerPt, MONITOR_DEFAULTTONEAREST);
+                var monitorInfo = new MONITORINFO();
+                monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+
+                bool showOnLeft = false;
+
+                if (GetMonitorInfo(hMonitor, ref monitorInfo))
+                {
+                    var workArea = monitorInfo.rcWork;
+                    // Calculate projected right edge in screen coordinates
+                    // ScreenX = WindowX + TargetX (relative to window) + TargetWidth + Spacing + PopupWidth
+                    var projectedRight = windowPos.X + targetPos.X + _previewTarget.ActualWidth + spacing + popupWidth;
+
+                    if (projectedRight > workArea.Right)
+                    {
+                        showOnLeft = true;
+                    }
+                }
+
+                // Calculate offset
+                double horizontalOffset;
+                if (showOnLeft)
+                {
+                    // Position to the left: TargetX - PopupWidth - Spacing
+                    horizontalOffset = targetPos.X - popupWidth - spacing;
+                }
+                else
+                {
+                    // Position to the right: TargetX + TargetWidth + Spacing
+                    horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
+                }
+
                 double verticalOffset = targetPos.Y;
 
                 popup.HorizontalOffset = horizontalOffset;
