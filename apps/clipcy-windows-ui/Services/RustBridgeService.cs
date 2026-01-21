@@ -1,5 +1,8 @@
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Media.Imaging;
+using System.IO;
 using uniffi.clipcy_core;
+using Windows.Storage.Streams;
 
 namespace Clipcy.Services;
 
@@ -332,6 +335,34 @@ public class ClipboardItemViewModel
     public string? SourceApp { get; init; }
     public ulong CreatedAtTimestamp { get; init; }
     public bool Pinned { get; set; }
+
+    public bool IsImage => ContentType == "Image";
+
+    private BitmapImage? _thumbnailImage;
+    public BitmapImage? ThumbnailImage
+    {
+        get
+        {
+            if (_thumbnailImage == null && ContentType == "Image" && Thumbnail != null && Thumbnail.Length > 0)
+            {
+                try
+                {
+                    _thumbnailImage = new BitmapImage();
+                    _thumbnailImage.DecodePixelHeight = 64; // Optimized for list view (32px height * 2 for high DPI)
+                    
+                    using (var stream = new MemoryStream(Thumbnail))
+                    {
+                        _thumbnailImage.SetSource(stream.AsRandomAccessStream());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error creating thumbnail: {ex.Message}");
+                }
+            }
+            return _thumbnailImage;
+        }
+    }
 
     /// <summary>
     /// Gets the icon glyph based on content type

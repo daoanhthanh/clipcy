@@ -61,14 +61,30 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- Content Type Icon -->
-            <FontIcon
-              Grid.Column="0"
-              FontSize="14"
-              Glyph="{Binding ContentTypeIcon}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-              VerticalAlignment="Center"
-            />
+            <!-- Content Type Icon / Thumbnail -->
+            <Grid Grid.Column="0">
+              <FontIcon
+                FontSize="14"
+                Glyph="{Binding ContentTypeIcon}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                VerticalAlignment="Center"
+                Visibility="{Binding IsImage, Converter={StaticResource BoolToVisibility}, ConverterParameter=Inverse}"
+              />
+              <Border
+                CornerRadius="3"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+                Visibility="{Binding IsImage, Converter={StaticResource BoolToVisibility}}"
+                VerticalAlignment="Center"
+              >
+                <Image
+                  Source="{Binding ThumbnailImage}"
+                  Width="32"
+                  Height="32"
+                  Stretch="UniformToFill"
+                />
+              </Border>
+            </Grid>
 
             <!-- Preview Text -->
             <TextBlock
