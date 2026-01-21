@@ -80,16 +80,16 @@ internal class RustBridgeService : IDisposable, UiCallback
     }
 
     /// <summary>
-    /// Get clipboard history items
+    /// Get clipboard history items (uses max_history from settings)
     /// </summary>
-    public List<ClipboardItemViewModel> GetHistory(uint limit)
+    public List<ClipboardItemViewModel> GetHistory()
     {
         if (_engine == null)
             return new List<ClipboardItemViewModel>();
 
         try
         {
-            var items = _engine.GetHistory(limit);
+            var items = _engine.GetHistory();
             return items.Select(ToViewModel).ToList();
         }
         catch (Exception ex)

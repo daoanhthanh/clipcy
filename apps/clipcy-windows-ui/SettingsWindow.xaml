@@ -37,8 +37,9 @@
             Width="120"
             Minimum="10"
             Maximum="1000"
-            SpinButtonPlacementMode="Inline"
+            SpinButtonPlacementMode="Hidden"
             ValueChanged="MaxHistoryBox_ValueChanged"
+            LostFocus="MaxHistoryBox_LostFocus"
           />
         </Grid>
 

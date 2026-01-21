@@ -716,14 +716,16 @@ public sealed partial class MainWindow : Window
         Microsoft.UI.Xaml.Media.Brush backgroundBrush;
         try
         {
-            backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AcrylicBackgroundFillColorDefaultBrush"];
+            backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)
+                Application.Current.Resources["AcrylicBackgroundFillColorDefaultBrush"];
         }
         catch
         {
             // Fallback to LayerFillColorDefaultBrush if AcrylicBackgroundFillColorDefaultBrush doesn't exist
             try
             {
-                backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"];
+                backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)
+                    Application.Current.Resources["LayerFillColorDefaultBrush"];
             }
             catch
             {
@@ -735,11 +737,12 @@ public sealed partial class MainWindow : Window
                 );
             }
         }
-        
+
         Microsoft.UI.Xaml.Media.Brush borderBrush;
         try
         {
-            borderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SurfaceStrokeColorDefaultBrush"];
+            borderBrush = (Microsoft.UI.Xaml.Media.Brush)
+                Application.Current.Resources["SurfaceStrokeColorDefaultBrush"];
         }
         catch
         {
@@ -749,7 +752,7 @@ public sealed partial class MainWindow : Window
                     : Windows.UI.Color.FromArgb(20, 0, 0, 0)
             );
         }
-        
+
         var outerBorder = new Border
         {
             Background = backgroundBrush,
@@ -764,11 +767,7 @@ public sealed partial class MainWindow : Window
         outerBorder.Shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
         outerBorder.Translation = new System.Numerics.Vector3(0, 0, 32);
 
-        var grid = new Grid
-        {
-            Padding = new Thickness(12, 10, 12, 12),
-            RowSpacing = 10,
-        };
+        var grid = new Grid { Padding = new Thickness(12, 10, 12, 12), RowSpacing = 10 };
 
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.RowDefinitions.Add(
@@ -894,8 +893,8 @@ public sealed partial class MainWindow : Window
                 Duration = new Duration(TimeSpan.FromMilliseconds(150)),
                 EasingFunction = new Microsoft.UI.Xaml.Media.Animation.QuadraticEase
                 {
-                    EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut
-                }
+                    EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut,
+                },
             };
 
             var slideIn = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
@@ -905,8 +904,8 @@ public sealed partial class MainWindow : Window
                 Duration = new Duration(TimeSpan.FromMilliseconds(150)),
                 EasingFunction = new Microsoft.UI.Xaml.Media.Animation.QuadraticEase
                 {
-                    EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut
-                }
+                    EasingMode = Microsoft.UI.Xaml.Media.Animation.EasingMode.EaseOut,
+                },
             };
 
             var storyboard = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
@@ -988,7 +987,11 @@ public sealed partial class MainWindow : Window
         _hideTimer?.Stop();
 
         // If already showing the same item, do nothing
-        if (_currentPreviewItem == viewModel && _previewPopup != null && _previewPopup.IsOpen == true)
+        if (
+            _currentPreviewItem == viewModel
+            && _previewPopup != null
+            && _previewPopup.IsOpen == true
+        )
             return;
 
         _pendingPreviewItem = viewModel;

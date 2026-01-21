@@ -462,11 +462,18 @@ impl ClipboardEngine {
         Ok(())
     }
 
-    /// Get clipboard history
-    pub fn get_history(&self, limit: u32) -> Vec<ClipboardItemDto> {
+    /// Get clipboard history (uses max_history from settings)
+    pub fn get_history(&self) -> Vec<ClipboardItemDto> {
         if let Some(service) = self.clipboard_service.read().as_ref() {
+            // Load settings to get max_history
+            let limit = self
+                .settings_manager
+                .load()
+                .map(|s| s.max_history_items)
+                .unwrap_or(100);
+
             self.runtime
-                .block_on(service.get_history(Some(limit as usize)))
+                .block_on(service.get_history(Some(limit)))
                 .map(|items| items.into_iter().map(Into::into).collect())
                 .unwrap_or_default()
         } else {
@@ -569,16 +576,17 @@ impl ClipboardEngine {
             .unwrap_or_else(|_| clipcy_settings_common::Settings::default().into())
     }
 
-    /// Save settings
+    /// Save settings and apply them immediately
     pub fn save_settings(&self, settings: SettingsDto) -> Result<(), BridgeError> {
         let settings: clipcy_settings_common::Settings = settings.into();
         self.settings_manager
             .save(&settings)
             .map_err(|e| BridgeError::StorageError(e.to_string()))?;
 
-        // Update autostart if needed
+        // Apply settings immediately
         #[cfg(target_os = "windows")]
         {
+            // Update autostart if needed
             let current_enabled = self.autostart_handler.is_enabled().unwrap_or(false);
             if settings.start_on_boot != current_enabled {
                 if settings.start_on_boot {
@@ -587,6 +595,29 @@ impl ClipboardEngine {
                     let _ = self.autostart_handler.disable();
                 }
             }
+
+            // Re-register hotkey with new settings
+            if let Some(_service) = self.clipboard_service.read().as_ref() {
+                let _ = self.hotkey_handler.unregister_all();
+                let ui_handler = self.ui_handler.clone();
+                let _ = self.hotkey_handler.register(
+                    &settings.hotkey,
+                    Box::new(move || {
+                        ui_handler.send_event(BridgeEvent::HotkeyTriggered);
+                    }),
+                );
+            }
+
+            // Apply theme change immediately
+            let theme = match settings.theme {
+                clipcy_settings_common::ThemeMode::Light => Theme::Light,
+                clipcy_settings_common::ThemeMode::Dark => Theme::Dark,
+                clipcy_settings_common::ThemeMode::System => {
+                    self.theme_detector.get_current().unwrap_or(Theme::Light)
+                }
+            };
+            let is_dark = matches!(theme, Theme::Dark);
+            self.ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
         }
 
         Ok(())

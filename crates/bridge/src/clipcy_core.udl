@@ -90,7 +90,7 @@ interface ClipboardEngine {
     void stop();
 
     // History operations
-    sequence<ClipboardItemDto> get_history(u32 limit);
+    sequence<ClipboardItemDto> get_history();
 
     sequence<ClipboardItemDto> search(string query);
 

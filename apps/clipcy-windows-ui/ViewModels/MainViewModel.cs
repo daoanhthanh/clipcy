@@ -25,8 +25,8 @@ public partial class MainViewModel : ObservableObject
             if (bridge == null)
                 return;
 
-            // Run database call on background thread
-            var items = await Task.Run(() => bridge.GetHistory(50));
+            // Run database call on background thread (uses max_history from settings)
+            var items = await Task.Run(() => bridge.GetHistory());
 
             Items.Clear();
 

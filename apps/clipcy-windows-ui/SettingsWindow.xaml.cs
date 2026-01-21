@@ -14,6 +14,7 @@ public sealed partial class SettingsWindow : Window
     private SettingsViewModel _settings;
     private bool _isCapturingHotkey;
     private List<VirtualKey> _capturedKeys = new();
+    private double _lastValidMaxHistory;
 
     public SettingsWindow()
     {
@@ -30,6 +31,7 @@ public sealed partial class SettingsWindow : Window
     private void LoadSettingsToUI()
     {
         MaxHistoryBox.Value = _settings.MaxHistoryItems;
+        _lastValidMaxHistory = _settings.MaxHistoryItems;
         HotkeyBox.Text = _settings.Hotkey;
         StartOnBootToggle.IsOn = _settings.StartOnBoot;
         ShowPreviewToggle.IsOn = _settings.ShowPreviewPanel;
@@ -50,6 +52,15 @@ public sealed partial class SettingsWindow : Window
         if (!double.IsNaN(args.NewValue))
         {
             _settings.MaxHistoryItems = (uint)args.NewValue;
+            _lastValidMaxHistory = args.NewValue;
+        }
+    }
+
+    private void MaxHistoryBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (double.IsNaN(MaxHistoryBox.Value))
+        {
+            MaxHistoryBox.Value = _lastValidMaxHistory;
         }
     }
 
@@ -146,12 +157,21 @@ public sealed partial class SettingsWindow : Window
         LoadSettingsToUI();
     }
 
-    private void SaveButton_Click(object sender, RoutedEventArgs e)
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             App.Bridge?.SaveSettings(_settings);
-            this.Close();
+
+            // Show success feedback
+            var dialog = new ContentDialog
+            {
+                Title = "Success",
+                Content = "Settings saved successfully",
+                CloseButtonText = "OK",
+                XamlRoot = this.Content.XamlRoot,
+            };
+            await dialog.ShowAsync();
         }
         catch (Exception ex)
         {
