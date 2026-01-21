@@ -120,6 +120,13 @@ dotnet run
 #### Manual Build
 
 1. **Build Rust Bridge (cdylib)**
+
+    Or you can use any other version compatible with uniffi v0.29. Read here [uniffi-bindgen-cs](https://github.com/NordSecurity/uniffi-bindgen-cs)
+
+   ```bash
+   cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs --tag v0.10.0+v0.29.4
+   ```
+
    ```bash
    cargo build --release -p clipcy-bridge
    # Output: target/release/clipcy_core.dll

@@ -307,7 +307,7 @@ unsafe extern "system" fn hotkey_window_proc(
     msg: u32,
     wparam: WPARAM,
     lparam: LPARAM,
-) -> LRESULT {
+) -> LRESULT { unsafe {
     match msg {
         WM_HOTKEY => {
             let id = wparam.0 as u32;
@@ -332,4 +332,4 @@ unsafe extern "system" fn hotkey_window_proc(
         }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
-}
+}}

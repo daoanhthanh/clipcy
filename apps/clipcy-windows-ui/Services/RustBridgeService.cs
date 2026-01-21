@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using uniffi.clipcy_core;
 
@@ -247,7 +246,7 @@ internal class RustBridgeService : IDisposable, UiCallback
                 startOnBoot: settings.StartOnBoot,
                 showNotifications: settings.ShowNotifications,
                 showPreviewPanel: settings.ShowPreviewPanel,
-                excludedApps: settings.ExcludedApps
+                excludedApps: settings.ExcludedApps.ToArray()
             );
 
             _engine?.SaveSettings(dto);

@@ -1283,7 +1283,7 @@ unsafe extern "system" fn window_proc(
     msg: u32,
     wparam: WPARAM,
     lparam: LPARAM,
-) -> LRESULT {
+) -> LRESULT { unsafe {
     match msg {
         WM_CLIPBOARDUPDATE => {
             let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *const (
@@ -1318,4 +1318,4 @@ unsafe extern "system" fn window_proc(
         }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
-}
+}}
