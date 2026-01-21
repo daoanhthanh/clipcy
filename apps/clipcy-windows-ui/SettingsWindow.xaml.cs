@@ -18,10 +18,10 @@ public sealed partial class SettingsWindow : Window
 
     public SettingsWindow()
     {
-        this.InitializeComponent();
+        InitializeComponent();
 
         // Set window size
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 500, Height = 600 });
+        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 500, Height = 600 });
 
         // Load current settings
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
@@ -78,18 +78,15 @@ public sealed partial class SettingsWindow : Window
 
         e.Handled = true;
 
-        // Track modifier keys
         var key = e.Key;
-        if (
-            key == VirtualKey.Control
-            || key == VirtualKey.Shift
-            || key == VirtualKey.Menu
-            || key == VirtualKey.LeftWindows
-            || key == VirtualKey.RightWindows
-        )
+
+        if (IsModifierKey(key))
         {
-            if (!_capturedKeys.Contains(key))
-                _capturedKeys.Add(key);
+            var normalized = NormalizeModifier(key);
+            if (!_capturedKeys.Contains(normalized))
+            {
+                _capturedKeys.Add(normalized);
+            }
             UpdateHotkeyDisplay();
             return;
         }
@@ -114,19 +111,44 @@ public sealed partial class SettingsWindow : Window
 
         foreach (var key in _capturedKeys)
         {
-            var keyName = key switch
-            {
-                VirtualKey.Control => "Ctrl",
-                VirtualKey.Shift => "Shift",
-                VirtualKey.Menu => "Alt",
-                VirtualKey.LeftWindows or VirtualKey.RightWindows => "Win",
-                _ => key.ToString(),
-            };
-            parts.Add(keyName);
+            parts.Add(GetKeyDisplayName(key));
         }
 
         return string.Join("+", parts);
     }
+
+    private static bool IsModifierKey(VirtualKey key) => key switch
+    {
+        VirtualKey.Control
+        or VirtualKey.LeftControl
+        or VirtualKey.RightControl
+        or VirtualKey.Shift
+        or VirtualKey.LeftShift
+        or VirtualKey.RightShift
+        or VirtualKey.Menu
+        or VirtualKey.LeftMenu
+        or VirtualKey.RightMenu
+        or VirtualKey.LeftWindows
+        or VirtualKey.RightWindows => true,
+        _ => false,
+    };
+
+    private static VirtualKey NormalizeModifier(VirtualKey key) => key switch
+    {
+        VirtualKey.LeftControl or VirtualKey.RightControl => VirtualKey.Control,
+        VirtualKey.LeftShift or VirtualKey.RightShift => VirtualKey.Shift,
+        VirtualKey.LeftMenu or VirtualKey.RightMenu => VirtualKey.Menu,
+        _ => key,
+    };
+
+    private static string GetKeyDisplayName(VirtualKey key) => key switch
+    {
+        VirtualKey.Control => "Ctrl",
+        VirtualKey.Shift => "Shift",
+        VirtualKey.Menu => "Alt",
+        VirtualKey.LeftWindows or VirtualKey.RightWindows => "Win",
+        _ => key.ToString(),
+    };
 
     private void StartOnBootToggle_Toggled(object sender, RoutedEventArgs e)
     {
