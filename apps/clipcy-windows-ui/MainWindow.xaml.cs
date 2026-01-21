@@ -712,25 +712,50 @@ public sealed partial class MainWindow : Window
         };
 
         // Create outer border for shadow and rounded corners (Windows 11 style)
+        // Use theme resource for acrylic background
+        Microsoft.UI.Xaml.Media.Brush backgroundBrush;
+        try
+        {
+            backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AcrylicBackgroundFillColorDefaultBrush"];
+        }
+        catch
+        {
+            // Fallback to LayerFillColorDefaultBrush if AcrylicBackgroundFillColorDefaultBrush doesn't exist
+            try
+            {
+                backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["LayerFillColorDefaultBrush"];
+            }
+            catch
+            {
+                // Final fallback - create acrylic brush manually
+                backgroundBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                    Application.Current.RequestedTheme == ApplicationTheme.Dark
+                        ? Windows.UI.Color.FromArgb(242, 44, 44, 44)
+                        : Windows.UI.Color.FromArgb(249, 252, 252, 252)
+                );
+            }
+        }
+        
+        Microsoft.UI.Xaml.Media.Brush borderBrush;
+        try
+        {
+            borderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SurfaceStrokeColorDefaultBrush"];
+        }
+        catch
+        {
+            borderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                Application.Current.RequestedTheme == ApplicationTheme.Dark
+                    ? Windows.UI.Color.FromArgb(40, 255, 255, 255)
+                    : Windows.UI.Color.FromArgb(20, 0, 0, 0)
+            );
+        }
+        
         var outerBorder = new Border
         {
-            Background = new Microsoft.UI.Xaml.Media.AcrylicBrush
-            {
-                TintColor = Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
-                    : Windows.UI.Color.FromArgb(255, 243, 243, 243),
-                TintOpacity = 0.8,
-                FallbackColor = Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
-                    : Windows.UI.Color.FromArgb(255, 243, 243, 243),
-            },
+            Background = backgroundBrush,
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
-            BorderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(51, 255, 255, 255)
-                    : Windows.UI.Color.FromArgb(26, 0, 0, 0)
-            ),
+            BorderBrush = borderBrush,
             Width = 360,
             MaxHeight = 400,
         };
