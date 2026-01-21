@@ -37,6 +37,7 @@ graph TD
 ## Features
 
 - Clipboard history with text, images, and files support
+  - Image thumbnails displayed directly in the history list
 - Global hotkey (default: `Ctrl+Shift+V`)
 - System tray integration with icon and context menu
 - SQLite storage
@@ -56,7 +57,8 @@ graph TD
 - Screen boundary detection
 - Preview panel on hover/focus:
   - Larger preview of clipboard content (text, images, files)
-  - Intelligent positioning (adapts to available space)
+  - High-resolution image previews
+  - Intelligent positioning (adapts to available space, screen edges, and taskbar)
   - Content-specific metadata (dimensions, file size, character/word count)
   - Auto-dismisses when focus moves away
   - Shows copy time, source application, and pin status

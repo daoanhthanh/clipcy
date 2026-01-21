@@ -674,6 +674,7 @@ public sealed partial class MainWindow : Window
     private ClipboardItemViewModel? _pendingPreviewItem;
     private FrameworkElement? _previewTarget;
     private Microsoft.UI.Xaml.Controls.Primitives.Popup? _previewPopup;
+    private FrameworkElement? _previewPopupRoot;
     private TextBlock? _previewContentType;
     private TextBlock? _previewText;
     private Image? _previewImage;
@@ -879,6 +880,7 @@ public sealed partial class MainWindow : Window
 
         outerBorder.Child = grid;
         popup.Child = outerBorder;
+        _previewPopupRoot = outerBorder;
 
         // Store the outerBorder reference for animations
         popup.Opened += (s, e) =>
@@ -1210,15 +1212,20 @@ public sealed partial class MainWindow : Window
                 var transform = _previewTarget.TransformToVisual(null);
                 var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
 
-                // Popup dimensions
-                const double spacing = 10;
-                const double popupWidth = 360;
+                // Force measure to get accurate size
+                if (_previewPopupRoot != null)
+                {
+                    _previewPopupRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                }
+                var popupWidth = _previewPopupRoot?.DesiredSize.Width ?? 360.0;
+                var popupHeight = _previewPopupRoot?.DesiredSize.Height ?? 260.0;
+                var spacing = 10.0;
 
-                // Determine placement based on available screen space
+                // Get screen info
                 var windowPos = this.AppWindow.Position;
                 var windowSize = this.AppWindow.Size;
+                var scale = popup.XamlRoot.RasterizationScale;
 
-                // Find the monitor the window is on
                 var centerPt = new POINT
                 {
                     X = windowPos.X + (windowSize.Width / 2),
@@ -1230,17 +1237,32 @@ public sealed partial class MainWindow : Window
                 monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
 
                 bool showOnLeft = false;
+                double verticalAdjust = 0;
 
                 if (GetMonitorInfo(hMonitor, ref monitorInfo))
                 {
                     var workArea = monitorInfo.rcWork;
-                    // Calculate projected right edge in screen coordinates
-                    // ScreenX = WindowX + TargetX (relative to window) + TargetWidth + Spacing + PopupWidth
-                    var projectedRight = windowPos.X + targetPos.X + _previewTarget.ActualWidth + spacing + popupWidth;
 
-                    if (projectedRight > workArea.Right)
+                    // Check Horizontal
+                    // Calculate right edge of popup if placed on right: (TargetX + Width + Spacing + PopupWidth) * Scale + WindowX
+                    var rightEdgeDips = targetPos.X + _previewTarget.ActualWidth + spacing + popupWidth;
+                    var rightEdgePixels = windowPos.X + (int)(rightEdgeDips * scale);
+
+                    if (rightEdgePixels > workArea.Right)
                     {
                         showOnLeft = true;
+                    }
+
+                    // Check Vertical
+                    // Calculate bottom edge of popup: (TargetY + PopupHeight) * Scale + WindowY
+                    var bottomEdgeDips = targetPos.Y + popupHeight;
+                    var bottomEdgePixels = windowPos.Y + (int)(bottomEdgeDips * scale);
+
+                    if (bottomEdgePixels > workArea.Bottom)
+                    {
+                        var excessPixels = bottomEdgePixels - workArea.Bottom;
+                        // Move up by excess + spacing to ensure it's fully visible and not flush against the edge
+                        verticalAdjust = -(excessPixels / scale) - spacing;
                     }
                 }
 
@@ -1257,7 +1279,7 @@ public sealed partial class MainWindow : Window
                     horizontalOffset = targetPos.X + _previewTarget.ActualWidth + spacing;
                 }
 
-                double verticalOffset = targetPos.Y;
+                double verticalOffset = targetPos.Y + verticalAdjust;
 
                 popup.HorizontalOffset = horizontalOffset;
                 popup.VerticalOffset = verticalOffset;
