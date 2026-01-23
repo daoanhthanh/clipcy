@@ -16,6 +16,10 @@
       <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
       <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
 
+      <!-- Grid Width Constants -->
+      <x:Double x:Key="ContentGridMinWidth">300</x:Double>
+      <x:Double x:Key="ContentGridMaxWidth">600</x:Double>
+
       <!-- Custom styles and resources -->
       <Style x:Key="ClipboardItemStyle" TargetType="ListViewItem">
         <Setter Property="Padding" Value="8,4" />

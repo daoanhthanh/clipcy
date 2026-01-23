@@ -266,7 +266,7 @@ public sealed partial class SettingsWindow : Window
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         // Skip if UI elements aren't loaded yet
-        if (SidebarPanel == null || HamburgerButton == null || CompactActionButtons == null || SidebarSpacer == null)
+        if (SidebarPanel == null || HamburgerButton == null || SidebarSpacer == null)
             return;
 
         var width = e.NewSize.Width;
@@ -315,7 +315,9 @@ public sealed partial class SettingsWindow : Window
         SidebarSpacer.Visibility = Visibility.Collapsed;
         SidebarOverlayBackdrop.Visibility = Visibility.Collapsed;
         HamburgerButton.Visibility = Visibility.Visible;
-        CompactActionButtons.Visibility = Visibility.Visible;
+
+        // Set solid background for overlay mode
+        SidebarPanel.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SolidBackgroundFillColorBaseBrush"];
 
         // Make content span full width
         Grid.SetColumn(ContentPanel, 0);
@@ -329,7 +331,9 @@ public sealed partial class SettingsWindow : Window
         SidebarSpacer.Visibility = Visibility.Visible;
         SidebarOverlayBackdrop.Visibility = Visibility.Collapsed;
         HamburgerButton.Visibility = Visibility.Collapsed;
-        CompactActionButtons.Visibility = Visibility.Collapsed;
+
+        // Remove background for inline mode
+        SidebarPanel.Background = null;
 
         // Restore content to right column
         Grid.SetColumn(ContentPanel, 1);
@@ -373,6 +377,7 @@ public sealed partial class SettingsWindow : Window
         {
             _settings.Hotkey = dialog.Hotkey;
             UpdateHotkeyDisplay(dialog.Hotkey);
+            SaveSettings();
         }
     }
 
@@ -382,6 +387,7 @@ public sealed partial class SettingsWindow : Window
         {
             _settings.MaxHistoryItems = (uint)args.NewValue;
             _lastValidMaxHistory = args.NewValue;
+            SaveSettings();
         }
     }
 
@@ -396,16 +402,19 @@ public sealed partial class SettingsWindow : Window
     private void StartOnBootToggle_Toggled(object sender, RoutedEventArgs e)
     {
         _settings.StartOnBoot = StartOnBootToggle.IsOn;
+        SaveSettings();
     }
 
     private void ShowPreviewToggle_Toggled(object sender, RoutedEventArgs e)
     {
         _settings.ShowPreviewPanel = ShowPreviewToggle.IsOn;
+        SaveSettings();
     }
 
     private void ShowNotificationsToggle_Toggled(object sender, RoutedEventArgs e)
     {
         _settings.ShowNotifications = ShowNotificationsToggle.IsOn;
+        SaveSettings();
     }
 
     private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -413,6 +422,19 @@ public sealed partial class SettingsWindow : Window
         if (ThemeComboBox.SelectedItem is ComboBoxItem item)
         {
             _settings.Theme = item.Tag?.ToString() ?? "System";
+            SaveSettings();
+        }
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            App.Bridge?.SaveSettings(_settings);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
         }
     }
 
@@ -420,40 +442,6 @@ public sealed partial class SettingsWindow : Window
     {
         _settings = new SettingsViewModel();
         LoadSettingsToUI();
-    }
-
-    private async void SaveButton_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            App.Bridge?.SaveSettings(_settings);
-
-            // Show success feedback
-            var dialog = new ContentDialog
-            {
-                Title = "Success",
-                Content = "Settings saved successfully",
-                CloseButtonText = "OK",
-                XamlRoot = this.Content.XamlRoot,
-            };
-            await dialog.ShowAsync();
-        }
-        catch (Exception ex)
-        {
-            // Show error dialog
-            ShowErrorDialog($"Failed to save settings: {ex.Message}");
-        }
-    }
-
-    private async void ShowErrorDialog(string message)
-    {
-        var dialog = new ContentDialog
-        {
-            Title = "Error",
-            Content = message,
-            CloseButtonText = "OK",
-            XamlRoot = this.Content.XamlRoot,
-        };
-        await dialog.ShowAsync();
+        SaveSettings();
     }
 }

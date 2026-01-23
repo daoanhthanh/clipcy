@@ -65,11 +65,12 @@
             <Grid
               x:Name="ContentHost"
               Padding="40,32,40,32"
-              MaxWidth="600"
+              MinWidth="{StaticResource ContentGridMinWidth}"
+              MaxWidth="{StaticResource ContentGridMaxWidth}"
               HorizontalAlignment="Center"
             >
               <!-- General Page -->
-              <StackPanel x:Name="GeneralPage" Spacing="4" Visibility="Visible">
+              <StackPanel x:Name="GeneralPage" Spacing="4" Visibility="Visible" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
                 <TextBlock
                   Text="General"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -248,7 +249,7 @@
               </StackPanel>
 
               <!-- Behavior Page -->
-              <StackPanel x:Name="BehaviorPage" Spacing="4" Visibility="Collapsed">
+              <StackPanel x:Name="BehaviorPage" Spacing="4" Visibility="Collapsed" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
                 <TextBlock
                   Text="Behavior"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -410,7 +411,7 @@
               </StackPanel>
 
               <!-- Appearance Page -->
-              <StackPanel x:Name="AppearancePage" Spacing="4" Visibility="Collapsed">
+              <StackPanel x:Name="AppearancePage" Spacing="4" Visibility="Collapsed" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
                 <TextBlock
                   Text="Appearance"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -477,7 +478,7 @@
               </StackPanel>
 
               <!-- About Page -->
-              <StackPanel x:Name="AboutPage" Spacing="4" Visibility="Collapsed">
+              <StackPanel x:Name="AboutPage" Spacing="4" Visibility="Collapsed" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
                 <TextBlock
                   Text="About"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -540,24 +541,6 @@
               </StackPanel>
             </Grid>
           </ScrollViewer>
-
-          <!-- Compact mode action buttons (shown when sidebar is hidden) -->
-          <StackPanel
-            x:Name="CompactActionButtons"
-            Grid.Row="1"
-            Orientation="Horizontal"
-            HorizontalAlignment="Right"
-            Padding="16"
-            Spacing="8"
-            Visibility="Collapsed"
-          >
-            <Button Content="Reset to Defaults" Click="ResetButton_Click" />
-            <Button
-              Content="Save Changes"
-              Style="{StaticResource AccentButtonStyle}"
-              Click="SaveButton_Click"
-            />
-          </StackPanel>
         </Grid>
       </Grid>
 
@@ -623,6 +606,15 @@
             </StackPanel>
           </ListViewItem>
         </ListView>
+
+        <!-- Reset button at bottom of sidebar -->
+        <Button
+          Content="Reset to Defaults"
+          Grid.Row="1"
+          Margin="16,8,16,16"
+          HorizontalAlignment="Stretch"
+          Click="ResetButton_Click"
+        />
       </Grid>
     </Grid>
   </Grid>
