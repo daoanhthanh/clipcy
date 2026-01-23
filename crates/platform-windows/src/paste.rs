@@ -12,20 +12,13 @@ use clipboard_core::ports::PasteHandler;
 // Store the previous foreground window before showing popup
 static PREVIOUS_FOREGROUND: AtomicIsize = AtomicIsize::new(0);
 
-// Window messages for keyboard
-const WM_KEYDOWN: u32 = 0x0100;
-const WM_KEYUP: u32 = 0x0101;
-
 /// Save the current foreground window (call this before showing popup)
 pub fn save_foreground_window() {
     unsafe {
         let hwnd = GetForegroundWindow();
         if !hwnd.0.is_null() {
             PREVIOUS_FOREGROUND.store(hwnd.0 as isize, Ordering::SeqCst);
-            tracing::debug!(
-                "save_foreground_window: saved HWND {:?}",
-                hwnd.0 as isize
-            );
+            tracing::debug!("save_foreground_window: saved HWND {:?}", hwnd.0 as isize);
         } else {
             tracing::warn!("save_foreground_window: GetForegroundWindow returned null");
         }
@@ -55,50 +48,7 @@ impl WindowsPasteHandler {
         Self
     }
 
-    /// Method 1: Post WM_KEYDOWN/WM_KEYUP directly to window (bypasses keyboard hooks)
-    fn post_ctrl_v_messages(&self, hwnd: HWND) -> bool {
-        unsafe {
-            tracing::debug!("post_ctrl_v_messages: posting keyboard messages to HWND {:?}", hwnd.0 as isize);
-
-            // lParam format: repeat count (1) | scan code | extended key flag | context code | previous state | transition state
-            let ctrl_down_lparam = (0x1D << 16) | 1;
-            let ctrl_up_lparam = (0x1D << 16) | 1 | (1 << 30) | (1 << 31);
-            let v_down_lparam = (0x2F << 16) | 1;
-            let v_up_lparam = (0x2F << 16) | 1 | (1 << 30) | (1 << 31);
-
-            // Post Ctrl down
-            if PostMessageW(Some(hwnd), WM_KEYDOWN, WPARAM(VK_CONTROL.0 as usize), LPARAM(ctrl_down_lparam)).is_err() {
-                tracing::warn!("post_ctrl_v_messages: failed to post Ctrl down");
-                return false;
-            }
-
-            // Post V down
-            if PostMessageW(Some(hwnd), WM_KEYDOWN, WPARAM(VK_V.0 as usize), LPARAM(v_down_lparam)).is_err() {
-                tracing::warn!("post_ctrl_v_messages: failed to post V down");
-                return false;
-            }
-
-            // Small delay
-            thread::sleep(Duration::from_millis(10));
-
-            // Post V up
-            if PostMessageW(Some(hwnd), WM_KEYUP, WPARAM(VK_V.0 as usize), LPARAM(v_up_lparam)).is_err() {
-                tracing::warn!("post_ctrl_v_messages: failed to post V up");
-                return false;
-            }
-
-            // Post Ctrl up
-            if PostMessageW(Some(hwnd), WM_KEYUP, WPARAM(VK_CONTROL.0 as usize), LPARAM(ctrl_up_lparam)).is_err() {
-                tracing::warn!("post_ctrl_v_messages: failed to post Ctrl up");
-                return false;
-            }
-
-            tracing::debug!("post_ctrl_v_messages: successfully posted all keyboard messages");
-            true
-        }
-    }
-
-    /// Method 2: SendInput with special dwExtraInfo to signal "pass through"
+    /// SendInput with special dwExtraInfo to signal "pass through"
     fn simulate_ctrl_v_with_extra_info(&self) {
         unsafe {
             tracing::debug!("simulate_ctrl_v_with_extra_info: sending Ctrl+V with dwExtraInfo");
@@ -158,7 +108,10 @@ impl WindowsPasteHandler {
             ];
 
             let sent = SendInput(&inputs, size_of::<INPUT>() as i32);
-            tracing::debug!("simulate_ctrl_v_with_extra_info: SendInput sent {} events", sent);
+            tracing::debug!(
+                "simulate_ctrl_v_with_extra_info: SendInput sent {} events",
+                sent
+            );
         }
     }
 
@@ -169,7 +122,10 @@ impl WindowsPasteHandler {
 
             let target = match get_saved_foreground_window() {
                 Some(hwnd) => {
-                    tracing::debug!("do_paste: using saved foreground window HWND {:?}", hwnd.0 as isize);
+                    tracing::debug!(
+                        "do_paste: using saved foreground window HWND {:?}",
+                        hwnd.0 as isize
+                    );
                     hwnd
                 }
                 None => {

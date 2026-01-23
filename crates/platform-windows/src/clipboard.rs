@@ -3,11 +3,11 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 
-use std::ffi::c_void;
 use parking_lot::RwLock;
+use std::ffi::c_void;
 use windows::Win32::Foundation::{HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    GetDIBits, GetDC, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+    GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
     DIB_RGB_COLORS, HBITMAP,
 };
 use windows::Win32::System::DataExchange::*;
@@ -23,19 +23,16 @@ use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
 use once_cell::sync::Lazy;
 
 /// Registered clipboard format for HTML Format
-static CF_HTML: Lazy<u32> = Lazy::new(|| unsafe {
-    RegisterClipboardFormatW(windows::core::w!("HTML Format"))
-});
+static CF_HTML: Lazy<u32> =
+    Lazy::new(|| unsafe { RegisterClipboardFormatW(windows::core::w!("HTML Format")) });
 
 /// Registered clipboard format for Rich Text Format (RTF)
-static CF_RTF: Lazy<u32> = Lazy::new(|| unsafe {
-    RegisterClipboardFormatW(windows::core::w!("Rich Text Format"))
-});
+static CF_RTF: Lazy<u32> =
+    Lazy::new(|| unsafe { RegisterClipboardFormatW(windows::core::w!("Rich Text Format")) });
 
 /// Registered clipboard format for PNG
-static CF_PNG: Lazy<u32> = Lazy::new(|| unsafe {
-    RegisterClipboardFormatW(windows::core::w!("PNG"))
-});
+static CF_PNG: Lazy<u32> =
+    Lazy::new(|| unsafe { RegisterClipboardFormatW(windows::core::w!("PNG")) });
 
 /// PNG file signature (magic bytes)
 /// See: https://www.w3.org/TR/PNG/#5PNG-file-signature
@@ -135,8 +132,8 @@ impl WindowsClipboardMonitor {
             // Try CF_DIB / CF_DIBV5 first (Device Independent Bitmap)
             let mut result = None;
 
-            if let Ok(handle) = GetClipboardData(CF_DIB.0 as u32)
-                .or_else(|_| GetClipboardData(CF_DIBV5.0 as u32))
+            if let Ok(handle) =
+                GetClipboardData(CF_DIB.0 as u32).or_else(|_| GetClipboardData(CF_DIBV5.0 as u32))
             {
                 if !handle.0.is_null() {
                     let hglobal = HGLOBAL(handle.0);
@@ -195,27 +192,19 @@ impl WindowsClipboardMonitor {
     }
 
     fn has_files_format() -> bool {
-        unsafe {
-            IsClipboardFormatAvailable(CF_HDROP.0 as u32).is_ok()
-        }
+        unsafe { IsClipboardFormatAvailable(CF_HDROP.0 as u32).is_ok() }
     }
 
     fn has_html_format() -> bool {
-        unsafe {
-            IsClipboardFormatAvailable(*CF_HTML).is_ok()
-        }
+        unsafe { IsClipboardFormatAvailable(*CF_HTML).is_ok() }
     }
 
     fn has_rtf_format() -> bool {
-        unsafe {
-            IsClipboardFormatAvailable(*CF_RTF).is_ok()
-        }
+        unsafe { IsClipboardFormatAvailable(*CF_RTF).is_ok() }
     }
 
     fn has_png_format() -> bool {
-        unsafe {
-            IsClipboardFormatAvailable(*CF_PNG).is_ok()
-        }
+        unsafe { IsClipboardFormatAvailable(*CF_PNG).is_ok() }
     }
 
     /// Get file paths from CF_HDROP format
@@ -351,7 +340,10 @@ impl WindowsClipboardMonitor {
                 Some(html_content)
             } else {
                 // If parsing fails, return the whole content
-                tracing::debug!("get_clipboard_html: returning raw content {} chars", html_str.len());
+                tracing::debug!(
+                    "get_clipboard_html: returning raw content {} chars",
+                    html_str.len()
+                );
                 Some(html_str)
             }
         }
@@ -467,7 +459,9 @@ impl WindowsClipboardMonitor {
             let _ = CloseClipboard();
 
             // Validate PNG signature
-            if png_data.len() < PNG_SIGNATURE.len() || &png_data[..PNG_SIGNATURE.len()] != PNG_SIGNATURE {
+            if png_data.len() < PNG_SIGNATURE.len()
+                || &png_data[..PNG_SIGNATURE.len()] != PNG_SIGNATURE
+            {
                 tracing::debug!("get_clipboard_png: invalid PNG signature");
                 return None;
             }
@@ -490,7 +484,11 @@ impl WindowsClipboardMonitor {
 
         tracing::debug!(
             "Clipboard formats - files: {}, image: {}, html: {}, rtf: {}, text: {}",
-            has_files, has_image, has_html, has_rtf, has_text
+            has_files,
+            has_image,
+            has_html,
+            has_rtf,
+            has_text
         );
 
         // Priority 1: File drops (CF_HDROP)
@@ -544,7 +542,11 @@ impl WindowsClipboardMonitor {
 
             // Fall back to DIB/Bitmap formats
             if let Some((png_data, thumbnail)) = Self::get_clipboard_image() {
-                tracing::info!("Captured image: {} bytes, thumbnail: {:?}", png_data.len(), thumbnail.as_ref().map(|t| t.len()));
+                tracing::info!(
+                    "Captured image: {} bytes, thumbnail: {:?}",
+                    png_data.len(),
+                    thumbnail.as_ref().map(|t| t.len())
+                );
                 return Some(ClipboardItem::new_image(png_data, thumbnail));
             } else {
                 tracing::warn!("has_image_format() returned true but get_clipboard_image() failed");
@@ -718,10 +720,14 @@ fn create_html_format(html: &str) -> String {
     format!(
         "{}{}:{:010}\r\n{}:{:010}\r\n{}:{:010}\r\n{}:{:010}\r\n{}",
         VERSION,
-        START_HTML, start_html_offset,
-        END_HTML, end_html_offset,
-        START_FRAGMENT, start_fragment_offset,
-        END_FRAGMENT, end_fragment_offset,
+        START_HTML,
+        start_html_offset,
+        END_HTML,
+        end_html_offset,
+        START_FRAGMENT,
+        start_fragment_offset,
+        END_FRAGMENT,
+        end_fragment_offset,
         full_html
     )
 }
@@ -739,7 +745,13 @@ fn dib_to_png(dib_data: &[u8]) -> Option<Vec<u8>> {
     let bit_count = u16::from_le_bytes([dib_data[14], dib_data[15]]);
     let compression = u32::from_le_bytes([dib_data[16], dib_data[17], dib_data[18], dib_data[19]]);
 
-    tracing::debug!("dib_to_png: width={}, height={}, bit_count={}, compression={}", width, height, bit_count, compression);
+    tracing::debug!(
+        "dib_to_png: width={}, height={}, bit_count={}, compression={}",
+        width,
+        height,
+        bit_count,
+        compression
+    );
 
     if width <= 0 || height == 0 {
         tracing::debug!("dib_to_png: invalid dimensions");
@@ -757,7 +769,8 @@ fn dib_to_png(dib_data: &[u8]) -> Option<Vec<u8>> {
     }
 
     // Calculate header size and pixel data offset
-    let header_size = u32::from_le_bytes([dib_data[0], dib_data[1], dib_data[2], dib_data[3]]) as usize;
+    let header_size =
+        u32::from_le_bytes([dib_data[0], dib_data[1], dib_data[2], dib_data[3]]) as usize;
 
     // Color table size for <= 8 bit images
     let color_table_size = if bit_count <= 8 {
@@ -790,7 +803,12 @@ fn dib_to_png(dib_data: &[u8]) -> Option<Vec<u8>> {
     encode_png(&rgba_data, width as u32, abs_height as u32)
 }
 
-fn convert_bgr24_to_rgba(data: &[u8], width: usize, height: usize, is_top_down: bool) -> Option<Vec<u8>> {
+fn convert_bgr24_to_rgba(
+    data: &[u8],
+    width: usize,
+    height: usize,
+    is_top_down: bool,
+) -> Option<Vec<u8>> {
     // Row stride must be aligned to 4 bytes
     let row_stride = ((width * 3 + 3) / 4) * 4;
     let expected_size = row_stride * height;
@@ -809,17 +827,22 @@ fn convert_bgr24_to_rgba(data: &[u8], width: usize, height: usize, is_top_down: 
             let src_idx = x * 3;
             let dst_idx = (y * width + x) * 4;
 
-            rgba[dst_idx] = src_row[src_idx + 2];     // R (from B)
+            rgba[dst_idx] = src_row[src_idx + 2]; // R (from B)
             rgba[dst_idx + 1] = src_row[src_idx + 1]; // G
-            rgba[dst_idx + 2] = src_row[src_idx];     // B (from R)
-            rgba[dst_idx + 3] = 255;                   // A
+            rgba[dst_idx + 2] = src_row[src_idx]; // B (from R)
+            rgba[dst_idx + 3] = 255; // A
         }
     }
 
     Some(rgba)
 }
 
-fn convert_bgra32_to_rgba(data: &[u8], width: usize, height: usize, is_top_down: bool) -> Option<Vec<u8>> {
+fn convert_bgra32_to_rgba(
+    data: &[u8],
+    width: usize,
+    height: usize,
+    is_top_down: bool,
+) -> Option<Vec<u8>> {
     let row_stride = width * 4;
     let expected_size = row_stride * height;
 
@@ -837,9 +860,9 @@ fn convert_bgra32_to_rgba(data: &[u8], width: usize, height: usize, is_top_down:
             let src_idx = x * 4;
             let dst_idx = (y * width + x) * 4;
 
-            rgba[dst_idx] = src_row[src_idx + 2];     // R (from B)
+            rgba[dst_idx] = src_row[src_idx + 2]; // R (from B)
             rgba[dst_idx + 1] = src_row[src_idx + 1]; // G
-            rgba[dst_idx + 2] = src_row[src_idx];     // B (from R)
+            rgba[dst_idx + 2] = src_row[src_idx]; // B (from R)
             rgba[dst_idx + 3] = src_row[src_idx + 3]; // A
         }
     }
@@ -848,19 +871,18 @@ fn convert_bgra32_to_rgba(data: &[u8], width: usize, height: usize, is_top_down:
 }
 
 fn encode_png(rgba_data: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
-    use image::{ImageBuffer, Rgba};
+    use image::{ImageBuffer, ImageEncoder, Rgba};
 
-    let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, rgba_data.to_vec())?;
+    let img: ImageBuffer<Rgba<u8>, Vec<u8>> =
+        ImageBuffer::from_raw(width, height, rgba_data.to_vec())?;
 
     let mut png_bytes = Vec::new();
     let encoder = image::codecs::png::PngEncoder::new(&mut png_bytes);
 
-    if encoder.encode(
-        img.as_raw(),
-        width,
-        height,
-        image::ColorType::Rgba8,
-    ).is_ok() {
+    if encoder
+        .write_image(img.as_raw(), width, height, image::ColorType::Rgba8)
+        .is_ok()
+    {
         Some(png_bytes)
     } else {
         None
@@ -869,6 +891,7 @@ fn encode_png(rgba_data: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
 
 fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Option<Vec<u8>> {
     use image::io::Reader as ImageReader;
+    use image::ImageEncoder;
     use std::io::Cursor;
 
     let img = ImageReader::new(Cursor::new(png_data))
@@ -882,12 +905,15 @@ fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Optio
     let mut png_bytes = Vec::new();
     let encoder = image::codecs::png::PngEncoder::new(&mut png_bytes);
 
-    if encoder.encode(
-        thumbnail.as_bytes(),
-        thumbnail.width(),
-        thumbnail.height(),
-        image::ColorType::Rgba8,
-    ).is_ok() {
+    if encoder
+        .write_image(
+            thumbnail.as_bytes(),
+            thumbnail.width(),
+            thumbnail.height(),
+            image::ColorType::Rgba8,
+        )
+        .is_ok()
+    {
         Some(png_bytes)
     } else {
         None
@@ -934,7 +960,10 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                     class_name,
                     windows::core::w!("ClipboardMonitor"),
                     WS_OVERLAPPED,
-                    0, 0, 0, 0,
+                    0,
+                    0,
+                    0,
+                    0,
                     None,
                     None,
                     None,
@@ -997,7 +1026,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
             ContentType::Text => {
                 unsafe {
                     if OpenClipboard(None).is_err() {
-                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                        return Err(ClipboardError::ClipboardAccess(
+                            "Failed to open clipboard".to_string(),
+                        ));
                     }
 
                     let _ = EmptyClipboard();
@@ -1010,7 +1041,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                     let handle = GlobalAlloc(GMEM_MOVEABLE, size);
                     if handle.is_err() {
                         let _ = CloseClipboard();
-                        return Err(ClipboardError::ClipboardAccess("Failed to allocate memory".to_string()));
+                        return Err(ClipboardError::ClipboardAccess(
+                            "Failed to allocate memory".to_string(),
+                        ));
                     }
 
                     let handle = handle.unwrap();
@@ -1018,7 +1051,10 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                     std::ptr::copy_nonoverlapping(wide.as_ptr(), ptr as *mut u16, wide.len());
                     let _ = GlobalUnlock(handle);
 
-                    let _ = SetClipboardData(CF_UNICODETEXT.0 as u32, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                    let _ = SetClipboardData(
+                        CF_UNICODETEXT.0 as u32,
+                        Some(windows::Win32::Foundation::HANDLE(handle.0)),
+                    );
 
                     let _ = CloseClipboard();
                 }
@@ -1028,7 +1064,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 // Set image to clipboard by converting PNG to DIB
                 unsafe {
                     if OpenClipboard(None).is_err() {
-                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                        return Err(ClipboardError::ClipboardAccess(
+                            "Failed to open clipboard".to_string(),
+                        ));
                     }
 
                     let _ = EmptyClipboard();
@@ -1038,9 +1076,16 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                         let handle = GlobalAlloc(GMEM_MOVEABLE, dib_data.len());
                         if let Ok(handle) = handle {
                             let ptr = GlobalLock(handle);
-                            std::ptr::copy_nonoverlapping(dib_data.as_ptr(), ptr as *mut u8, dib_data.len());
+                            std::ptr::copy_nonoverlapping(
+                                dib_data.as_ptr(),
+                                ptr as *mut u8,
+                                dib_data.len(),
+                            );
                             let _ = GlobalUnlock(handle);
-                            let _ = SetClipboardData(CF_DIB.0 as u32, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                            let _ = SetClipboardData(
+                                CF_DIB.0 as u32,
+                                Some(windows::Win32::Foundation::HANDLE(handle.0)),
+                            );
                         }
                     }
 
@@ -1052,7 +1097,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 // Set files to clipboard using CF_HDROP format
                 unsafe {
                     if OpenClipboard(None).is_err() {
-                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                        return Err(ClipboardError::ClipboardAccess(
+                            "Failed to open clipboard".to_string(),
+                        ));
                     }
 
                     let _ = EmptyClipboard();
@@ -1065,9 +1112,16 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                         let handle = GlobalAlloc(GMEM_MOVEABLE, hdrop_data.len());
                         if let Ok(handle) = handle {
                             let ptr = GlobalLock(handle);
-                            std::ptr::copy_nonoverlapping(hdrop_data.as_ptr(), ptr as *mut u8, hdrop_data.len());
+                            std::ptr::copy_nonoverlapping(
+                                hdrop_data.as_ptr(),
+                                ptr as *mut u8,
+                                hdrop_data.len(),
+                            );
                             let _ = GlobalUnlock(handle);
-                            let _ = SetClipboardData(CF_HDROP.0 as u32, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                            let _ = SetClipboardData(
+                                CF_HDROP.0 as u32,
+                                Some(windows::Win32::Foundation::HANDLE(handle.0)),
+                            );
                         }
                     }
 
@@ -1079,7 +1133,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 // Set HTML to clipboard using HTML Format
                 unsafe {
                     if OpenClipboard(None).is_err() {
-                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                        return Err(ClipboardError::ClipboardAccess(
+                            "Failed to open clipboard".to_string(),
+                        ));
                     }
 
                     let _ = EmptyClipboard();
@@ -1095,7 +1151,10 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                         // Null terminate
                         *((ptr as *mut u8).add(data.len())) = 0;
                         let _ = GlobalUnlock(handle);
-                        let _ = SetClipboardData(*CF_HTML, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                        let _ = SetClipboardData(
+                            *CF_HTML,
+                            Some(windows::Win32::Foundation::HANDLE(handle.0)),
+                        );
                     }
 
                     let _ = CloseClipboard();
@@ -1106,7 +1165,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 // Set RTF to clipboard
                 unsafe {
                     if OpenClipboard(None).is_err() {
-                        return Err(ClipboardError::ClipboardAccess("Failed to open clipboard".to_string()));
+                        return Err(ClipboardError::ClipboardAccess(
+                            "Failed to open clipboard".to_string(),
+                        ));
                     }
 
                     let _ = EmptyClipboard();
@@ -1119,7 +1180,10 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                         // Null terminate
                         *((ptr as *mut u8).add(data.len())) = 0;
                         let _ = GlobalUnlock(handle);
-                        let _ = SetClipboardData(*CF_RTF, Some(windows::Win32::Foundation::HANDLE(handle.0)));
+                        let _ = SetClipboardData(
+                            *CF_RTF,
+                            Some(windows::Win32::Foundation::HANDLE(handle.0)),
+                        );
                     }
 
                     let _ = CloseClipboard();
@@ -1283,39 +1347,37 @@ unsafe extern "system" fn window_proc(
     msg: u32,
     wparam: WPARAM,
     lparam: LPARAM,
-) -> LRESULT { unsafe {
-    match msg {
-        WM_CLIPBOARDUPDATE => {
-            let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *const (
-                Arc<RwLock<Option<ClipboardCallback>>>,
-                Arc<AtomicBool>,
-            );
+) -> LRESULT {
+    unsafe {
+        match msg {
+            WM_CLIPBOARDUPDATE => {
+                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
+                    as *const (Arc<RwLock<Option<ClipboardCallback>>>, Arc<AtomicBool>);
 
-            if !ctx_ptr.is_null() {
-                let (callback, _) = &*ctx_ptr;
+                if !ctx_ptr.is_null() {
+                    let (callback, _) = &*ctx_ptr;
 
-                // Get current clipboard item (text or image)
-                if let Some(item) = WindowsClipboardMonitor::get_current_item() {
-                    if let Some(cb) = callback.read().as_ref() {
-                        cb(item);
+                    // Get current clipboard item (text or image)
+                    if let Some(item) = WindowsClipboardMonitor::get_current_item() {
+                        if let Some(cb) = callback.read().as_ref() {
+                            cb(item);
+                        }
                     }
                 }
+
+                LRESULT(0)
             }
+            WM_DESTROY => {
+                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
+                    as *mut (Arc<RwLock<Option<ClipboardCallback>>>, Arc<AtomicBool>);
 
-            LRESULT(0)
-        }
-        WM_DESTROY => {
-            let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut (
-                Arc<RwLock<Option<ClipboardCallback>>>,
-                Arc<AtomicBool>,
-            );
+                if !ctx_ptr.is_null() {
+                    drop(Box::from_raw(ctx_ptr));
+                }
 
-            if !ctx_ptr.is_null() {
-                drop(Box::from_raw(ctx_ptr));
+                LRESULT(0)
             }
-
-            LRESULT(0)
+            _ => DefWindowProcW(hwnd, msg, wparam, lparam),
         }
-        _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
-}}
+}
