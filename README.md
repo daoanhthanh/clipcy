@@ -89,24 +89,6 @@ graph TD
 
 ### Quick Start
 
-```powershell
-# Clone the repository
-git clone https://github.com/user/clipcy.git
-cd clipcy
-
-# Build Rust library
-cargo build --release -p clipcy-bridge
-
-# Build WinUI 3 application
-cd apps/clipcy-windows-ui
-dotnet build
-
-# Run
-dotnet run
-```
-
-### Building
-
 #### Using Build Script
 ```powershell
 # Debug build
@@ -124,7 +106,6 @@ dotnet run
 1. **Build Rust Bridge (cdylib)**
 
     Or you can use any other version compatible with uniffi v0.29. Read here [uniffi-bindgen-cs](https://github.com/NordSecurity/uniffi-bindgen-cs)
-
    ```bash
    cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs --tag v0.10.0+v0.29.4
    ```
@@ -134,7 +115,7 @@ dotnet run
    # Output: target/release/clipcy_core.dll
    ```
 
-2. **Generate C# Bindings** (optional - placeholder included)
+2. **Generate C# Bindings**
    ```bash
    # Requires uniffi-bindgen-cs
    uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
@@ -142,7 +123,9 @@ dotnet run
 
 3. **Build WinUI 3 App**
    ```bash
-   cd apps/clipcy-windows-ui
+   cd apps/clipcy-windows-ui 
+   dotnet run
+   # or for release build
    dotnet build -c Release
    ```
 
