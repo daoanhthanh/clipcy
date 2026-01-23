@@ -45,7 +45,6 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         InitializeConsole();
-        Console.WriteLine("Starting...");
 
         // Initialize the Rust bridge
         try
@@ -66,7 +65,6 @@ public partial class App : Application
 
         Tray = new TrayService(MainPopup);
 
-        // The app runs in the background - tray icon is the primary UI
         Console.WriteLine("Running...");
     }
 

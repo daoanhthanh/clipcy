@@ -15,6 +15,12 @@ public sealed partial class SettingsWindow : Window
     private SettingsViewModel _settings;
     private double _lastValidMaxHistory;
     private SystemBackdropConfiguration? _configurationSource;
+    private bool _isSidebarExpanded = true;
+
+    // Responsive thresholds
+    private const int MinWindowWidth = 500;
+    private const int MinWindowHeight = 400;
+    private const int SidebarCollapseThreshold = 720;
 
     public SettingsWindow()
     {
@@ -30,8 +36,17 @@ public sealed partial class SettingsWindow : Window
             AppWindow.SetIcon(iconPath);
         }
 
-        // Set window size
-        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 600, Height = 700 });
+        // Set window size and minimum size
+        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 960, Height = 640 });
+
+        // Set minimum size using presenter
+        var presenter = AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
+        if (presenter != null)
+        {
+            presenter.IsResizable = true;
+            presenter.IsMinimizable = true;
+            presenter.IsMaximizable = true;
+        }
 
         // Load current settings
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
@@ -158,6 +173,10 @@ public sealed partial class SettingsWindow : Window
 
     private void LoadSettingsToUI()
     {
+        // Skip if controls aren't loaded yet
+        if (MaxHistoryBox == null || ThemeComboBox == null)
+            return;
+
         MaxHistoryBox.Value = _settings.MaxHistoryItems;
         _lastValidMaxHistory = _settings.MaxHistoryItems;
 
@@ -179,6 +198,10 @@ public sealed partial class SettingsWindow : Window
 
     private void UpdateHotkeyDisplay(string hotkey)
     {
+        // Skip if controls aren't loaded yet
+        if (WinKeyDisplayButton == null || MainKeyDisplayButton == null)
+            return;
+
         WinKeyDisplayButton.Visibility = Visibility.Collapsed;
         CtrlKeyDisplayButton.Visibility = Visibility.Collapsed;
         AltKeyDisplayButton.Visibility = Visibility.Collapsed;
@@ -210,10 +233,117 @@ public sealed partial class SettingsWindow : Window
                     ShiftKeyDisplayButton.Visibility = Visibility.Visible;
                     break;
                 default:
-                    MainKeyDisplayButton.Content = trimmed;
+                    MainKeyDisplayText.Text = trimmed;
                     MainKeyDisplayButton.Visibility = Visibility.Visible;
                     break;
             }
+        }
+    }
+
+    private void NavListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // Skip if pages aren't loaded yet
+        if (GeneralPage == null || BehaviorPage == null || AppearancePage == null || AboutPage == null)
+            return;
+
+        if (NavListView.SelectedItem is ListViewItem item && item.Tag is string tag)
+        {
+            // Hide all pages
+            GeneralPage.Visibility = Visibility.Collapsed;
+            BehaviorPage.Visibility = Visibility.Collapsed;
+            AppearancePage.Visibility = Visibility.Collapsed;
+            AboutPage.Visibility = Visibility.Collapsed;
+
+            // Show selected page
+            switch (tag)
+            {
+                case "General":
+                    GeneralPage.Visibility = Visibility.Visible;
+                    break;
+                case "Behavior":
+                    BehaviorPage.Visibility = Visibility.Visible;
+                    break;
+                case "Appearance":
+                    AppearancePage.Visibility = Visibility.Visible;
+                    break;
+                case "About":
+                    AboutPage.Visibility = Visibility.Visible;
+                    break;
+            }
+        }
+    }
+
+    private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Skip if UI elements aren't loaded yet
+        if (SidebarPanel == null || HamburgerButton == null || CompactActionButtons == null)
+            return;
+
+        var width = e.NewSize.Width;
+
+        // Enforce minimum size by resizing window if needed
+        if (AppWindow != null)
+        {
+            var currentSize = AppWindow.Size;
+            var needsResize = false;
+            var newWidth = currentSize.Width;
+            var newHeight = currentSize.Height;
+
+            if (currentSize.Width < MinWindowWidth)
+            {
+                newWidth = MinWindowWidth;
+                needsResize = true;
+            }
+            if (currentSize.Height < MinWindowHeight)
+            {
+                newHeight = MinWindowHeight;
+                needsResize = true;
+            }
+
+            if (needsResize)
+            {
+                AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = newWidth, Height = newHeight });
+                return;
+            }
+        }
+
+        // Toggle sidebar visibility based on width
+        if (width < SidebarCollapseThreshold && _isSidebarExpanded)
+        {
+            CollapseSidebar();
+        }
+        else if (width >= SidebarCollapseThreshold && !_isSidebarExpanded)
+        {
+            ExpandSidebar();
+        }
+    }
+
+    private void CollapseSidebar()
+    {
+        _isSidebarExpanded = false;
+        SidebarPanel.Visibility = Visibility.Collapsed;
+        HamburgerButton.Visibility = Visibility.Visible;
+        CompactActionButtons.Visibility = Visibility.Visible;
+    }
+
+    private void ExpandSidebar()
+    {
+        _isSidebarExpanded = true;
+        SidebarPanel.Visibility = Visibility.Visible;
+        HamburgerButton.Visibility = Visibility.Collapsed;
+        CompactActionButtons.Visibility = Visibility.Collapsed;
+    }
+
+    private void HamburgerButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Toggle sidebar in compact mode
+        if (SidebarPanel.Visibility == Visibility.Collapsed)
+        {
+            SidebarPanel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            SidebarPanel.Visibility = Visibility.Collapsed;
         }
     }
 
