@@ -6,8 +6,9 @@
   xmlns:local="using:Clipcy"
   Title="Clipcy Settings"
 >
-  <ScrollViewer>
-    <StackPanel Padding="24" Spacing="24">
+  <Grid Background="Transparent">
+    <ScrollViewer Background="Transparent">
+      <StackPanel Padding="24" Spacing="24">
       <!-- Header -->
       <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" />
 
@@ -198,6 +199,7 @@
           Click="SaveButton_Click"
         />
       </StackPanel>
-    </StackPanel>
-  </ScrollViewer>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
 </Window>

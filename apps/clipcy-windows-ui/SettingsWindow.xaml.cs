@@ -1,4 +1,5 @@
 using System.IO;
+using Microsoft.UI.Composition.SystemBackdrops;
 using Clipcy.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -16,10 +17,14 @@ public sealed partial class SettingsWindow : Window
     private bool _isCapturingHotkey;
     private List<VirtualKey> _capturedKeys = new();
     private double _lastValidMaxHistory;
+    private SystemBackdropConfiguration? _configurationSource;
 
     public SettingsWindow()
     {
         InitializeComponent();
+
+        SetupAcrylicBackdrop();
+        this.Activated += SettingsWindow_Activated;
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
         if (File.Exists(iconPath))
@@ -33,6 +38,33 @@ public sealed partial class SettingsWindow : Window
         // Load current settings
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
         LoadSettingsToUI();
+    }
+
+    private void SetupAcrylicBackdrop()
+    {
+        try
+        {
+            if (DesktopAcrylicController.IsSupported())
+            {
+                SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+                _configurationSource = new SystemBackdropConfiguration
+                {
+                    IsInputActive = true,
+                };
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private void SettingsWindow_Activated(object sender, WindowActivatedEventArgs args)
+    {
+        if (_configurationSource != null)
+        {
+            _configurationSource.IsInputActive =
+                args.WindowActivationState != WindowActivationState.Deactivated;
+        }
     }
 
     private void LoadSettingsToUI()
