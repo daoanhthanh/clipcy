@@ -1,3 +1,4 @@
+using System.IO;
 using Clipcy.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,6 +20,12 @@ public sealed partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+        if (File.Exists(iconPath))
+        {
+            AppWindow.SetIcon(iconPath);
+        }
 
         // Set window size
         AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 500, Height = 600 });

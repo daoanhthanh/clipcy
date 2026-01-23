@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
 using Clipcy.Services;
 using Microsoft.UI.Xaml;
 
@@ -8,6 +11,11 @@ namespace Clipcy;
 /// </summary>
 public partial class App : Application
 {
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool AttachConsole(int dwProcessId);
+
+    private const int ATTACH_PARENT_PROCESS = -1;
+
     /// <summary>
     /// Singleton instance of the Rust clipboard engine
     /// </summary>
@@ -36,6 +44,9 @@ public partial class App : Application
     /// </summary>
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        InitializeConsole();
+        Console.WriteLine("Starting...");
+
         // Initialize the Rust bridge
         try
         {
@@ -56,6 +67,29 @@ public partial class App : Application
         Tray = new TrayService(MainPopup);
 
         // The app runs in the background - tray icon is the primary UI
+        Console.WriteLine("Running...");
+    }
+
+    private static void InitializeConsole()
+    {
+        if (!AttachConsole(ATTACH_PARENT_PROCESS))
+        {
+            return;
+        }
+
+        try
+        {
+            var stdout = Console.OpenStandardOutput();
+            var writer = new StreamWriter(stdout) { AutoFlush = true };
+            Console.SetOut(writer);
+
+            var stderr = Console.OpenStandardError();
+            var errorWriter = new StreamWriter(stderr) { AutoFlush = true };
+            Console.SetError(errorWriter);
+        }
+        catch
+        {
+        }
     }
 
     /// <summary>
