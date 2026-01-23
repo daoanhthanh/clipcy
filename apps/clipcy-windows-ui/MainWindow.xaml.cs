@@ -220,7 +220,6 @@ public sealed partial class MainWindow : Window
         ((FrameworkElement)this.Content).DataContext = this;
 
         this.Activated += MainWindow_Activated;
-        ViewModel.RefreshHistory();
     }
 
     private void ConfigureAsPopup()
@@ -663,6 +662,7 @@ public sealed partial class MainWindow : Window
     public void HidePopup()
     {
         HidePreview();
+        ViewModel.Items.Clear();
         this.AppWindow.Hide();
     }
 

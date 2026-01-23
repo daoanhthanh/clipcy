@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use tokio::runtime::Runtime;
+use tokio::runtime::{Builder, Runtime};
 use uuid::Uuid;
 
 use clipboard_core::application::ClipboardService;
@@ -323,7 +323,12 @@ impl ClipboardEngine {
     /// Create a new clipboard engine
     pub fn new(db_path: String) -> Result<Self, BridgeError> {
         // Create tokio runtime for async operations
-        let runtime = Runtime::new().map_err(|e| BridgeError::PlatformError(e.to_string()))?;
+        let runtime = Builder::new_multi_thread()
+            .worker_threads(1)
+            .max_blocking_threads(1)
+            .enable_all()
+            .build()
+            .map_err(|e| BridgeError::PlatformError(e.to_string()))?;
 
         // Initialize repository
         let db_path = PathBuf::from(&db_path);
@@ -464,33 +469,33 @@ impl ClipboardEngine {
 
     /// Get clipboard history (uses max_history from settings)
     pub fn get_history(&self) -> Vec<ClipboardItemDto> {
-        if let Some(service) = self.clipboard_service.read().as_ref() {
-            // Load settings to get max_history
-            let limit = self
-                .settings_manager
-                .load()
-                .map(|s| s.max_history_items)
-                .unwrap_or(100);
-
-            self.runtime
-                .block_on(service.get_history(Some(limit)))
-                .map(|items| items.into_iter().map(Into::into).collect())
-                .unwrap_or_default()
-        } else {
-            Vec::new()
+        if !*self.is_running.read() {
+            return Vec::new();
         }
+
+        // Load settings to get max_history
+        let limit = self
+            .settings_manager
+            .load()
+            .map(|s| s.max_history_items)
+            .unwrap_or(100);
+
+        self.runtime
+            .block_on(self.repository.get_all_metadata(limit))
+            .map(|items| items.into_iter().map(Into::into).collect())
+            .unwrap_or_default()
     }
 
     /// Search clipboard history
     pub fn search(&self, query: String) -> Vec<ClipboardItemDto> {
-        if let Some(service) = self.clipboard_service.read().as_ref() {
-            self.runtime
-                .block_on(service.search(&query))
-                .map(|items| items.into_iter().map(Into::into).collect())
-                .unwrap_or_default()
-        } else {
-            Vec::new()
+        if !*self.is_running.read() {
+            return Vec::new();
         }
+
+        self.runtime
+            .block_on(self.repository.search_metadata(&query, 50))
+            .map(|items| items.into_iter().map(Into::into).collect())
+            .unwrap_or_default()
     }
 
     /// Paste an item by ID
@@ -617,7 +622,8 @@ impl ClipboardEngine {
                 }
             };
             let is_dark = matches!(theme, Theme::Dark);
-            self.ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
+            self.ui_handler
+                .send_event(BridgeEvent::ThemeChanged { is_dark });
         }
 
         Ok(())

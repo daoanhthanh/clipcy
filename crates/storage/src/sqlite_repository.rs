@@ -137,6 +137,88 @@ impl SqliteClipboardRepository {
             pinned: pinned != 0,
         })
     }
+
+    fn row_to_item_summary(row: &sqlx::sqlite::SqliteRow) -> Result<ClipboardItem> {
+        let id_str: String = row.try_get("id")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let content_type_str: String = row.try_get("content_type")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let preview: String = row.try_get("preview")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let thumbnail: Option<Vec<u8>> = row.try_get("thumbnail")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let source_app: Option<String> = row.try_get("source_app")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let created_at_str: String = row.try_get("created_at")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let pinned: i32 = row.try_get("pinned")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        let content_type: ContentType = serde_json::from_str(&content_type_str)
+            .unwrap_or_default();
+
+        let created_at = chrono::DateTime::parse_from_rfc3339(&created_at_str)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .unwrap_or_default();
+
+        Ok(ClipboardItem {
+            id: Uuid::parse_str(&id_str).unwrap_or_default(),
+            content_type,
+            data: Vec::new(),
+            preview,
+            thumbnail,
+            source_app,
+            created_at,
+            pinned: pinned != 0,
+        })
+    }
+
+    pub async fn get_all_metadata(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
+        let rows = sqlx::query(
+            "SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned FROM clipboard_items ORDER BY created_at DESC LIMIT $1"
+        )
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        let mut items = Vec::with_capacity(rows.len());
+        for row in rows {
+            if let Ok(item) = Self::row_to_item_summary(&row) {
+                items.push(item);
+            }
+        }
+
+        Ok(items)
+    }
+
+    pub async fn search_metadata(&self, query: &str, limit: usize) -> Result<Vec<ClipboardItem>> {
+        let pattern = format!("%{}%", query);
+
+        let rows = sqlx::query(
+            r#"
+            SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned
+            FROM clipboard_items
+            WHERE preview LIKE $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            "#,
+        )
+            .bind(pattern)
+            .bind(limit as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        let mut items = Vec::with_capacity(rows.len());
+        for row in rows {
+            if let Ok(item) = Self::row_to_item_summary(&row) {
+                items.push(item);
+            }
+        }
+
+        Ok(items)
+    }
 }
 
 #[async_trait]
