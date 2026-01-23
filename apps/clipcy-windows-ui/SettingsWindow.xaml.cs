@@ -21,6 +21,7 @@ public sealed partial class SettingsWindow : Window
         InitializeComponent();
 
         SetupAcrylicBackdrop();
+        SetupTitleBar();
         this.Activated += SettingsWindow_Activated;
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
@@ -35,6 +36,97 @@ public sealed partial class SettingsWindow : Window
         // Load current settings
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
         LoadSettingsToUI();
+
+        // Update title bar colors after content is loaded
+        if (Content is FrameworkElement rootElement)
+        {
+            rootElement.Loaded += (s, e) => UpdateTitleBarColors();
+        }
+    }
+
+    private void SetupTitleBar()
+    {
+        try
+        {
+            // Extend content into title bar
+            ExtendsContentIntoTitleBar = true;
+            SetTitleBar(AppTitleBar);
+
+            UpdateTitleBarColors();
+        }
+        catch
+        {
+        }
+    }
+
+    private void UpdateTitleBarColors()
+    {
+        try
+        {
+            if (AppWindow == null || AppWindow.TitleBar == null)
+                return;
+
+            var titleBar = AppWindow.TitleBar;
+
+            // Detect if we're in dark mode using UISettings
+            bool isDarkMode = false;
+
+            try
+            {
+                var uiSettings = new Windows.UI.ViewManagement.UISettings();
+                var foreground = uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
+                // If foreground is light (close to white), we're in dark mode
+                isDarkMode = ((foreground.R + foreground.G + foreground.B) / 3.0) > 128;
+            }
+            catch
+            {
+                // Fallback to checking element theme
+                var rootElement = Content as FrameworkElement;
+                if (rootElement != null)
+                {
+                    if (rootElement.ActualTheme == ElementTheme.Dark)
+                    {
+                        isDarkMode = true;
+                    }
+                    else if (rootElement.ActualTheme == ElementTheme.Default)
+                    {
+                        isDarkMode = Application.Current.RequestedTheme == ApplicationTheme.Dark;
+                    }
+                }
+            }
+
+            // Set button foreground colors based on theme
+            // ALWAYS white in dark mode, ALWAYS black in light mode
+            var foregroundColor = isDarkMode ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black;
+            var inactiveForegroundColor = isDarkMode
+                ? Windows.UI.Color.FromArgb(255, 180, 180, 180)
+                : Windows.UI.Color.FromArgb(255, 100, 100, 100);
+            var hoverBgColor = isDarkMode
+                ? Windows.UI.Color.FromArgb(20, 255, 255, 255)
+                : Windows.UI.Color.FromArgb(20, 0, 0, 0);
+            var pressedBgColor = isDarkMode
+                ? Windows.UI.Color.FromArgb(30, 255, 255, 255)
+                : Windows.UI.Color.FromArgb(30, 0, 0, 0);
+
+            // Button colors
+            titleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+            titleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+
+            // Button foreground (icon) colors
+            titleBar.ButtonForegroundColor = foregroundColor;
+            titleBar.ButtonInactiveForegroundColor = inactiveForegroundColor;
+
+            // Hover colors
+            titleBar.ButtonHoverBackgroundColor = hoverBgColor;
+            titleBar.ButtonHoverForegroundColor = foregroundColor;
+
+            // Pressed colors
+            titleBar.ButtonPressedBackgroundColor = pressedBgColor;
+            titleBar.ButtonPressedForegroundColor = foregroundColor;
+        }
+        catch
+        {
+        }
     }
 
     private void SetupAcrylicBackdrop()

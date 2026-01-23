@@ -7,7 +7,19 @@
   Title="Settings"
 >
   <Grid Background="Transparent">
-    <ScrollViewer Background="Transparent">
+    <!-- Custom title bar drag region -->
+    <Grid x:Name="AppTitleBar"
+          Height="48"
+          VerticalAlignment="Top"
+          Background="Transparent">
+      <TextBlock
+        Text="Settings"
+        Style="{StaticResource CaptionTextBlockStyle}"
+        VerticalAlignment="Center"
+        Margin="16,0,0,0"/>
+    </Grid>
+
+    <ScrollViewer Background="Transparent" Margin="0,48,0,0">
       <StackPanel Padding="24" Spacing="8" MaxWidth="800">
         <!-- Header -->
         <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
