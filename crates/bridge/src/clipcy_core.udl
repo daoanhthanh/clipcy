@@ -95,6 +95,9 @@ interface ClipboardEngine {
     sequence<ClipboardItemDto> search(string query);
 
     [Throws=BridgeError]
+    void save_foreground_window();
+
+    [Throws=BridgeError]
     void paste_item(string id);
 
     [Throws=BridgeError]

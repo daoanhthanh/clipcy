@@ -35,7 +35,8 @@ impl SqliteClipboardRepository {
             .create_if_missing(true);
 
         let pool = SqlitePoolOptions::new()
-            .max_connections(5)
+            .min_connections(0)
+            .max_connections(1)
             .connect_with(options)
             .await
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;

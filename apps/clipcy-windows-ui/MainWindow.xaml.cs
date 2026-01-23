@@ -16,7 +16,6 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
     private Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration? _configurationSource;
-    private IntPtr _previousForegroundWindow = IntPtr.Zero;
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);
@@ -49,36 +48,6 @@ public sealed partial class MainWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
-    [DllImport("user32.dll")]
-    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
-
-    [DllImport("user32.dll")]
-    private static extern bool CloseClipboard();
-
-    [DllImport("user32.dll")]
-    private static extern bool EmptyClipboard();
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GlobalLock(IntPtr hMem);
-
-    [DllImport("kernel32.dll")]
-    private static extern bool GlobalUnlock(IntPtr hMem);
-
-    private const uint CF_UNICODETEXT = 13;
-    private const uint GMEM_MOVEABLE = 0x0002;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(
@@ -127,67 +96,11 @@ public sealed partial class MainWindow : Window
     // Monitor constants
     private const uint MONITOR_DEFAULTTONEAREST = 2;
 
-    // Input constants for SendInput
-    private const int INPUT_KEYBOARD = 1;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
-    private const uint CLIPCY_EXTRA_INFO = 0xFFC3D44F; // AutoHotkey compatibility marker
-    private const ushort VK_CONTROL = 0x11;
-    private const ushort VK_V = 0x56;
-
     [StructLayout(LayoutKind.Sequential)]
     private struct POINT
     {
         public int X;
         public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT
-    {
-        public int type;
-        public InputUnion U;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct InputUnion
-    {
-        [FieldOffset(0)]
-        public MOUSEINPUT mi;
-
-        [FieldOffset(0)]
-        public KEYBDINPUT ki;
-
-        [FieldOffset(0)]
-        public HARDWAREINPUT hi;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSEINPUT
-    {
-        public int dx;
-        public int dy;
-        public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT
-    {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct HARDWAREINPUT
-    {
-        public uint uMsg;
-        public ushort wParamL;
-        public ushort wParamH;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -220,6 +133,7 @@ public sealed partial class MainWindow : Window
         ((FrameworkElement)this.Content).DataContext = this;
 
         this.Activated += MainWindow_Activated;
+        ViewModel.RefreshHistory();
     }
 
     private void ConfigureAsPopup()
@@ -346,7 +260,7 @@ public sealed partial class MainWindow : Window
         ViewModel.Search(SearchBox.Text);
     }
 
-    private async void HistoryListView_ItemClick(object sender, ItemClickEventArgs e)
+    private void HistoryListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is ClipboardItemViewModel item)
         {
@@ -354,128 +268,19 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private async void PasteSelectedItem(ClipboardItemViewModel item)
+    private void PasteSelectedItem(ClipboardItemViewModel item)
     {
         // Hide popup first
         HidePopup();
 
-        // Restore focus to the previous window
-        if (_previousForegroundWindow != IntPtr.Zero)
-        {
-            SetForegroundWindow(_previousForegroundWindow);
-
-            // Wait for focus to complete
-            await Task.Delay(100);
-
-            // Get item data and set to clipboard
-            try
-            {
-                // Get the item content as text (assuming text for now)
-                var itemText = item.Preview; // or get from Bridge if needed
-
-                // Set to Windows clipboard directly
-                SetTextToClipboard(itemText);
-
-                // Wait for clipboard to be set
-                await Task.Delay(50);
-
-                // Simulate Ctrl+V with AutoHotkey compatibility marker
-                SimulatePaste();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Paste error: {ex.Message}");
-            }
-        }
-    }
-
-    private void SetTextToClipboard(string text)
-    {
         try
         {
-            if (!OpenClipboard(IntPtr.Zero))
-            {
-                System.Diagnostics.Debug.WriteLine("Failed to open clipboard");
-                return;
-            }
-
-            EmptyClipboard();
-
-            // Convert text to Unicode and allocate global memory
-            var bytes = System.Text.Encoding.Unicode.GetBytes(text + "\0");
-            var hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes.Length);
-
-            if (hGlobal == IntPtr.Zero)
-            {
-                CloseClipboard();
-                return;
-            }
-
-            var ptr = GlobalLock(hGlobal);
-            if (ptr != IntPtr.Zero)
-            {
-                Marshal.Copy(bytes, 0, ptr, bytes.Length);
-                GlobalUnlock(hGlobal);
-                SetClipboardData(CF_UNICODETEXT, hGlobal);
-            }
-
-            CloseClipboard();
+            App.Bridge?.PasteItem(item.Id);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"SetTextToClipboard error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Paste error: {ex.Message}");
         }
-    }
-
-    private void SimulatePaste()
-    {
-        var inputs = new INPUT[4];
-
-        // Ctrl down
-        inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].U.ki = new KEYBDINPUT
-        {
-            wVk = VK_CONTROL,
-            wScan = 0x1D,
-            dwFlags = 0,
-            time = 0,
-            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
-        };
-
-        // V down
-        inputs[1].type = INPUT_KEYBOARD;
-        inputs[1].U.ki = new KEYBDINPUT
-        {
-            wVk = VK_V,
-            wScan = 0x2F,
-            dwFlags = 0,
-            time = 0,
-            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
-        };
-
-        // V up
-        inputs[2].type = INPUT_KEYBOARD;
-        inputs[2].U.ki = new KEYBDINPUT
-        {
-            wVk = VK_V,
-            wScan = 0x2F,
-            dwFlags = KEYEVENTF_KEYUP,
-            time = 0,
-            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
-        };
-
-        // Ctrl up
-        inputs[3].type = INPUT_KEYBOARD;
-        inputs[3].U.ki = new KEYBDINPUT
-        {
-            wVk = VK_CONTROL,
-            wScan = 0x1D,
-            dwFlags = KEYEVENTF_KEYUP,
-            time = 0,
-            dwExtraInfo = unchecked((IntPtr)CLIPCY_EXTRA_INFO),
-        };
-
-        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -601,7 +406,7 @@ public sealed partial class MainWindow : Window
     public void ShowAtCursor()
     {
         // Save the current foreground window BEFORE showing our popup
-        _previousForegroundWindow = GetForegroundWindow();
+        App.Bridge?.SaveForegroundWindow();
 
         if (GetCursorPos(out POINT cursorPos))
         {
@@ -662,7 +467,6 @@ public sealed partial class MainWindow : Window
     public void HidePopup()
     {
         HidePreview();
-        ViewModel.Items.Clear();
         this.AppWindow.Hide();
     }
 
@@ -1309,4 +1113,5 @@ public sealed partial class MainWindow : Window
         }
         _currentPreviewItem = null;
     }
+
 }

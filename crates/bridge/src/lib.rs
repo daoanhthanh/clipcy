@@ -21,8 +21,8 @@ use clipcy_settings_common::{SettingsManager, ThemeMode};
 
 #[cfg(target_os = "windows")]
 use clipcy_platform_windows::{
-    WindowsAutostartHandler, WindowsClipboardMonitor, WindowsHotkeyHandler, WindowsPasteHandler,
-    WindowsThemeDetector,
+    save_foreground_window, WindowsAutostartHandler, WindowsClipboardMonitor, WindowsHotkeyHandler,
+    WindowsPasteHandler, WindowsThemeDetector,
 };
 
 // Include the UniFFI scaffolding
@@ -427,17 +427,27 @@ impl ClipboardEngine {
                 }),
             );
 
-            // Set up theme detection
+            // Set up theme detection only for System mode
             let ui_handler = self.ui_handler.clone();
-            if let Ok(theme) = self.theme_detector.get_current() {
-                let is_dark = matches!(theme, Theme::Dark);
-                ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
-            }
+            match settings.theme {
+                ThemeMode::System => {
+                    if let Ok(theme) = self.theme_detector.get_current() {
+                        let is_dark = matches!(theme, Theme::Dark);
+                        ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
+                    }
 
-            let _ = self.theme_detector.observe(Box::new(move |theme| {
-                let is_dark = matches!(theme, Theme::Dark);
-                ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
-            }));
+                    let _ = self.theme_detector.observe(Box::new(move |theme| {
+                        let is_dark = matches!(theme, Theme::Dark);
+                        ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
+                    }));
+                }
+                ThemeMode::Light => {
+                    ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark: false });
+                }
+                ThemeMode::Dark => {
+                    ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark: true });
+                }
+            }
         }
 
         *self.is_running.write() = true;
@@ -496,6 +506,22 @@ impl ClipboardEngine {
             .block_on(self.repository.search_metadata(&query, 50))
             .map(|items| items.into_iter().map(Into::into).collect())
             .unwrap_or_default()
+    }
+
+    /// Save current foreground window for paste target
+    pub fn save_foreground_window(&self) -> Result<(), BridgeError> {
+        #[cfg(target_os = "windows")]
+        {
+            save_foreground_window();
+            Ok(())
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            Err(BridgeError::PlatformError(
+                "Only Windows is supported currently".to_string(),
+            ))
+        }
     }
 
     /// Paste an item by ID
@@ -614,16 +640,29 @@ impl ClipboardEngine {
             }
 
             // Apply theme change immediately
-            let theme = match settings.theme {
-                clipcy_settings_common::ThemeMode::Light => Theme::Light,
-                clipcy_settings_common::ThemeMode::Dark => Theme::Dark,
-                clipcy_settings_common::ThemeMode::System => {
-                    self.theme_detector.get_current().unwrap_or(Theme::Light)
+            match settings.theme {
+                ThemeMode::System => {
+                    let ui_handler = self.ui_handler.clone();
+                    let theme = self.theme_detector.get_current().unwrap_or(Theme::Light);
+                    let is_dark = matches!(theme, Theme::Dark);
+                    ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
+
+                    let _ = self.theme_detector.observe(Box::new(move |theme| {
+                        let is_dark = matches!(theme, Theme::Dark);
+                        ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
+                    }));
                 }
-            };
-            let is_dark = matches!(theme, Theme::Dark);
-            self.ui_handler
-                .send_event(BridgeEvent::ThemeChanged { is_dark });
+                ThemeMode::Light => {
+                    let _ = self.theme_detector.stop_observing();
+                    self.ui_handler
+                        .send_event(BridgeEvent::ThemeChanged { is_dark: false });
+                }
+                ThemeMode::Dark => {
+                    let _ = self.theme_detector.stop_observing();
+                    self.ui_handler
+                        .send_event(BridgeEvent::ThemeChanged { is_dark: true });
+                }
+            }
         }
 
         Ok(())

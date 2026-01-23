@@ -138,6 +138,21 @@ internal class RustBridgeService : IDisposable, UiCallback
     }
 
     /// <summary>
+    /// Save current foreground window for paste target
+    /// </summary>
+    public void SaveForegroundWindow()
+    {
+        try
+        {
+            _engine?.SaveForegroundWindow();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SaveForegroundWindow error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Delete an item by ID
     /// </summary>
     public void DeleteItem(string id)
