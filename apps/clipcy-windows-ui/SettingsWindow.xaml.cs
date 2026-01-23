@@ -3,7 +3,6 @@ using Microsoft.UI.Composition.SystemBackdrops;
 using Clipcy.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
 using Windows.System;
 
 namespace Clipcy;
@@ -14,8 +13,6 @@ namespace Clipcy;
 public sealed partial class SettingsWindow : Window
 {
     private SettingsViewModel _settings;
-    private bool _isCapturingHotkey;
-    private List<VirtualKey> _capturedKeys = new();
     private double _lastValidMaxHistory;
     private SystemBackdropConfiguration? _configurationSource;
 
@@ -33,7 +30,7 @@ public sealed partial class SettingsWindow : Window
         }
 
         // Set window size
-        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 500, Height = 600 });
+        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 600, Height = 700 });
 
         // Load current settings
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
@@ -71,7 +68,9 @@ public sealed partial class SettingsWindow : Window
     {
         MaxHistoryBox.Value = _settings.MaxHistoryItems;
         _lastValidMaxHistory = _settings.MaxHistoryItems;
-        HotkeyBox.Text = _settings.Hotkey;
+
+        UpdateHotkeyDisplay(_settings.Hotkey);
+
         StartOnBootToggle.IsOn = _settings.StartOnBoot;
         ShowPreviewToggle.IsOn = _settings.ShowPreviewPanel;
         ShowNotificationsToggle.IsOn = _settings.ShowNotifications;
@@ -84,6 +83,62 @@ public sealed partial class SettingsWindow : Window
             _ => 0, // System
         };
         ThemeComboBox.SelectedIndex = themeIndex;
+    }
+
+    private void UpdateHotkeyDisplay(string hotkey)
+    {
+        WinKeyDisplayButton.Visibility = Visibility.Collapsed;
+        CtrlKeyDisplayButton.Visibility = Visibility.Collapsed;
+        AltKeyDisplayButton.Visibility = Visibility.Collapsed;
+        ShiftKeyDisplayButton.Visibility = Visibility.Collapsed;
+        MainKeyDisplayButton.Visibility = Visibility.Collapsed;
+
+        if (string.IsNullOrEmpty(hotkey))
+            return;
+
+        var parts = hotkey.Split('+');
+
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim();
+            switch (trimmed)
+            {
+                case "Win":
+                case "Windows":
+                    WinKeyDisplayButton.Visibility = Visibility.Visible;
+                    break;
+                case "Ctrl":
+                case "Control":
+                    CtrlKeyDisplayButton.Visibility = Visibility.Visible;
+                    break;
+                case "Alt":
+                    AltKeyDisplayButton.Visibility = Visibility.Visible;
+                    break;
+                case "Shift":
+                    ShiftKeyDisplayButton.Visibility = Visibility.Visible;
+                    break;
+                default:
+                    MainKeyDisplayButton.Content = trimmed;
+                    MainKeyDisplayButton.Visibility = Visibility.Visible;
+                    break;
+            }
+        }
+    }
+
+    private async void EditHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new ShortcutPickerDialog(_settings.Hotkey)
+        {
+            XamlRoot = this.Content.XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+
+        if (result == ContentDialogResult.Primary)
+        {
+            _settings.Hotkey = dialog.Hotkey;
+            UpdateHotkeyDisplay(dialog.Hotkey);
+        }
     }
 
     private void MaxHistoryBox_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
@@ -102,92 +157,6 @@ public sealed partial class SettingsWindow : Window
             MaxHistoryBox.Value = _lastValidMaxHistory;
         }
     }
-
-    private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
-    {
-        _isCapturingHotkey = true;
-        _capturedKeys.Clear();
-        HotkeyBox.Text = "Press keys...";
-    }
-
-    private void HotkeyBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (!_isCapturingHotkey)
-            return;
-
-        e.Handled = true;
-
-        var key = e.Key;
-
-        if (IsModifierKey(key))
-        {
-            var normalized = NormalizeModifier(key);
-            if (!_capturedKeys.Contains(normalized))
-            {
-                _capturedKeys.Add(normalized);
-            }
-            UpdateHotkeyDisplay();
-            return;
-        }
-
-        // Regular key pressed - finalize hotkey
-        _capturedKeys.Add(key);
-        _isCapturingHotkey = false;
-        UpdateHotkeyDisplay();
-
-        // Convert to hotkey string
-        _settings.Hotkey = BuildHotkeyString();
-    }
-
-    private void UpdateHotkeyDisplay()
-    {
-        HotkeyBox.Text = BuildHotkeyString();
-    }
-
-    private string BuildHotkeyString()
-    {
-        var parts = new List<string>();
-
-        foreach (var key in _capturedKeys)
-        {
-            parts.Add(GetKeyDisplayName(key));
-        }
-
-        return string.Join("+", parts);
-    }
-
-    private static bool IsModifierKey(VirtualKey key) => key switch
-    {
-        VirtualKey.Control
-        or VirtualKey.LeftControl
-        or VirtualKey.RightControl
-        or VirtualKey.Shift
-        or VirtualKey.LeftShift
-        or VirtualKey.RightShift
-        or VirtualKey.Menu
-        or VirtualKey.LeftMenu
-        or VirtualKey.RightMenu
-        or VirtualKey.LeftWindows
-        or VirtualKey.RightWindows => true,
-        _ => false,
-    };
-
-    private static VirtualKey NormalizeModifier(VirtualKey key) => key switch
-    {
-        VirtualKey.LeftControl or VirtualKey.RightControl => VirtualKey.Control,
-        VirtualKey.LeftShift or VirtualKey.RightShift => VirtualKey.Shift,
-        VirtualKey.LeftMenu or VirtualKey.RightMenu => VirtualKey.Menu,
-        _ => key,
-    };
-
-    private static string GetKeyDisplayName(VirtualKey key) => key switch
-    {
-        VirtualKey.Control => "Ctrl",
-        VirtualKey.Shift => "Shift",
-        VirtualKey.Menu => "Alt",
-        VirtualKey.LeftWindows or VirtualKey.RightWindows => "Win",
-        _ => key.ToString(),
-    };
 
     private void StartOnBootToggle_Toggled(object sender, RoutedEventArgs e)
     {

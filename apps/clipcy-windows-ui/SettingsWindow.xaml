@@ -4,201 +4,295 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Clipcy"
-  Title="Clipcy Settings"
+  Title="Settings"
 >
   <Grid Background="Transparent">
     <ScrollViewer Background="Transparent">
-      <StackPanel Padding="24" Spacing="24">
-      <!-- Header -->
-      <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" />
+      <StackPanel Padding="24" Spacing="8" MaxWidth="800">
+        <!-- Header -->
+        <TextBlock Text="Settings" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16" />
 
-      <!-- General Settings -->
-      <StackPanel Spacing="16">
-        <TextBlock Text="General" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <!-- General Settings -->
+        <TextBlock Text="General" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,8,0,4" />
 
         <!-- Max History Items -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0">
-            <TextBlock Text="Maximum history items" />
-            <TextBlock
-              Text="Number of clipboard items to keep in history. Maximum is 1000"
-              Style="{StaticResource CaptionTextBlockStyle}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="Maximum history items" />
+              <TextBlock
+                Text="Number of clipboard items to keep in history. Maximum is 1000"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+            </StackPanel>
+
+            <NumberBox
+              x:Name="MaxHistoryBox"
+              Grid.Column="1"
+              MinWidth="120"
+              Minimum="10"
+              Maximum="1000"
+              SpinButtonPlacementMode="Compact"
+              LargeChange="100"
+              SmallChange="10"
+              ValueChanged="MaxHistoryBox_ValueChanged"
+              LostFocus="MaxHistoryBox_LostFocus"
+              VerticalAlignment="Center"
             />
-          </StackPanel>
-
-          <NumberBox
-            x:Name="MaxHistoryBox"
-            Grid.Column="1"
-            Width="120"
-            Minimum="10"
-            Maximum="1000"
-            SpinButtonPlacementMode="Hidden"
-            ValueChanged="MaxHistoryBox_ValueChanged"
-            LostFocus="MaxHistoryBox_LostFocus"
-          />
-        </Grid>
+          </Grid>
+        </Border>
 
         <!-- Hotkey -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0">
-            <TextBlock Text="Hotkey" />
-            <TextBlock
-              Text="Global shortcut to show clipboard history"
-              Style="{StaticResource CaptionTextBlockStyle}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-            />
-          </StackPanel>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="Hotkey" />
+              <TextBlock
+                Text="Global shortcut to show clipboard history"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+            </StackPanel>
 
-          <TextBox
-            x:Name="HotkeyBox"
-            Grid.Column="1"
-            Width="150"
-            IsReadOnly="True"
-            PlaceholderText="Click to set..."
-            GotFocus="HotkeyBox_GotFocus"
-            KeyDown="HotkeyBox_KeyDown"
-          />
-        </Grid>
-      </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <!-- Keyboard buttons preview -->
+              <StackPanel Orientation="Horizontal" Spacing="4">
+                <Button
+                  x:Name="WinKeyDisplayButton"
+                  Content="Win"
+                  Width="48" Height="32"
+                  Background="#40C5F7"
+                  IsEnabled="False"
+                  Visibility="Collapsed"
+                />
+                <Button
+                  x:Name="CtrlKeyDisplayButton"
+                  Content="Ctrl"
+                  Width="48" Height="32"
+                  Background="#40C5F7"
+                  IsEnabled="False"
+                  Visibility="Collapsed"
+                />
+                <Button
+                  x:Name="AltKeyDisplayButton"
+                  Content="Alt"
+                  Width="48" Height="32"
+                  Background="#40C5F7"
+                  IsEnabled="False"
+                  Visibility="Collapsed"
+                />
+                <Button
+                  x:Name="ShiftKeyDisplayButton"
+                  Content="Shift"
+                  Width="48" Height="32"
+                  Background="#40C5F7"
+                  IsEnabled="False"
+                  Visibility="Collapsed"
+                />
+                <Button
+                  x:Name="MainKeyDisplayButton"
+                  Content=""
+                  Width="48" Height="32"
+                  Background="#40C5F7"
+                  IsEnabled="False"
+                  Visibility="Collapsed"
+                />
+              </StackPanel>
 
-      <!-- Behavior Settings -->
-      <StackPanel Spacing="16">
-        <TextBlock Text="Behavior" Style="{StaticResource SubtitleTextBlockStyle}" />
+              <!-- Edit button -->
+              <Button
+                Content="Edit"
+                Width="64" Height="32"
+                Click="EditHotkey_Click"
+              />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- Behavior Settings -->
+        <TextBlock Text="Behavior" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,4" />
 
         <!-- Start on boot -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0">
-            <TextBlock Text="Start on boot" />
-            <TextBlock
-              Text="Launch Clipcy when Windows starts"
-              Style="{StaticResource CaptionTextBlockStyle}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="Start on boot" />
+              <TextBlock
+                Text="Launch Clipcy when Windows starts"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+            </StackPanel>
+
+            <ToggleSwitch
+              x:Name="StartOnBootToggle"
+              Grid.Column="1"
+              Toggled="StartOnBootToggle_Toggled"
+              VerticalAlignment="Center"
             />
-          </StackPanel>
-
-          <ToggleSwitch
-            x:Name="StartOnBootToggle"
-            Grid.Column="1"
-            Toggled="StartOnBootToggle_Toggled"
-          />
-        </Grid>
+          </Grid>
+        </Border>
 
         <!-- Show preview panel -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0">
-            <TextBlock Text="Show preview panel" />
-            <TextBlock
-              Text="Display content preview in the popup window"
-              Style="{StaticResource CaptionTextBlockStyle}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="Show preview panel" />
+              <TextBlock
+                Text="Display content preview in the popup window"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+            </StackPanel>
+
+            <ToggleSwitch
+              x:Name="ShowPreviewToggle"
+              Grid.Column="1"
+              Toggled="ShowPreviewToggle_Toggled"
+              VerticalAlignment="Center"
             />
-          </StackPanel>
-
-          <ToggleSwitch
-            x:Name="ShowPreviewToggle"
-            Grid.Column="1"
-            Toggled="ShowPreviewToggle_Toggled"
-          />
-        </Grid>
+          </Grid>
+        </Border>
 
         <!-- Show notifications -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0">
-            <TextBlock Text="Show notifications" />
-            <TextBlock
-              Text="Display notifications when clipboard content changes"
-              Style="{StaticResource CaptionTextBlockStyle}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="Show notifications" />
+              <TextBlock
+                Text="Display notifications when clipboard content changes"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+            </StackPanel>
+
+            <ToggleSwitch
+              x:Name="ShowNotificationsToggle"
+              Grid.Column="1"
+              Toggled="ShowNotificationsToggle_Toggled"
+              VerticalAlignment="Center"
             />
-          </StackPanel>
+          </Grid>
+        </Border>
 
-          <ToggleSwitch
-            x:Name="ShowNotificationsToggle"
-            Grid.Column="1"
-            Toggled="ShowNotificationsToggle_Toggled"
-          />
-        </Grid>
-      </StackPanel>
-
-      <!-- Appearance Settings -->
-      <StackPanel Spacing="16">
-        <TextBlock Text="Appearance" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <!-- Appearance Settings -->
+        <TextBlock Text="Appearance" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,4" />
 
         <!-- Theme -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="0">
-            <TextBlock Text="Theme" />
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+              <TextBlock Text="Theme" />
+              <TextBlock
+                Text="Choose light, dark, or system theme"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              />
+            </StackPanel>
+
+            <ComboBox
+              x:Name="ThemeComboBox"
+              Grid.Column="1"
+              MinWidth="150"
+              SelectionChanged="ThemeComboBox_SelectionChanged"
+              VerticalAlignment="Center"
+            >
+              <ComboBoxItem Content="System" Tag="System" />
+              <ComboBoxItem Content="Light" Tag="Light" />
+              <ComboBoxItem Content="Dark" Tag="Dark" />
+            </ComboBox>
+          </Grid>
+        </Border>
+
+        <!-- About Section -->
+        <TextBlock Text="About" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,16,0,4" />
+
+        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="4"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                Padding="16"
+                Margin="0,4">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Clipcy - Clipboard Manager" />
             <TextBlock
-              Text="Choose light, dark, or system theme"
+              Text="Version 1.0.0"
               Style="{StaticResource CaptionTextBlockStyle}"
               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
             />
           </StackPanel>
+        </Border>
 
-          <ComboBox
-            x:Name="ThemeComboBox"
-            Grid.Column="1"
-            Width="150"
-            SelectionChanged="ThemeComboBox_SelectionChanged"
-          >
-            <ComboBoxItem Content="System" Tag="System" />
-            <ComboBoxItem Content="Light" Tag="Light" />
-            <ComboBoxItem Content="Dark" Tag="Dark" />
-          </ComboBox>
-        </Grid>
-      </StackPanel>
-
-      <!-- About Section -->
-      <StackPanel Spacing="8">
-        <TextBlock Text="About" Style="{StaticResource SubtitleTextBlockStyle}" />
-        <TextBlock Text="Clipcy - Clipboard Manager" />
-        <TextBlock
-          Text="Version 1.0.0"
-          Style="{StaticResource CaptionTextBlockStyle}"
-          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-        />
-      </StackPanel>
-
-      <!-- Action Buttons -->
-      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-        <Button Content="Reset to Defaults" Click="ResetButton_Click" />
-        <Button
-          Content="Save"
-          Style="{StaticResource AccentButtonStyle}"
-          Click="SaveButton_Click"
-        />
-      </StackPanel>
+        <!-- Action Buttons -->
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,16,0,0">
+          <Button Content="Reset to Defaults" Click="ResetButton_Click" />
+          <Button
+            Content="Save"
+            Style="{StaticResource AccentButtonStyle}"
+            Click="SaveButton_Click"
+          />
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
   </Grid>

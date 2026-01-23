@@ -14,6 +14,7 @@
 
       <!-- Converters -->
       <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+      <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
 
       <!-- Custom styles and resources -->
       <Style x:Key="ClipboardItemStyle" TargetType="ListViewItem">

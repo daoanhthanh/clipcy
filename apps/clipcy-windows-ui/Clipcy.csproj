@@ -35,18 +35,8 @@
 
   <!-- Copy Rust DLL to output directory -->
   <ItemGroup>
-    <Content
-      Include="..\..\target\release\clipcy_core.dll"
-      Link="clipcy_core.dll"
-      CopyToOutputDirectory="PreserveNewest"
-      Condition="Exists('..\..\target\release\clipcy_core.dll')"
-    />
-    <Content
-      Include="..\..\target\debug\clipcy_core.dll"
-      Link="clipcy_core.dll"
-      CopyToOutputDirectory="PreserveNewest"
-      Condition="!Exists('..\..\target\release\clipcy_core.dll') And Exists('..\..\target\debug\clipcy_core.dll')"
-    />
+    <Content Include="..\..\target\release\clipcy_core.dll" Link="clipcy_core.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\target\release\clipcy_core.dll')" />
+    <Content Include="..\..\target\debug\clipcy_core.dll" Link="clipcy_core.dll" CopyToOutputDirectory="PreserveNewest" Condition="!Exists('..\..\target\release\clipcy_core.dll') And Exists('..\..\target\debug\clipcy_core.dll')" />
   </ItemGroup>
 
   <!-- Application icon -->
@@ -77,10 +67,6 @@
       <XamlCompilerConfigLines Include="  &lt;/runtime&gt;" />
       <XamlCompilerConfigLines Include="&lt;/configuration&gt;" />
     </ItemGroup>
-    <WriteLinesToFile
-      File="$(XamlCompilerConfigPath)"
-      Lines="@(XamlCompilerConfigLines)"
-      Overwrite="true"
-    />
+    <WriteLinesToFile File="$(XamlCompilerConfigPath)" Lines="@(XamlCompilerConfigLines)" Overwrite="true" />
   </Target>
 </Project>
