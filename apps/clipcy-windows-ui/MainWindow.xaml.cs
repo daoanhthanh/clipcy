@@ -50,20 +50,10 @@ public sealed partial class MainWindow : Window
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(
-        IntPtr hwnd,
-        int attr,
-        ref int attrValue,
-        int attrSize
-    );
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
     [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(
-        IntPtr hwnd,
-        int attr,
-        ref uint attrValue,
-        int attrSize
-    );
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
 
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWA_BORDER_COLOR = 34;
@@ -171,15 +161,7 @@ public sealed partial class MainWindow : Window
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
 
             // Set as topmost
-            SetWindowPos(
-                hwnd,
-                HWND_TOPMOST,
-                0,
-                0,
-                0,
-                0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED
-            );
+            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
         }
         catch { }
     }
@@ -194,8 +176,7 @@ public sealed partial class MainWindow : Window
                 this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
 
                 // Setup configuration for keeping backdrop active
-                _configurationSource =
-                    new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
+                _configurationSource = new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
                 _configurationSource.IsInputActive = true;
             }
         }
@@ -209,12 +190,7 @@ public sealed partial class MainWindow : Window
             var hwnd = WindowNative.GetWindowHandle(this);
 
             int preference = DWMWCP_ROUND;
-            DwmSetWindowAttribute(
-                hwnd,
-                DWMWA_WINDOW_CORNER_PREFERENCE,
-                ref preference,
-                sizeof(int)
-            );
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref preference, sizeof(int));
 
             uint borderColor = DWMWA_COLOR_NONE;
             DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(uint));
@@ -371,10 +347,7 @@ public sealed partial class MainWindow : Window
             return true;
 
         // Numpad numbers
-        if (
-            key >= Windows.System.VirtualKey.NumberPad0
-            && key <= Windows.System.VirtualKey.NumberPad9
-        )
+        if (key >= Windows.System.VirtualKey.NumberPad0 && key <= Windows.System.VirtualKey.NumberPad9)
             return true;
 
         // Space
@@ -487,10 +460,7 @@ public sealed partial class MainWindow : Window
     private bool _isPointerOverPreview = false;
     private ClipboardItemViewModel? _currentPreviewItem;
 
-    private void HistoryListView_ContainerContentChanging(
-        ListViewBase sender,
-        ContainerContentChangingEventArgs args
-    )
+    private void HistoryListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (args.ItemContainer is ListViewItem item)
         {
@@ -575,9 +545,7 @@ public sealed partial class MainWindow : Window
         var grid = new Grid { Padding = new Thickness(12, 10, 12, 12), RowSpacing = 10 };
 
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        grid.RowDefinitions.Add(
-            new RowDefinition { Height = new GridLength(1, GridUnitType.Star) }
-        );
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         // Track pointer over preview panel
@@ -609,11 +577,7 @@ public sealed partial class MainWindow : Window
         grid.Children.Add(_previewContentType);
 
         // Content
-        var scrollViewer = new ScrollViewer
-        {
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            MaxHeight = 280,
-        };
+        var scrollViewer = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, MaxHeight = 280 };
 
         var contentStack = new StackPanel { Spacing = 10 };
 
@@ -729,11 +693,7 @@ public sealed partial class MainWindow : Window
                 elapsed += 16;
                 var progress = Math.Min(1.0, elapsed / 150.0);
                 var eased = 1 - Math.Pow(1 - progress, 2); // Quadratic ease out
-                outerBorder.Translation = new System.Numerics.Vector3(
-                    (float)(-10 * (1 - eased)),
-                    0,
-                    32
-                );
+                outerBorder.Translation = new System.Numerics.Vector3((float)(-10 * (1 - eased)), 0, 32);
 
                 if (progress >= 1.0)
                 {
@@ -793,11 +753,7 @@ public sealed partial class MainWindow : Window
         _hideTimer?.Stop();
 
         // If already showing the same item, do nothing
-        if (
-            _currentPreviewItem == viewModel
-            && _previewPopup != null
-            && _previewPopup.IsOpen == true
-        )
+        if (_currentPreviewItem == viewModel && _previewPopup != null && _previewPopup.IsOpen == true)
             return;
 
         _pendingPreviewItem = viewModel;
@@ -961,10 +917,7 @@ public sealed partial class MainWindow : Window
                 case "Html":
                     var charCount = _previewText.Text.Length;
                     var wordCount = _previewText
-                        .Text.Split(
-                            new[] { ' ', '\n', '\r', '\t' },
-                            StringSplitOptions.RemoveEmptyEntries
-                        )
+                        .Text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
                         .Length;
                     var lineCount = _previewText.Text.Split('\n').Length;
                     metadata.AppendLine($"Characters: {charCount:N0}");
@@ -986,10 +939,7 @@ public sealed partial class MainWindow : Window
                     break;
 
                 case "Files":
-                    var files = item
-                        .Preview.Split('\n')
-                        .Where(f => !string.IsNullOrWhiteSpace(f))
-                        .ToArray();
+                    var files = item.Preview.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
                     metadata.AppendLine($"Files: {files.Length}");
                     break;
             }
@@ -1033,7 +983,7 @@ public sealed partial class MainWindow : Window
                 var centerPt = new POINT
                 {
                     X = windowPos.X + (windowSize.Width / 2),
-                    Y = windowPos.Y + (windowSize.Height / 2)
+                    Y = windowPos.Y + (windowSize.Height / 2),
                 };
 
                 var hMonitor = MonitorFromPoint(centerPt, MONITOR_DEFAULTTONEAREST);
@@ -1113,5 +1063,4 @@ public sealed partial class MainWindow : Window
         }
         _currentPreviewItem = null;
     }
-
 }

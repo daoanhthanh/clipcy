@@ -13,25 +13,27 @@
     </Grid.RowDefinitions>
 
     <!-- Custom title bar drag region -->
-    <Grid x:Name="AppTitleBar"
-          Grid.Row="0"
-          Background="Transparent">
+    <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent">
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" Spacing="8">
         <!-- Hamburger menu button (shown when sidebar is collapsed) -->
-        <Button x:Name="HamburgerButton"
-                Width="40" Height="40"
-                Background="Transparent"
-                BorderThickness="0"
-                Padding="0"
-                Click="HamburgerButton_Click"
-                Visibility="Collapsed">
+        <Button
+          x:Name="HamburgerButton"
+          Width="40"
+          Height="40"
+          Background="Transparent"
+          BorderThickness="0"
+          Padding="0"
+          Click="HamburgerButton_Click"
+          Visibility="Collapsed"
+        >
           <FontIcon Glyph="&#xE700;" FontSize="16" />
         </Button>
         <FontIcon Glyph="&#xE713;" FontSize="16" />
         <TextBlock
           Text="Settings"
           Style="{StaticResource BodyTextBlockStyle}"
-          VerticalAlignment="Center"/>
+          VerticalAlignment="Center"
+        />
       </StackPanel>
     </Grid>
 
@@ -48,7 +50,11 @@
         <Border x:Name="SidebarSpacer" Grid.Column="0" />
 
         <!-- Content takes the right column in expanded mode, or full width in compact -->
-        <Grid x:Name="ContentPanel" Grid.Column="1" Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid
+          x:Name="ContentPanel"
+          Grid.Column="1"
+          Background="{ThemeResource LayerFillColorDefaultBrush}"
+        >
           <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -56,24 +62,35 @@
 
           <!-- Page content area -->
           <ScrollViewer Grid.Row="0" Padding="0">
-            <Grid x:Name="ContentHost" Padding="40,32,40,32" MaxWidth="800" HorizontalAlignment="Left">
+            <Grid
+              x:Name="ContentHost"
+              Padding="40,32,40,32"
+              MaxWidth="600"
+              HorizontalAlignment="Center"
+            >
               <!-- General Page -->
               <StackPanel x:Name="GeneralPage" Spacing="4" Visibility="Visible">
-                <TextBlock Text="General"
-                           Style="{StaticResource TitleTextBlockStyle}"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="Configure basic clipboard settings"
-                           Style="{StaticResource BodyTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,0,0,24" />
+                <TextBlock
+                  Text="General"
+                  Style="{StaticResource TitleTextBlockStyle}"
+                  Margin="0,0,0,8"
+                />
+                <TextBlock
+                  Text="Configure basic clipboard settings"
+                  Style="{StaticResource BodyTextBlockStyle}"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                  Margin="0,0,0,24"
+                />
 
                 <!-- Max History Items -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="16"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="16"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -81,21 +98,26 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon Grid.Column="0"
-                              Glyph="&#xE81C;"
-                              FontSize="20"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center"
-                              Margin="0,0,16,0" />
+                    <FontIcon
+                      Grid.Column="0"
+                      Glyph="&#xE81C;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                    />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Maximum history items"
-                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
+                      <TextBlock
+                        Text="Maximum history items"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                      />
                       <TextBlock
                         Text="Number of clipboard items to keep (10-1000)"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0" />
+                        Margin="0,2,0,0"
+                      />
                     </StackPanel>
 
                     <NumberBox
@@ -107,17 +129,20 @@
                       SpinButtonPlacementMode="Compact"
                       ValueChanged="MaxHistoryBox_ValueChanged"
                       LostFocus="MaxHistoryBox_LostFocus"
-                      VerticalAlignment="Center" />
+                      VerticalAlignment="Center"
+                    />
                   </Grid>
                 </Border>
 
                 <!-- Hotkey -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="16"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="16"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -125,74 +150,98 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon Grid.Column="0"
-                              Glyph="&#xE765;"
-                              FontSize="20"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center"
-                              Margin="0,0,16,0" />
+                    <FontIcon
+                      Grid.Column="0"
+                      Glyph="&#xE765;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                    />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Keyboard shortcut"
-                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
+                      <TextBlock
+                        Text="Keyboard shortcut"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                      />
                       <TextBlock
                         Text="Global hotkey to open clipboard history"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0" />
+                        Margin="0,2,0,0"
+                      />
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <StackPanel
+                      Grid.Column="2"
+                      Orientation="Horizontal"
+                      Spacing="8"
+                      VerticalAlignment="Center"
+                    >
                       <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Border x:Name="WinKeyDisplayButton"
-                                Background="{ThemeResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,4"
-                                Visibility="Collapsed">
+                        <Border
+                          x:Name="WinKeyDisplayButton"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}"
+                          BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="8,4"
+                          Visibility="Collapsed"
+                        >
                           <TextBlock Text="Win" FontSize="12" VerticalAlignment="Center" />
                         </Border>
-                        <Border x:Name="CtrlKeyDisplayButton"
-                                Background="{ThemeResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,4"
-                                Visibility="Collapsed">
+                        <Border
+                          x:Name="CtrlKeyDisplayButton"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}"
+                          BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="8,4"
+                          Visibility="Collapsed"
+                        >
                           <TextBlock Text="Ctrl" FontSize="12" VerticalAlignment="Center" />
                         </Border>
-                        <Border x:Name="AltKeyDisplayButton"
-                                Background="{ThemeResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,4"
-                                Visibility="Collapsed">
+                        <Border
+                          x:Name="AltKeyDisplayButton"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}"
+                          BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="8,4"
+                          Visibility="Collapsed"
+                        >
                           <TextBlock Text="Alt" FontSize="12" VerticalAlignment="Center" />
                         </Border>
-                        <Border x:Name="ShiftKeyDisplayButton"
-                                Background="{ThemeResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,4"
-                                Visibility="Collapsed">
+                        <Border
+                          x:Name="ShiftKeyDisplayButton"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}"
+                          BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="8,4"
+                          Visibility="Collapsed"
+                        >
                           <TextBlock Text="Shift" FontSize="12" VerticalAlignment="Center" />
                         </Border>
-                        <Border x:Name="MainKeyDisplayButton"
-                                Background="{ThemeResource ControlFillColorDefaultBrush}"
-                                BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
-                                BorderThickness="1"
-                                CornerRadius="4"
-                                Padding="8,4"
-                                Visibility="Collapsed">
-                          <TextBlock x:Name="MainKeyDisplayText" Text="" FontSize="12" VerticalAlignment="Center" />
+                        <Border
+                          x:Name="MainKeyDisplayButton"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}"
+                          BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                          BorderThickness="1"
+                          CornerRadius="4"
+                          Padding="8,4"
+                          Visibility="Collapsed"
+                        >
+                          <TextBlock
+                            x:Name="MainKeyDisplayText"
+                            Text=""
+                            FontSize="12"
+                            VerticalAlignment="Center"
+                          />
                         </Border>
                       </StackPanel>
 
-                      <Button Content="Change"
-                              Click="EditHotkey_Click" />
+                      <Button Content="Change" Click="EditHotkey_Click" />
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -200,21 +249,27 @@
 
               <!-- Behavior Page -->
               <StackPanel x:Name="BehaviorPage" Spacing="4" Visibility="Collapsed">
-                <TextBlock Text="Behavior"
-                           Style="{StaticResource TitleTextBlockStyle}"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="Control how Clipcy behaves"
-                           Style="{StaticResource BodyTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,0,0,24" />
+                <TextBlock
+                  Text="Behavior"
+                  Style="{StaticResource TitleTextBlockStyle}"
+                  Margin="0,0,0,8"
+                />
+                <TextBlock
+                  Text="Control how Clipcy behaves"
+                  Style="{StaticResource BodyTextBlockStyle}"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                  Margin="0,0,0,24"
+                />
 
                 <!-- Start on boot -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="16"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="16"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -222,39 +277,48 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon Grid.Column="0"
-                              Glyph="&#xE7E8;"
-                              FontSize="20"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center"
-                              Margin="0,0,16,0" />
+                    <FontIcon
+                      Grid.Column="0"
+                      Glyph="&#xE7E8;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                    />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Start on boot"
-                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
+                      <TextBlock
+                        Text="Start on boot"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                      />
                       <TextBlock
                         Text="Launch Clipcy when Windows starts"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0" />
+                        Margin="0,2,0,0"
+                      />
                     </StackPanel>
 
                     <ToggleSwitch
                       x:Name="StartOnBootToggle"
                       Grid.Column="2"
                       Toggled="StartOnBootToggle_Toggled"
-                      OnContent="" OffContent=""
-                      VerticalAlignment="Center" />
+                      OnContent=""
+                      OffContent=""
+                      VerticalAlignment="Center"
+                    />
                   </Grid>
                 </Border>
 
                 <!-- Show preview panel -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="16"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="16"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -262,39 +326,48 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon Grid.Column="0"
-                              Glyph="&#xE8A1;"
-                              FontSize="20"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center"
-                              Margin="0,0,16,0" />
+                    <FontIcon
+                      Grid.Column="0"
+                      Glyph="&#xE8A1;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                    />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Show preview panel"
-                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
+                      <TextBlock
+                        Text="Show preview panel"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                      />
                       <TextBlock
                         Text="Display content preview in the popup"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0" />
+                        Margin="0,2,0,0"
+                      />
                     </StackPanel>
 
                     <ToggleSwitch
                       x:Name="ShowPreviewToggle"
                       Grid.Column="2"
                       Toggled="ShowPreviewToggle_Toggled"
-                      OnContent="" OffContent=""
-                      VerticalAlignment="Center" />
+                      OnContent=""
+                      OffContent=""
+                      VerticalAlignment="Center"
+                    />
                   </Grid>
                 </Border>
 
                 <!-- Show notifications -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="16"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="16"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -302,50 +375,63 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon Grid.Column="0"
-                              Glyph="&#xE91C;"
-                              FontSize="20"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center"
-                              Margin="0,0,16,0" />
+                    <FontIcon
+                      Grid.Column="0"
+                      Glyph="&#xE91C;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                    />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="Show notifications"
-                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
+                      <TextBlock
+                        Text="Show notifications"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                      />
                       <TextBlock
                         Text="Notify when clipboard content changes"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0" />
+                        Margin="0,2,0,0"
+                      />
                     </StackPanel>
 
                     <ToggleSwitch
                       x:Name="ShowNotificationsToggle"
                       Grid.Column="2"
                       Toggled="ShowNotificationsToggle_Toggled"
-                      OnContent="" OffContent=""
-                      VerticalAlignment="Center" />
+                      OnContent=""
+                      OffContent=""
+                      VerticalAlignment="Center"
+                    />
                   </Grid>
                 </Border>
               </StackPanel>
 
               <!-- Appearance Page -->
               <StackPanel x:Name="AppearancePage" Spacing="4" Visibility="Collapsed">
-                <TextBlock Text="Appearance"
-                           Style="{StaticResource TitleTextBlockStyle}"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="Customize the look and feel"
-                           Style="{StaticResource BodyTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,0,0,24" />
+                <TextBlock
+                  Text="Appearance"
+                  Style="{StaticResource TitleTextBlockStyle}"
+                  Margin="0,0,0,8"
+                />
+                <TextBlock
+                  Text="Customize the look and feel"
+                  Style="{StaticResource BodyTextBlockStyle}"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                  Margin="0,0,0,24"
+                />
 
                 <!-- Theme -->
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="16"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="16"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -353,21 +439,26 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon Grid.Column="0"
-                              Glyph="&#xE793;"
-                              FontSize="20"
-                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                              VerticalAlignment="Center"
-                              Margin="0,0,16,0" />
+                    <FontIcon
+                      Grid.Column="0"
+                      Glyph="&#xE793;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                      VerticalAlignment="Center"
+                      Margin="0,0,16,0"
+                    />
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock Text="App theme"
-                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
+                      <TextBlock
+                        Text="App theme"
+                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                      />
                       <TextBlock
                         Text="Choose between light, dark, or system theme"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0" />
+                        Margin="0,2,0,0"
+                      />
                     </StackPanel>
 
                     <ComboBox
@@ -375,7 +466,8 @@
                       Grid.Column="2"
                       MinWidth="150"
                       SelectionChanged="ThemeComboBox_SelectionChanged"
-                      VerticalAlignment="Center">
+                      VerticalAlignment="Center"
+                    >
                       <ComboBoxItem Content="Use system setting" Tag="System" />
                       <ComboBoxItem Content="Light" Tag="Light" />
                       <ComboBoxItem Content="Dark" Tag="Dark" />
@@ -386,48 +478,62 @@
 
               <!-- About Page -->
               <StackPanel x:Name="AboutPage" Spacing="4" Visibility="Collapsed">
-                <TextBlock Text="About"
-                           Style="{StaticResource TitleTextBlockStyle}"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="Application information"
-                           Style="{StaticResource BodyTextBlockStyle}"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                           Margin="0,0,0,24" />
+                <TextBlock
+                  Text="About"
+                  Style="{StaticResource TitleTextBlockStyle}"
+                  Margin="0,0,0,8"
+                />
+                <TextBlock
+                  Text="Application information"
+                  Style="{StaticResource BodyTextBlockStyle}"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                  Margin="0,0,0,24"
+                />
 
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                        CornerRadius="8"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        Padding="20"
-                        Margin="0,0,0,8">
+                <Border
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="8"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  Padding="20"
+                  Margin="0,0,0,8"
+                >
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0"
-                            Background="{ThemeResource AccentFillColorDefaultBrush}"
-                            CornerRadius="8"
-                            Width="48" Height="48"
-                            Margin="0,0,16,0">
-                      <FontIcon Glyph="&#xE8C8;"
-                                FontSize="24"
-                                Foreground="White"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center" />
+                    <Border
+                      Grid.Column="0"
+                      Background="{ThemeResource AccentFillColorDefaultBrush}"
+                      CornerRadius="8"
+                      Width="48"
+                      Height="48"
+                      Margin="0,0,16,0"
+                    >
+                      <FontIcon
+                        Glyph="&#xE8C8;"
+                        FontSize="24"
+                        Foreground="White"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                      />
                     </Border>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                      <TextBlock Text="Clipcy"
-                                 Style="{StaticResource SubtitleTextBlockStyle}" />
-                      <TextBlock Text="Clipboard Manager for Windows"
-                                 Style="{StaticResource BodyTextBlockStyle}"
-                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                      <TextBlock Text="Version 1.0.0"
-                                 Style="{StaticResource CaptionTextBlockStyle}"
-                                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                                 Margin="0,4,0,0" />
+                      <TextBlock Text="Clipcy" Style="{StaticResource SubtitleTextBlockStyle}" />
+                      <TextBlock
+                        Text="Clipboard Manager for Windows"
+                        Style="{StaticResource BodyTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                      />
+                      <TextBlock
+                        Text="Version 1.0.0"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        Margin="0,4,0,0"
+                      />
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -436,45 +542,50 @@
           </ScrollViewer>
 
           <!-- Compact mode action buttons (shown when sidebar is hidden) -->
-          <StackPanel x:Name="CompactActionButtons"
-                      Grid.Row="1"
-                      Orientation="Horizontal"
-                      HorizontalAlignment="Right"
-                      Padding="16"
-                      Spacing="8"
-                      Visibility="Collapsed">
-            <Button Content="Reset to Defaults"
-                    Click="ResetButton_Click" />
-            <Button Content="Save Changes"
-                    Style="{StaticResource AccentButtonStyle}"
-                    Click="SaveButton_Click" />
+          <StackPanel
+            x:Name="CompactActionButtons"
+            Grid.Row="1"
+            Orientation="Horizontal"
+            HorizontalAlignment="Right"
+            Padding="16"
+            Spacing="8"
+            Visibility="Collapsed"
+          >
+            <Button Content="Reset to Defaults" Click="ResetButton_Click" />
+            <Button
+              Content="Save Changes"
+              Style="{StaticResource AccentButtonStyle}"
+              Click="SaveButton_Click"
+            />
           </StackPanel>
         </Grid>
       </Grid>
 
       <!-- Overlay backdrop for compact mode (click to close sidebar) -->
-      <Border x:Name="SidebarOverlayBackdrop"
-              Background="#80000000"
-              Visibility="Collapsed"
-              Tapped="SidebarOverlayBackdrop_Tapped" />
+      <Border
+        x:Name="SidebarOverlayBackdrop"
+        Background="#80000000"
+        Visibility="Collapsed"
+        Tapped="SidebarOverlayBackdrop_Tapped"
+      />
 
       <!-- Sidebar Panel (overlays content in compact mode) -->
-      <Grid x:Name="SidebarPanel"
-            Width="280"
-            HorizontalAlignment="Left"
-            Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}">
+      <Grid x:Name="SidebarPanel" Width="280" HorizontalAlignment="Left">
+        <!-- Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}" -->
         <Grid.RowDefinitions>
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ListView x:Name="NavListView"
-                  Grid.Row="0"
-                  Padding="12,8"
-                  SelectionMode="Single"
-                  SelectedIndex="0"
-                  Background="Transparent"
-                  SelectionChanged="NavListView_SelectionChanged">
+        <ListView
+          x:Name="NavListView"
+          Grid.Row="0"
+          Padding="12,8"
+          SelectionMode="Single"
+          SelectedIndex="0"
+          Background="Transparent"
+          SelectionChanged="NavListView_SelectionChanged"
+        >
           <ListView.ItemContainerStyle>
             <Style TargetType="ListViewItem">
               <Setter Property="Padding" Value="12,10" />
@@ -512,17 +623,6 @@
             </StackPanel>
           </ListViewItem>
         </ListView>
-
-        <!-- Bottom action buttons in sidebar -->
-        <StackPanel Grid.Row="1" Padding="16,8,16,16" Spacing="8">
-          <Button Content="Reset to Defaults"
-                  HorizontalAlignment="Stretch"
-                  Click="ResetButton_Click" />
-          <Button Content="Save Changes"
-                  Style="{StaticResource AccentButtonStyle}"
-                  HorizontalAlignment="Stretch"
-                  Click="SaveButton_Click" />
-        </StackPanel>
       </Grid>
     </Grid>
   </Grid>

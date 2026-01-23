@@ -1,6 +1,6 @@
+using System.IO;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
-using System.IO;
 using uniffi.clipcy_core;
 using Windows.Storage.Streams;
 
@@ -364,7 +364,7 @@ public class ClipboardItemViewModel
                 {
                     _thumbnailImage = new BitmapImage();
                     _thumbnailImage.DecodePixelHeight = 64; // Optimized for list view (32px height * 2 for high DPI)
-                    
+
                     using (var stream = new MemoryStream(Thumbnail))
                     {
                         _thumbnailImage.SetSource(stream.AsRandomAccessStream());

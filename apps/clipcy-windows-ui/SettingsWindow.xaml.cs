@@ -1,6 +1,6 @@
 using System.IO;
-using Microsoft.UI.Composition.SystemBackdrops;
 using Clipcy.Services;
+using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
@@ -69,9 +69,7 @@ public sealed partial class SettingsWindow : Window
 
             UpdateTitleBarColors();
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private void UpdateTitleBarColors()
@@ -139,9 +137,7 @@ public sealed partial class SettingsWindow : Window
             titleBar.ButtonPressedBackgroundColor = pressedBgColor;
             titleBar.ButtonPressedForegroundColor = foregroundColor;
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private void SetupAcrylicBackdrop()
@@ -151,23 +147,17 @@ public sealed partial class SettingsWindow : Window
             if (DesktopAcrylicController.IsSupported())
             {
                 SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
-                _configurationSource = new SystemBackdropConfiguration
-                {
-                    IsInputActive = true,
-                };
+                _configurationSource = new SystemBackdropConfiguration { IsInputActive = true };
             }
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private void SettingsWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (_configurationSource != null)
         {
-            _configurationSource.IsInputActive =
-                args.WindowActivationState != WindowActivationState.Deactivated;
+            _configurationSource.IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
         }
     }
 
@@ -375,10 +365,7 @@ public sealed partial class SettingsWindow : Window
 
     private async void EditHotkey_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new ShortcutPickerDialog(_settings.Hotkey)
-        {
-            XamlRoot = this.Content.XamlRoot
-        };
+        var dialog = new ShortcutPickerDialog(_settings.Hotkey) { XamlRoot = this.Content.XamlRoot };
 
         var result = await dialog.ShowAsync();
 

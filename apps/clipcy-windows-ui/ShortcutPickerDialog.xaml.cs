@@ -45,7 +45,7 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
                 "Shift" => VirtualKey.Shift,
                 "Alt" => VirtualKey.Menu,
                 "Win" or "Windows" => VirtualKey.LeftWindows,
-                _ => ParseMainKey(trimmed)
+                _ => ParseMainKey(trimmed),
             };
 
             if (key != VirtualKey.None)
@@ -136,39 +136,42 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
         return string.Join("+", parts);
     }
 
-    private static bool IsModifierKey(VirtualKey key) => key switch
-    {
-        VirtualKey.Control
-        or VirtualKey.LeftControl
-        or VirtualKey.RightControl
-        or VirtualKey.Shift
-        or VirtualKey.LeftShift
-        or VirtualKey.RightShift
-        or VirtualKey.Menu
-        or VirtualKey.LeftMenu
-        or VirtualKey.RightMenu
-        or VirtualKey.LeftWindows
-        or VirtualKey.RightWindows => true,
-        _ => false,
-    };
+    private static bool IsModifierKey(VirtualKey key) =>
+        key switch
+        {
+            VirtualKey.Control
+            or VirtualKey.LeftControl
+            or VirtualKey.RightControl
+            or VirtualKey.Shift
+            or VirtualKey.LeftShift
+            or VirtualKey.RightShift
+            or VirtualKey.Menu
+            or VirtualKey.LeftMenu
+            or VirtualKey.RightMenu
+            or VirtualKey.LeftWindows
+            or VirtualKey.RightWindows => true,
+            _ => false,
+        };
 
-    private static VirtualKey NormalizeModifier(VirtualKey key) => key switch
-    {
-        VirtualKey.LeftControl or VirtualKey.RightControl => VirtualKey.Control,
-        VirtualKey.LeftShift or VirtualKey.RightShift => VirtualKey.Shift,
-        VirtualKey.LeftMenu or VirtualKey.RightMenu => VirtualKey.Menu,
-        VirtualKey.LeftWindows or VirtualKey.RightWindows => VirtualKey.LeftWindows,
-        _ => key,
-    };
+    private static VirtualKey NormalizeModifier(VirtualKey key) =>
+        key switch
+        {
+            VirtualKey.LeftControl or VirtualKey.RightControl => VirtualKey.Control,
+            VirtualKey.LeftShift or VirtualKey.RightShift => VirtualKey.Shift,
+            VirtualKey.LeftMenu or VirtualKey.RightMenu => VirtualKey.Menu,
+            VirtualKey.LeftWindows or VirtualKey.RightWindows => VirtualKey.LeftWindows,
+            _ => key,
+        };
 
-    private static string GetKeyDisplayName(VirtualKey key) => key switch
-    {
-        VirtualKey.Control => "Ctrl",
-        VirtualKey.Shift => "Shift",
-        VirtualKey.Menu => "Alt",
-        VirtualKey.LeftWindows or VirtualKey.RightWindows => "Win",
-        _ => key.ToString(),
-    };
+    private static string GetKeyDisplayName(VirtualKey key) =>
+        key switch
+        {
+            VirtualKey.Control => "Ctrl",
+            VirtualKey.Shift => "Shift",
+            VirtualKey.Menu => "Alt",
+            VirtualKey.LeftWindows or VirtualKey.RightWindows => "Win",
+            _ => key.ToString(),
+        };
 
     private void Reset_Click(object sender, RoutedEventArgs e)
     {

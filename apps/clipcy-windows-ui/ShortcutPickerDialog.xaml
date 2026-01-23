@@ -18,35 +18,40 @@
       <Button
         x:Name="WinKeyButton"
         Content="Win"
-        Width="56" Height="48"
+        Width="56"
+        Height="48"
         Background="#40C5F7"
         Visibility="Collapsed"
       />
       <Button
         x:Name="CtrlKeyButton"
         Content="Ctrl"
-        Width="56" Height="48"
+        Width="56"
+        Height="48"
         Background="#40C5F7"
         Visibility="Collapsed"
       />
       <Button
         x:Name="AltKeyButton"
         Content="Alt"
-        Width="56" Height="48"
+        Width="56"
+        Height="48"
         Background="#40C5F7"
         Visibility="Collapsed"
       />
       <Button
         x:Name="ShiftKeyButton"
         Content="Shift"
-        Width="56" Height="48"
+        Width="56"
+        Height="48"
         Background="#40C5F7"
         Visibility="Collapsed"
       />
       <Button
         x:Name="MainKeyButton"
         Content=""
-        Width="56" Height="48"
+        Width="56"
+        Height="48"
         Background="#40C5F7"
         Visibility="Collapsed"
       />

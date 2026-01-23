@@ -85,9 +85,7 @@ public partial class App : Application
             var errorWriter = new StreamWriter(stderr) { AutoFlush = true };
             Console.SetError(errorWriter);
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     /// <summary>
