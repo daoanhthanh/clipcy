@@ -276,7 +276,7 @@ public sealed partial class SettingsWindow : Window
     private void RootGrid_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         // Skip if UI elements aren't loaded yet
-        if (SidebarPanel == null || HamburgerButton == null || CompactActionButtons == null)
+        if (SidebarPanel == null || HamburgerButton == null || CompactActionButtons == null || SidebarSpacer == null)
             return;
 
         var width = e.NewSize.Width;
@@ -322,28 +322,54 @@ public sealed partial class SettingsWindow : Window
     {
         _isSidebarExpanded = false;
         SidebarPanel.Visibility = Visibility.Collapsed;
+        SidebarSpacer.Visibility = Visibility.Collapsed;
+        SidebarOverlayBackdrop.Visibility = Visibility.Collapsed;
         HamburgerButton.Visibility = Visibility.Visible;
         CompactActionButtons.Visibility = Visibility.Visible;
+
+        // Make content span full width
+        Grid.SetColumn(ContentPanel, 0);
+        Grid.SetColumnSpan(ContentPanel, 2);
     }
 
     private void ExpandSidebar()
     {
         _isSidebarExpanded = true;
         SidebarPanel.Visibility = Visibility.Visible;
+        SidebarSpacer.Visibility = Visibility.Visible;
+        SidebarOverlayBackdrop.Visibility = Visibility.Collapsed;
         HamburgerButton.Visibility = Visibility.Collapsed;
         CompactActionButtons.Visibility = Visibility.Collapsed;
+
+        // Restore content to right column
+        Grid.SetColumn(ContentPanel, 1);
+        Grid.SetColumnSpan(ContentPanel, 1);
     }
 
     private void HamburgerButton_Click(object sender, RoutedEventArgs e)
     {
-        // Toggle sidebar in compact mode
+        // Toggle sidebar overlay in compact mode
         if (SidebarPanel.Visibility == Visibility.Collapsed)
         {
+            // Show sidebar as overlay
             SidebarPanel.Visibility = Visibility.Visible;
+            SidebarOverlayBackdrop.Visibility = Visibility.Visible;
         }
         else
         {
+            // Hide sidebar overlay
             SidebarPanel.Visibility = Visibility.Collapsed;
+            SidebarOverlayBackdrop.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void SidebarOverlayBackdrop_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        // Close sidebar when tapping outside
+        if (!_isSidebarExpanded)
+        {
+            SidebarPanel.Visibility = Visibility.Collapsed;
+            SidebarOverlayBackdrop.Visibility = Visibility.Collapsed;
         }
     }
 
