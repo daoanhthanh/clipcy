@@ -317,7 +317,8 @@ public sealed partial class SettingsWindow : Window
         HamburgerButton.Visibility = Visibility.Visible;
 
         // Set solid background for overlay mode
-        SidebarPanel.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SolidBackgroundFillColorBaseBrush"];
+        SidebarPanel.Background = (Microsoft.UI.Xaml.Media.Brush)
+            Application.Current.Resources["SolidBackgroundFillColorBaseBrush"];
 
         // Make content span full width
         Grid.SetColumn(ContentPanel, 0);

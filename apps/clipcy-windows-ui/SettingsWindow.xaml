@@ -70,7 +70,13 @@
               HorizontalAlignment="Center"
             >
               <!-- General Page -->
-              <StackPanel x:Name="GeneralPage" Spacing="4" Visibility="Visible" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
+              <StackPanel
+                x:Name="GeneralPage"
+                Spacing="4"
+                Visibility="Visible"
+                MinWidth="{StaticResource ContentGridMinWidth}"
+                MaxWidth="{StaticResource ContentGridMaxWidth}"
+              >
                 <TextBlock
                   Text="General"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -249,7 +255,13 @@
               </StackPanel>
 
               <!-- Behavior Page -->
-              <StackPanel x:Name="BehaviorPage" Spacing="4" Visibility="Collapsed" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
+              <StackPanel
+                x:Name="BehaviorPage"
+                Spacing="4"
+                Visibility="Collapsed"
+                MinWidth="{StaticResource ContentGridMinWidth}"
+                MaxWidth="{StaticResource ContentGridMaxWidth}"
+              >
                 <TextBlock
                   Text="Behavior"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -411,7 +423,13 @@
               </StackPanel>
 
               <!-- Appearance Page -->
-              <StackPanel x:Name="AppearancePage" Spacing="4" Visibility="Collapsed" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
+              <StackPanel
+                x:Name="AppearancePage"
+                Spacing="4"
+                Visibility="Collapsed"
+                MinWidth="{StaticResource ContentGridMinWidth}"
+                MaxWidth="{StaticResource ContentGridMaxWidth}"
+              >
                 <TextBlock
                   Text="Appearance"
                   Style="{StaticResource TitleTextBlockStyle}"
@@ -478,7 +496,13 @@
               </StackPanel>
 
               <!-- About Page -->
-              <StackPanel x:Name="AboutPage" Spacing="4" Visibility="Collapsed" MinWidth="{StaticResource ContentGridMinWidth}" MaxWidth="{StaticResource ContentGridMaxWidth}">
+              <StackPanel
+                x:Name="AboutPage"
+                Spacing="4"
+                Visibility="Collapsed"
+                MinWidth="{StaticResource ContentGridMinWidth}"
+                MaxWidth="{StaticResource ContentGridMaxWidth}"
+              >
                 <TextBlock
                   Text="About"
                   Style="{StaticResource TitleTextBlockStyle}"
