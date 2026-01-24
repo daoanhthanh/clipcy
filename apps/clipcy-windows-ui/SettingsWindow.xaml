@@ -62,13 +62,14 @@
 
           <!-- Page content area -->
           <ScrollViewer Grid.Row="0" Padding="24,32,24,32">
-            <Grid x:Name="ContentHost" MaxWidth="2400" HorizontalAlignment="Center">
+            <Grid x:Name="ContentHost" MaxWidth="2400" HorizontalAlignment="Stretch">
               <!-- General Page -->
               <StackPanel
                 x:Name="GeneralPage"
                 Spacing="8"
                 Visibility="Visible"
-                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
+                HorizontalAlignment="Stretch"
+                MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="General"
@@ -119,7 +120,7 @@
                       MinWidth="120"
                       Minimum="10"
                       Maximum="1000"
-                      SpinButtonPlacementMode="Compact"
+                      SpinButtonPlacementMode="Hidden"
                       ValueChanged="MaxHistoryBox_ValueChanged"
                       LostFocus="MaxHistoryBox_LostFocus"
                       VerticalAlignment="Center"
@@ -238,7 +239,8 @@
                 x:Name="BehaviorPage"
                 Spacing="8"
                 Visibility="Collapsed"
-                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
+                HorizontalAlignment="Stretch"
+                MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="Behavior"
@@ -387,7 +389,8 @@
                 x:Name="AppearancePage"
                 Spacing="8"
                 Visibility="Collapsed"
-                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
+                HorizontalAlignment="Stretch"
+                MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="Appearance"
@@ -452,7 +455,8 @@
                 x:Name="AboutPage"
                 Spacing="8"
                 Visibility="Collapsed"
-                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
+                HorizontalAlignment="Stretch"
+                MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="About"
