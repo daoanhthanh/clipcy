@@ -568,8 +568,26 @@ public sealed partial class SettingsWindow : Window
     {
         if (ThemeComboBox.SelectedItem is ComboBoxItem item)
         {
-            _settings.Theme = item.Tag?.ToString() ?? "System";
+            var themeTag = item.Tag?.ToString() ?? "System";
+            _settings.Theme = themeTag;
             SaveSettings();
+
+            // Apply theme immediately to the root element
+            if (RootGrid != null)
+            {
+                switch (themeTag)
+                {
+                    case "Light":
+                        RootGrid.RequestedTheme = ElementTheme.Light;
+                        break;
+                    case "Dark":
+                        RootGrid.RequestedTheme = ElementTheme.Dark;
+                        break;
+                    default:
+                        RootGrid.RequestedTheme = ElementTheme.Default;
+                        break;
+                }
+            }
         }
     }
 
