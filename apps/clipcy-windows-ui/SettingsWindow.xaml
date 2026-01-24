@@ -260,34 +260,31 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon
-                      Grid.Column="0"
-                      Glyph="&#xE7E8;"
-                      FontSize="20"
-                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                      VerticalAlignment="Center"
-                      Margin="0,0,16,0"
-                    />
-
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock
-                        Text="Start on boot"
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                      <FontIcon
+                        Glyph="&#xE7E8;"
+                        FontSize="20"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                       />
-                      <TextBlock
-                        Text="Launch Clipcy when Windows starts"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0"
-                      />
+                      <StackPanel>
+                        <TextBlock
+                          Text="Start on boot"
+                          Style="{StaticResource BodyStrongTextBlockStyle}"
+                        />
+                        <TextBlock
+                          Text="Launch Clipcy when Windows starts"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          Margin="0,2,0,0"
+                        />
+                      </StackPanel>
                     </StackPanel>
 
                     <ToggleSwitch
                       x:Name="StartOnBootToggle"
-                      Grid.Column="2"
+                      Grid.Column="1"
                       Toggled="StartOnBootToggle_Toggled"
                       OnContent="ON"
                       OffContent="OFF"
@@ -303,34 +300,31 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon
-                      Grid.Column="0"
-                      Glyph="&#xE8A1;"
-                      FontSize="20"
-                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                      VerticalAlignment="Center"
-                      Margin="0,0,16,0"
-                    />
-
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock
-                        Text="Show preview panel"
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                      <FontIcon
+                        Glyph="&#xE8A1;"
+                        FontSize="20"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                       />
-                      <TextBlock
-                        Text="Display content preview in the popup"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0"
-                      />
+                      <StackPanel>
+                        <TextBlock
+                          Text="Show preview panel"
+                          Style="{StaticResource BodyStrongTextBlockStyle}"
+                        />
+                        <TextBlock
+                          Text="Display content preview in the popup"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          Margin="0,2,0,0"
+                        />
+                      </StackPanel>
                     </StackPanel>
 
                     <ToggleSwitch
                       x:Name="ShowPreviewToggle"
-                      Grid.Column="2"
+                      Grid.Column="1"
                       Toggled="ShowPreviewToggle_Toggled"
                       OnContent="ON"
                       OffContent="OFF"
@@ -346,39 +340,36 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <FontIcon
-                      Grid.Column="0"
-                      Glyph="&#xE91C;"
-                      FontSize="20"
-                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                      VerticalAlignment="Center"
-                      Margin="0,0,16,0"
-                    />
-
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                      <TextBlock
-                        Text="Show notifications"
-                        Style="{StaticResource BodyStrongTextBlockStyle}"
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                      <FontIcon
+                        Glyph="&#xE91C;"
+                        FontSize="20"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                       />
-                      <TextBlock
-                        Text="Notify when clipboard content changes"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        Margin="0,2,0,0"
-                      />
+                      <StackPanel>
+                        <TextBlock
+                          Text="Show notifications"
+                          Style="{StaticResource BodyStrongTextBlockStyle}"
+                        />
+                        <TextBlock
+                          Text="Notify when clipboard content changes"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          Margin="0,2,0,0"
+                        />
+                      </StackPanel>
                     </StackPanel>
 
                     <ToggleSwitch
                       x:Name="ShowNotificationsToggle"
-                      Grid.Column="2"
+                      Grid.Column="1"
                       Toggled="ShowNotificationsToggle_Toggled"
                       OnContent="ON"
                       OffContent="OFF"
                       VerticalAlignment="Center"
-                      HorizontalAlignment="Left"
+                      HorizontalAlignment="Right"
                     />
                   </Grid>
                 </Border>
