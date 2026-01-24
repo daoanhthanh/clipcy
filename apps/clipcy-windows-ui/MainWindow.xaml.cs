@@ -128,8 +128,26 @@ public sealed partial class MainWindow : Window
             ThemeManager.SetTheme(ThemeManager.CurrentTheme); // Apply current global theme
         }
 
+        // Subscribe to theme changes to recreate preview popup with updated colors
+        ThemeManager.ThemeChanged += OnThemeChanged;
+
         this.Activated += MainWindow_Activated;
         ViewModel.RefreshHistory();
+    }
+
+    private void OnThemeChanged(AppTheme theme)
+    {
+        // Invalidate the cached preview popup so it gets recreated with the new theme colors
+        if (_previewPopup != null)
+        {
+            _previewPopup.IsOpen = false;
+            if (_previewPopupRoot != null)
+            {
+                ThemeManager.UnregisterElement(_previewPopupRoot);
+            }
+            _previewPopup = null;
+            _previewPopupRoot = null;
+        }
     }
 
     private void ConfigureAsPopup()
@@ -500,30 +518,25 @@ public sealed partial class MainWindow : Window
             _ => ElementTheme.Default,
         };
 
-        // Helper to resolve theme-aware brushes without ThemeResourceExtension
-        Microsoft.UI.Xaml.Media.Brush ThemeBrush(string key)
-        {
-            return Application.Current.Resources.TryGetValue(key, out var val) && val is Microsoft.UI.Xaml.Media.Brush b
-                ? b
-                : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
-        }
-
-        // Bind outer chrome to theme resources (fallback to light/dark if missing)
+        // Create the outer border first so we can use it for theme context
         var outerBorder = new Border
         {
-            Background = ThemeBrush("LayerFillColorDefaultBrush"),
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
-            BorderBrush = ThemeBrush("SurfaceStrokeColorDefaultBrush"),
             Width = 360,
             MaxHeight = 400,
             RequestedTheme = popup.RequestedTheme,
         };
 
-        // Register the popup's root element for theme management (including text colors)
+        // Use ThemeBrushHelper for acrylic background that updates with theme
+        outerBorder.Background = ThemeBrushHelper.CreateThemedAcrylicBrush(outerBorder, 0.85);
+        
+        // Use ThemeBrushHelper for border that updates with theme
+        ThemeBrushHelper.SetBorderBrush(outerBorder, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
+
+        // Register the popup's root element for theme management
         ThemeManager.RegisterElement(outerBorder);
         ThemeManager.ApplyThemeToElement(outerBorder, ThemeManager.CurrentTheme);
-        outerBorder.RequestedTheme = popup.RequestedTheme;
 
         // Add shadow effect
         outerBorder.Shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
@@ -548,19 +561,14 @@ public sealed partial class MainWindow : Window
             ScheduleHidePreview();
         };
 
-        // Theme-aware brushes resolved from resources
-        var textPrimaryBrush = ThemeBrush("TextFillColorPrimaryBrush");
-        var textSecondaryBrush = ThemeBrush("TextFillColorSecondaryBrush");
-        var dividerBrush = ThemeBrush("SurfaceStrokeColorDefaultBrush");
-
-        // Header
+        // Header - use ThemeBrushHelper for theme-aware text color
         _previewContentType = new TextBlock
         {
             FontSize = 13,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
-            Foreground = textPrimaryBrush,
         };
+        ThemeBrushHelper.SetForeground(_previewContentType, ThemeBrushHelper.BrushKeys.TextPrimary, outerBorder);
         Grid.SetRow(_previewContentType, 0);
         grid.Children.Add(_previewContentType);
 
@@ -575,8 +583,8 @@ public sealed partial class MainWindow : Window
             FontSize = 13,
             Visibility = Visibility.Collapsed,
             LineHeight = 20,
-            Foreground = textPrimaryBrush,
         };
+        ThemeBrushHelper.SetForeground(_previewText, ThemeBrushHelper.BrushKeys.TextPrimary, outerBorder);
         contentStack.Children.Add(_previewText);
 
         _previewImage = new Image
@@ -606,8 +614,8 @@ public sealed partial class MainWindow : Window
         {
             Height = 1,
             Margin = new Thickness(0, 6, 0, 6),
-            Background = dividerBrush,
         };
+        ThemeBrushHelper.SetBackground(divider, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
         metadataStack.Children.Add(divider);
 
         _previewMetadata = new TextBlock
@@ -615,8 +623,8 @@ public sealed partial class MainWindow : Window
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             LineHeight = 16,
-            Foreground = textSecondaryBrush,
         };
+        ThemeBrushHelper.SetForeground(_previewMetadata, ThemeBrushHelper.BrushKeys.TextSecondary, outerBorder);
         metadataStack.Children.Add(_previewMetadata);
 
         Grid.SetRow(metadataStack, 2);

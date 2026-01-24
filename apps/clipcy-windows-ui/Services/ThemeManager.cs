@@ -14,6 +14,8 @@ namespace Clipcy.Services
         private static AppTheme _currentTheme = AppTheme.System;
         private static readonly List<FrameworkElement> _registeredElements = new();
 
+        public static event Action<AppTheme>? ThemeChanged;
+
         public static AppTheme CurrentTheme => _currentTheme;
 
         public static void RegisterElement(FrameworkElement element)
@@ -37,6 +39,7 @@ namespace Clipcy.Services
             {
                 ApplyThemeToElement(element, theme);
             }
+            ThemeChanged?.Invoke(theme);
         }
 
         public static void ApplyThemeToElement(FrameworkElement element, AppTheme theme)
