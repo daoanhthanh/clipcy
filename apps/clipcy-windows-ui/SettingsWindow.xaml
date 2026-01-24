@@ -286,8 +286,8 @@
                       x:Name="StartOnBootToggle"
                       Grid.Column="1"
                       Toggled="StartOnBootToggle_Toggled"
-                      OnContent=""
-                      OffContent=""
+                      OnContent="ON"
+                      OffContent="OFF"
                       VerticalAlignment="Center"
                       HorizontalAlignment="Right"
                     />
@@ -326,8 +326,8 @@
                       x:Name="ShowPreviewToggle"
                       Grid.Column="1"
                       Toggled="ShowPreviewToggle_Toggled"
-                      OnContent=""
-                      OffContent=""
+                      OnContent="ON"
+                      OffContent="OFF"
                       VerticalAlignment="Center"
                       HorizontalAlignment="Right"
                     />
@@ -366,8 +366,8 @@
                       x:Name="ShowNotificationsToggle"
                       Grid.Column="1"
                       Toggled="ShowNotificationsToggle_Toggled"
-                      OnContent=""
-                      OffContent=""
+                      OnContent="ON"
+                      OffContent="OFF"
                       VerticalAlignment="Center"
                       HorizontalAlignment="Right"
                     />
