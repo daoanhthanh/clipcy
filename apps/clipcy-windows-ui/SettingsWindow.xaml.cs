@@ -3,7 +3,6 @@ using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.Storage;
 using Windows.System;
 
 namespace Clipcy;
@@ -17,6 +16,8 @@ public sealed partial class SettingsWindow : Window
     private double _lastValidMaxHistory;
     private SystemBackdropConfiguration? _configurationSource;
     private bool _isSidebarExpanded = true;
+    private DispatcherTimer? _saveWindowSizeTimer;
+    private bool _isRestoringSize = false;
 
     // Responsive thresholds
     private const int MinWindowWidth = 500;
@@ -29,6 +30,7 @@ public sealed partial class SettingsWindow : Window
 
         SetupAcrylicBackdrop();
         SetupTitleBar();
+        SetupWindowSizeTracking();
         this.Activated += SettingsWindow_Activated;
         this.Closed += SettingsWindow_Closed;
 
@@ -163,40 +165,143 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
+    private void SetupWindowSizeTracking()
+    {
+        // Initialize debounce timer for saving window size
+        _saveWindowSizeTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500) // Save 500ms after user stops resizing
+        };
+        _saveWindowSizeTimer.Tick += SaveWindowSizeTimer_Tick;
+
+        // Subscribe to AppWindow.Changed event to track size changes
+        if (AppWindow != null)
+        {
+            AppWindow.Changed += AppWindow_Changed;
+        }
+    }
+
+    private void AppWindow_Changed(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowChangedEventArgs args)
+    {
+        // Track size changes
+        if (args.DidSizeChange && !_isRestoringSize)
+        {
+            System.Diagnostics.Debug.WriteLine($"Window size changed: {sender.Size.Width}x{sender.Size.Height}");
+            
+            // Restart debounce timer
+            if (_saveWindowSizeTimer != null)
+            {
+                _saveWindowSizeTimer.Stop();
+                _saveWindowSizeTimer.Start();
+            }
+        }
+    }
+
     private void RestoreWindowSize()
     {
         try
         {
-            var localSettings = ApplicationData.Current.LocalSettings;
-
-            if (localSettings.Values.TryGetValue("SettingsWindowWidth", out var width) &&
-                localSettings.Values.TryGetValue("SettingsWindowHeight", out var height))
+            _isRestoringSize = true;
+            System.Diagnostics.Debug.WriteLine("Attempting to restore window size...");
+            
+            var windowSizeFile = GetWindowSizeFilePath();
+            if (File.Exists(windowSizeFile))
             {
-                var w = Math.Max((int)width, MinWindowWidth);
-                var h = Math.Max((int)height, MinWindowHeight);
+                var lines = File.ReadAllLines(windowSizeFile);
+                if (lines.Length >= 2 && 
+                    int.TryParse(lines[0], out var width) && 
+                    int.TryParse(lines[1], out var height))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Found saved size: {width}x{height}");
+                    var w = Math.Max(width, MinWindowWidth);
+                    var h = Math.Max(height, MinWindowHeight);
 
-                AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = w, Height = h });
+                    AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = w, Height = h });
+                    System.Diagnostics.Debug.WriteLine($"Restored window size to: {w}x{h}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Invalid window size file format");
+                    SetDefaultWindowSize();
+                }
             }
             else
             {
-                // Default size
-                AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 720 });
+                System.Diagnostics.Debug.WriteLine($"No saved size found at {windowSizeFile}, using default: 1400x720");
+                SetDefaultWindowSize();
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback to default size if restoration fails
+            System.Diagnostics.Debug.WriteLine($"Failed to restore window size: {ex.Message}");
+            SetDefaultWindowSize();
+        }
+        finally
+        {
+            _isRestoringSize = false;
+        }
+    }
+
+    private void SetDefaultWindowSize()
+    {
+        try
+        {
             AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 720 });
         }
+        catch { }
+    }
+
+    private static string GetWindowSizeFilePath()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var clipcyDir = Path.Combine(localAppData, "clipcy");
+        Directory.CreateDirectory(clipcyDir); // Ensure directory exists
+        return Path.Combine(clipcyDir, "window-size.txt");
     }
 
     private void SettingsWindow_Closed(object sender, WindowEventArgs args)
     {
+        // Unsubscribe from AppWindow.Changed
+        if (AppWindow != null)
+        {
+            AppWindow.Changed -= AppWindow_Changed;
+        }
+
+        // Clean up timer
+        if (_saveWindowSizeTimer != null)
+        {
+            _saveWindowSizeTimer.Stop();
+            _saveWindowSizeTimer.Tick -= SaveWindowSizeTimer_Tick;
+            _saveWindowSizeTimer = null;
+        }
+
+        // Final save of window size
+        SaveWindowSize();
+    }
+
+    private void SaveWindowSizeTimer_Tick(object? sender, object e)
+    {
+        _saveWindowSizeTimer?.Stop();
+        SaveWindowSize();
+    }
+
+    private void SaveWindowSize()
+    {
+        if (_isRestoringSize || AppWindow == null)
+            return;
+
         try
         {
-            var localSettings = ApplicationData.Current.LocalSettings;
-            localSettings.Values["SettingsWindowWidth"] = AppWindow.Size.Width;
-            localSettings.Values["SettingsWindowHeight"] = AppWindow.Size.Height;
+            var width = AppWindow.Size.Width;
+            var height = AppWindow.Size.Height;
+
+            // Only save if size is valid
+            if (width >= MinWindowWidth && height >= MinWindowHeight)
+            {
+                var windowSizeFile = GetWindowSizeFilePath();
+                File.WriteAllLines(windowSizeFile, new[] { width.ToString(), height.ToString() });
+                System.Diagnostics.Debug.WriteLine($"Saved window size to {windowSizeFile}: {width}x{height}");
+            }
         }
         catch (Exception ex)
         {
