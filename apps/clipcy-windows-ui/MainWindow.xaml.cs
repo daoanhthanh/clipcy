@@ -162,8 +162,29 @@ public sealed partial class MainWindow : Window
             presenter.IsAlwaysOnTop = true;
         }
 
-        this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 400, Height = 500 });
+        // Apply DPI scaling to window dimensions
+        var scale = GetDpiScale();
+        var scaledWidth = (int)(400 * scale);
+        var scaledHeight = (int)(500 * scale);
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = scaledWidth, Height = scaledHeight });
     }
+
+    private double GetDpiScale()
+    {
+        try
+        {
+            var hwnd = WindowNative.GetWindowHandle(this);
+            var dpi = GetDpiForWindow(hwnd);
+            return dpi / 96.0; // 96 DPI is the standard (100% scaling)
+        }
+        catch
+        {
+            return 1.0;
+        }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
 
     private void MakeToolWindow()
     {
@@ -412,8 +433,10 @@ public sealed partial class MainWindow : Window
             MONITORINFO monitorInfo = new MONITORINFO();
             monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
 
-            int windowWidth = 400;
-            int windowHeight = 500;
+            // Apply DPI scaling to window dimensions
+            var scale = GetDpiScale();
+            int windowWidth = (int)(400 * scale);
+            int windowHeight = (int)(500 * scale);
 
             int x = cursorPos.X;
             int y = cursorPos.Y;
