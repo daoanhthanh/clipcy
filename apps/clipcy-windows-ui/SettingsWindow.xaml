@@ -61,8 +61,8 @@
           </Grid.RowDefinitions>
 
           <!-- Page content area -->
-          <ScrollViewer Grid.Row="0" Padding="40,32,40,32">
-            <Grid x:Name="ContentHost" MaxWidth="800" HorizontalAlignment="Center">
+          <ScrollViewer Grid.Row="0" Padding="24,32,24,32">
+            <Grid x:Name="ContentHost" MaxWidth="1800" HorizontalAlignment="Center">
               <!-- General Page -->
               <StackPanel
                 x:Name="GeneralPage"

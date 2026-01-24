@@ -37,7 +37,7 @@ public sealed partial class SettingsWindow : Window
         }
 
         // Set window size and minimum size
-        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 960, Height = 640 });
+        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 720 });
 
         // Set minimum size using presenter
         var presenter = AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
