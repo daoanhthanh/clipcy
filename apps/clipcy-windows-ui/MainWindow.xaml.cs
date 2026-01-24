@@ -125,8 +125,8 @@ public sealed partial class MainWindow : Window
         // Register for theme management
         if (RootGrid != null)
         {
-            Clipcy.Services.ThemeManager.RegisterElement(RootGrid);
-            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.CurrentTheme); // Apply current global theme
+            ThemeManager.RegisterElement(RootGrid);
+            ThemeManager.SetTheme(ThemeManager.CurrentTheme); // Apply current global theme
         }
 
         this.Activated += MainWindow_Activated;
@@ -535,6 +535,7 @@ public sealed partial class MainWindow : Window
             );
         }
 
+
         var outerBorder = new Border
         {
             Background = backgroundBrush,
@@ -544,6 +545,10 @@ public sealed partial class MainWindow : Window
             Width = 360,
             MaxHeight = 400,
         };
+
+        // Register the popup's root element for theme management
+        ThemeManager.RegisterElement(outerBorder);
+        ThemeManager.ApplyThemeToElement(outerBorder, ThemeManager.CurrentTheme);
 
         // Add shadow effect
         outerBorder.Shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
