@@ -1,9 +1,7 @@
-using System.IO;
 using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.System;
 
 namespace Clipcy;
 

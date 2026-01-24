@@ -1,7 +1,6 @@
 using System.Drawing;
 using CommunityToolkit.Mvvm.Input;
 using H.NotifyIcon;
-using H.NotifyIcon.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 

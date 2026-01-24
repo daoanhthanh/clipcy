@@ -62,11 +62,11 @@
 
           <!-- Page content area -->
           <ScrollViewer Grid.Row="0" Padding="24,32,24,32">
-            <Grid x:Name="ContentHost" MaxWidth="1800" HorizontalAlignment="Center">
+            <Grid x:Name="ContentHost" MaxWidth="2400" HorizontalAlignment="Center">
               <!-- General Page -->
               <StackPanel
                 x:Name="GeneralPage"
-                Spacing="4"
+                Spacing="8"
                 Visibility="Visible"
                 Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
@@ -236,7 +236,7 @@
               <!-- Behavior Page -->
               <StackPanel
                 x:Name="BehaviorPage"
-                Spacing="4"
+                Spacing="8"
                 Visibility="Collapsed"
                 Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
@@ -382,7 +382,7 @@
               <!-- Appearance Page -->
               <StackPanel
                 x:Name="AppearancePage"
-                Spacing="4"
+                Spacing="8"
                 Visibility="Collapsed"
                 Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
@@ -447,7 +447,7 @@
               <!-- About Page -->
               <StackPanel
                 x:Name="AboutPage"
-                Spacing="4"
+                Spacing="8"
                 Visibility="Collapsed"
                 Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
