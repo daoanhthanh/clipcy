@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Clipcy.Services;
 
 /// <summary>
@@ -8,11 +6,12 @@ namespace Clipcy.Services;
 public class PreviewData
 {
     public string Id { get; set; } = string.Empty;
-    public string PreviewType { get; set; } = "Text"; // Text, Image, Files
+    public string PreviewType { get; set; } = "Text"; // Text, Image, Files, RichText
 
     // Content payload
     public string? TextContent { get; set; }
     public byte[]? ImageBytes { get; set; }
+    public string? RtfContent { get; set; }
 
     // Metadata for display
     public string RelativeTime { get; set; } = string.Empty;

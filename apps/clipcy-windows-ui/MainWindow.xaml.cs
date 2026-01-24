@@ -238,7 +238,7 @@ public sealed partial class MainWindow : Window
 
     private PreviewData MapToPreviewData(ClipboardItemViewModel vm)
     {
-        return new PreviewData
+        var data = new PreviewData
         {
             Id = vm.Id,
             PreviewType = vm.ContentType,
@@ -257,5 +257,168 @@ public sealed partial class MainWindow : Window
                 return null;
             },
         };
+
+        // For RichText, load the full RTF data synchronously for preview
+        if (vm.ContentType == "RichText" && App.Bridge != null && !string.IsNullOrEmpty(vm.Id))
+        {
+            try
+            {
+                var rtfBytes = App.Bridge.GetItemData(vm.Id);
+                if (rtfBytes != null && rtfBytes.Length > 0)
+                {
+                    data.RtfContent = System.Text.Encoding.UTF8.GetString(rtfBytes);
+                    
+                    // Also extract plain text with newlines for fallback display
+                    data.TextContent = ExtractPlainTextFromRtf(data.RtfContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading RTF data: {ex.Message}");
+            }
+        }
+
+        return data;
+    }
+
+    private static string ExtractPlainTextFromRtf(string rtf)
+    {
+        // Simple RTF to plain text extraction for preview fallback
+        // This extracts text content while preserving newlines
+        var result = new System.Text.StringBuilder();
+        var i = 0;
+        var braceDepth = 0;
+        var skipGroup = false;
+        var skipDepth = 0;
+        
+        while (i < rtf.Length)
+        {
+            var ch = rtf[i];
+            
+            if (ch == '{')
+            {
+                braceDepth++;
+                
+                // Check if this is a control group to skip
+                if (i + 1 < rtf.Length && rtf[i + 1] == '\\')
+                {
+                    var controlStart = i + 2;
+                    var controlEnd = controlStart;
+                    while (controlEnd < rtf.Length && char.IsLetter(rtf[controlEnd]))
+                    {
+                        controlEnd++;
+                    }
+                    var control = rtf.Substring(controlStart, controlEnd - controlStart);
+                    
+                    if (control == "fonttbl" || control == "colortbl" || control == "stylesheet" ||
+                        control == "generator" || control == "info")
+                    {
+                        skipGroup = true;
+                        skipDepth = braceDepth;
+                    }
+                }
+                i++;
+            }
+            else if (ch == '}')
+            {
+                braceDepth--;
+                if (skipGroup && braceDepth < skipDepth)
+                {
+                    skipGroup = false;
+                }
+                i++;
+            }
+            else if (ch == '\\' && !skipGroup)
+            {
+                i++;
+                if (i < rtf.Length)
+                {
+                    // Check for escaped characters
+                    if (rtf[i] == '\\' || rtf[i] == '{' || rtf[i] == '}')
+                    {
+                        result.Append(rtf[i]);
+                        i++;
+                        continue;
+                    }
+                    
+                    // Read control word
+                    var controlStart = i;
+                    while (i < rtf.Length && char.IsLetter(rtf[i]))
+                    {
+                        i++;
+                    }
+                    var control = rtf.Substring(controlStart, i - controlStart);
+                    
+                    // Skip numeric parameter
+                    if (i < rtf.Length && (char.IsDigit(rtf[i]) || rtf[i] == '-'))
+                    {
+                        if (rtf[i] == '-') i++;
+                        while (i < rtf.Length && char.IsDigit(rtf[i]))
+                        {
+                            i++;
+                        }
+                    }
+                    
+                    // Skip optional space
+                    if (i < rtf.Length && rtf[i] == ' ')
+                    {
+                        i++;
+                    }
+                    
+                    // Handle special control words
+                    if (control == "par" || control == "line")
+                    {
+                        result.AppendLine();
+                    }
+                    else if (control == "tab")
+                    {
+                        result.Append('\t');
+                    }
+                }
+            }
+            else if (!skipGroup)
+            {
+                result.Append(ch);
+                i++;
+            }
+            else
+            {
+                i++;
+            }
+        }
+        
+        return result.ToString().Trim();
+    }
+
+    private void HistoryListView_Loaded(object sender, RoutedEventArgs e)
+    {
+        var scrollViewer = FindScrollViewer(HistoryListView);
+        if (scrollViewer != null)
+        {
+            scrollViewer.ViewChanging += (s, args) =>
+            {
+                _previewService?.Hide();
+            };
+        }
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        var queue = new System.Collections.Generic.Queue<DependencyObject>();
+        queue.Enqueue(root);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            if (current is ScrollViewer sv)
+                return sv;
+
+            int count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(current);
+            for (int i = 0; i < count; i++)
+            {
+                queue.Enqueue(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(current, i));
+            }
+        }
+        return null;
     }
 }

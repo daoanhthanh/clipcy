@@ -43,6 +43,7 @@
       SingleSelectionFollowsFocus="False"
       Background="Transparent"
       ContainerContentChanging="HistoryListView_ContainerContentChanging"
+      Loaded="HistoryListView_Loaded"
     >
       <ListView.ItemContainerStyle>
         <Style TargetType="ListViewItem">

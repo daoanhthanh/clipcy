@@ -23,6 +23,7 @@ public class PreviewService : IPreviewService
     private FrameworkElement? _previewPopupRoot;
     private TextBlock? _previewContentType;
     private TextBlock? _previewText;
+    private RichEditBox? _previewRichText;
     private Image? _previewImage;
     private Border? _previewImageBorder;
     private TextBlock? _previewMetadata;
@@ -178,6 +179,17 @@ public class PreviewService : IPreviewService
         };
         ThemeBrushHelper.SetForeground(_previewText, ThemeBrushHelper.BrushKeys.TextPrimary, outerBorder);
         contentStack.Children.Add(_previewText);
+
+        _previewRichText = new RichEditBox
+        {
+            IsReadOnly = true,
+            Visibility = Visibility.Collapsed,
+            FontSize = 13,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(0),
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0)),
+        };
+        contentStack.Children.Add(_previewRichText);
 
         _previewImage = new Image
         {
@@ -374,6 +386,7 @@ public class PreviewService : IPreviewService
             if (
                 _previewContentType == null
                 || _previewText == null
+                || _previewRichText == null
                 || _previewImage == null
                 || _previewImageBorder == null
                 || _previewMetadata == null
@@ -388,13 +401,45 @@ public class PreviewService : IPreviewService
 
             // Reset visibility
             _previewText.Visibility = Visibility.Collapsed;
+            _previewRichText.Visibility = Visibility.Collapsed;
             _previewImageBorder.Visibility = Visibility.Collapsed;
 
             // Show preview based on content type
             switch (data.PreviewType)
             {
                 case "Text":
+                    _previewText.Text = data.TextContent ?? string.Empty;
+                    _previewText.Visibility = Visibility.Visible;
+                    break;
+
                 case "RichText":
+                    // Show rich text content in RichEditBox
+                    if (!string.IsNullOrEmpty(data.RtfContent))
+                    {
+                        try
+                        {
+                            _previewRichText.Document.SetText(
+                                Microsoft.UI.Text.TextSetOptions.FormatRtf,
+                                data.RtfContent
+                            );
+                            _previewRichText.Visibility = Visibility.Visible;
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Error rendering RTF: {ex.Message}");
+                            // Fallback to plain text
+                            _previewText.Text = data.TextContent ?? "[RTF Content]";
+                            _previewText.Visibility = Visibility.Visible;
+                        }
+                    }
+                    else
+                    {
+                        // If no RTF data, show preview text
+                        _previewText.Text = data.TextContent ?? "[RTF Content]";
+                        _previewText.Visibility = Visibility.Visible;
+                    }
+                    break;
+
                 case "Html":
                     _previewText.Text = data.TextContent ?? string.Empty;
                     _previewText.Visibility = Visibility.Visible;
@@ -462,17 +507,49 @@ public class PreviewService : IPreviewService
                 var workArea = displayArea.WorkArea; // Physical
 
                 double dpiScale = _windowService.GetDpiScale();
-
+                
                 // Convert Window Position to Physical (AppWindow.Position is Physical)
                 double winX = appWindow.Position.X;
                 double winY = appWindow.Position.Y;
-
+                
                 // Calculate Target Position in Physical Screen Coordinates
                 double targetPhysicalX = winX + (targetPos.X * dpiScale);
                 double targetPhysicalY = winY + (targetPos.Y * dpiScale);
-                double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
                 double targetPhysicalHeight = _previewTarget.ActualHeight * dpiScale;
 
+                // --- VISIBILITY CHECK ---
+                // If the target is effectively off-screen (e.g. scrolled out), don't show
+                // Check if target is efficiently within the window bounds
+                // Note: We use Window coordinates for this check
+                var windowRect = new Windows.Foundation.Rect(0, 0, _windowService.AppWindow.Size.Width / dpiScale, _windowService.AppWindow.Size.Height / dpiScale);
+                var targetRect = new Windows.Foundation.Rect(targetPos.X, targetPos.Y, _previewTarget.ActualWidth, _previewTarget.ActualHeight);
+                
+                // Simple intersection check: Target must be partially within window
+                // Better check: Target center must be within window or specific Y range?
+                // For ListView, items can exist but be clipped.
+                
+                // Try using TransformToVisual on Root
+                var root = _previewTarget.XamlRoot?.Content as UIElement;
+                if (root != null) 
+                {
+                   var transformToRoot = _previewTarget.TransformToVisual(root);
+                   var posInRoot = transformToRoot.TransformPoint(new Windows.Foundation.Point(0,0));
+                   
+                   // Check Y bounds
+                   if (posInRoot.Y < 0 && posInRoot.Y + _previewTarget.ActualHeight < 0) 
+                   {
+                       // Completely above top
+                       return;
+                   }
+                   if (posInRoot.Y > ((FrameworkElement)root).ActualHeight) 
+                   {
+                       // Completely below bottom
+                       return;
+                   }
+                }
+
+                double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
+                
                 double popupPhysicalWidth = popupWidth * dpiScale;
                 double popupPhysicalHeight = popupHeight * dpiScale;
                 double spacingPhysical = spacing * dpiScale;
@@ -588,8 +665,6 @@ public class PreviewService : IPreviewService
         switch (data.PreviewType)
         {
             case "Text":
-            case "RichText":
-            case "Html":
                 if (!string.IsNullOrEmpty(data.TextContent))
                 {
                     var charCount = data.TextContent.Length;
@@ -601,6 +676,37 @@ public class PreviewService : IPreviewService
                     metadata.AppendLine($"Words: {wordCount:N0}");
                     if (lineCount > 1)
                         metadata.AppendLine($"Lines: {lineCount:N0}");
+                }
+                break;
+
+            case "RichText":
+                // For RichText, show statistics about the plain text content
+                if (!string.IsNullOrEmpty(data.TextContent))
+                {
+                    var charCount = data.TextContent.Length;
+                    var wordCount = data
+                        .TextContent.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Length;
+                    metadata.AppendLine($"Characters: {charCount:N0}");
+                    metadata.AppendLine($"Words: {wordCount:N0}");
+                }
+                // Show RTF size if available
+                if (!string.IsNullOrEmpty(data.RtfContent))
+                {
+                    var rtfSize = System.Text.Encoding.UTF8.GetByteCount(data.RtfContent);
+                    metadata.AppendLine($"RTF Size: {rtfSize / 1024.0:N1} KB");
+                }
+                break;
+
+            case "Html":
+                if (!string.IsNullOrEmpty(data.TextContent))
+                {
+                    var charCount = data.TextContent.Length;
+                    var wordCount = data
+                        .TextContent.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Length;
+                    metadata.AppendLine($"Characters: {charCount:N0}");
+                    metadata.AppendLine($"Words: {wordCount:N0}");
                 }
                 break;
 

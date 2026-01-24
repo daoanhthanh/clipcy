@@ -37,6 +37,141 @@ fn decode_html_entities(s: &str) -> String {
         .replace("&nbsp;", " ")
 }
 
+/// Extract plain text from RTF content
+/// Strips RTF control sequences and formatting to get readable text
+fn extract_rtf_text(rtf: &str) -> String {
+    let mut result = String::with_capacity(rtf.len());
+    let mut brace_depth: i32 = 0;
+    let mut skip_group = false;
+    let mut skip_depth = 0;
+
+    let chars: Vec<char> = rtf.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let ch = chars[i];
+
+        match ch {
+            '{' => {
+                brace_depth += 1;
+                
+                // Check if this is a control group we should skip (fonttbl, colortbl, stylesheet, etc.)
+                if i + 1 < chars.len() && chars[i + 1] == '\\' {
+                    // Peek ahead to see if this is a control group to skip
+                    let mut j = i + 2;
+                    let mut control = String::new();
+                    while j < chars.len() && chars[j].is_ascii_alphabetic() {
+                        control.push(chars[j]);
+                        j += 1;
+                    }
+                    
+                    // Skip these control groups
+                    if matches!(
+                        control.as_str(),
+                        "fonttbl" | "colortbl" | "stylesheet" | "listtable" | "listoverridetable"
+                            | "rsidtbl" | "generator" | "info" | "themedata" | "colorschememapping"
+                            | "datastore" | "xmlnstbl" | "latentstyles" | "lsdexception"
+                    ) {
+                        skip_group = true;
+                        skip_depth = brace_depth;
+                    }
+                }
+                
+                i += 1;
+            }
+            '}' => {
+                brace_depth = brace_depth.saturating_sub(1);
+                
+                // If we're exiting a skipped group, stop skipping
+                if skip_group && brace_depth < skip_depth {
+                    skip_group = false;
+                }
+                
+                i += 1;
+            }
+            '\\' if !skip_group => {
+                // Check for escaped characters
+                if i + 1 < chars.len() {
+                    let next = chars[i + 1];
+                    if next == '\\' || next == '{' || next == '}' {
+                        // Escaped special character
+                        result.push(next);
+                        i += 2;
+                        continue;
+                    }
+                }
+
+                i += 1;
+
+                // Parse control word
+                let mut control_word = String::new();
+
+                // Collect control word letters
+                while i < chars.len() && chars[i].is_ascii_alphabetic() {
+                    control_word.push(chars[i]);
+                    i += 1;
+                }
+
+                // Check for numeric parameter
+                if i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '-') {
+                    // Skip the parameter
+                    if chars[i] == '-' {
+                        i += 1;
+                    }
+                    while i < chars.len() && chars[i].is_ascii_digit() {
+                        i += 1;
+                    }
+                }
+
+                // Skip optional space after control word
+                if i < chars.len() && chars[i] == ' ' {
+                    i += 1;
+                }
+
+                // Handle special control words
+                match control_word.as_str() {
+                    "par" | "line" => result.push('\n'),
+                    "tab" => result.push('\t'),
+                    "'" => {
+                        // Hex-encoded character \'XX
+                        if i + 1 < chars.len() {
+                            let hex_str: String = chars[i..std::cmp::min(i + 2, chars.len())]
+                                .iter()
+                                .collect();
+                            if let Ok(byte_val) = u8::from_str_radix(&hex_str, 16) {
+                                // Try to convert as Windows-1252 character
+                                result.push(byte_val as char);
+                            }
+                            i += 2;
+                        }
+                    }
+                    _ => {
+                        // Ignore other control words
+                    }
+                }
+            }
+            _ if !skip_group => {
+                // Regular text character (only if not in a skipped group)
+                result.push(ch);
+                i += 1;
+            }
+            _ => {
+                // Skip character if in a skipped group
+                i += 1;
+            }
+        }
+    }
+
+    // Clean up the result - preserve newlines but trim each line
+    let text = result
+        .lines()
+        .map(|line| line.trim())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    text.trim().to_string()
+}
+
 /// Represents a single clipboard history item
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClipboardItem {
@@ -133,9 +268,19 @@ impl ClipboardItem {
     /// Create new Rich Text (RTF) clipboard item
     pub fn new_rtf(rtf: impl Into<String>) -> Self {
         let rtf = rtf.into();
-        // RTF preview: show beginning of content (RTF is not human-readable, so limited preview)
-        let preview = if rtf.len() > 100 {
-            format!("[RTF] {} chars", rtf.len())
+        // Extract plain text from RTF for preview
+        let plain_text = extract_rtf_text(&rtf);
+        // For preview in menu (single line), collapse newlines to spaces
+        let preview = if !plain_text.is_empty() {
+            plain_text
+                .lines()
+                .map(|line| line.trim())
+                .filter(|line| !line.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ")
+                .chars()
+                .take(100)
+                .collect()
         } else {
             "[RTF Content]".to_string()
         };
@@ -233,7 +378,7 @@ mod tests {
         let rtf = r"{\rtf1\ansi\deff0 Hello World}";
         let item = ClipboardItem::new_rtf(rtf);
         assert_eq!(item.content_type, ContentType::RichText);
-        assert_eq!(item.preview, "[RTF Content]");
+        assert_eq!(item.preview, "Hello World");
         assert_eq!(String::from_utf8_lossy(&item.data), rtf);
     }
 
@@ -242,8 +387,21 @@ mod tests {
         let rtf = r"{\rtf1\ansi\deff0 ".to_string() + &"a".repeat(200) + "}";
         let item = ClipboardItem::new_rtf(&rtf);
         assert_eq!(item.content_type, ContentType::RichText);
-        assert!(item.preview.starts_with("[RTF]"));
-        assert!(item.preview.contains("chars"));
+        assert_eq!(item.preview.len(), 100);
+    }
+
+    #[test]
+    fn test_extract_rtf_text() {
+        assert_eq!(super::extract_rtf_text(r"{\rtf1 Hello World}"), "Hello World");
+        assert_eq!(
+            super::extract_rtf_text(r"{\rtf1\b Bold\b0 Normal}"),
+            "Bold Normal"
+        );
+        assert_eq!(
+            super::extract_rtf_text(r"{\rtf1 Line1\par Line2}"),
+            "Line1 Line2"
+        );
+        assert_eq!(super::extract_rtf_text(r"{\rtf1 Test\\Escaped\{Braces\}}"), "Test\\Escaped{Braces}");
     }
 
     #[test]
