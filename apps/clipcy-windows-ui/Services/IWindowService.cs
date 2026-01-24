@@ -28,12 +28,12 @@ public interface IWindowService
     /// Ensures the backdrop (Acrylic/Mica) remains active.
     /// </summary>
     void EnsureBackdropActive();
-    
+
     /// <summary>
     /// Checks if the window is currently visible.
     /// </summary>
     bool IsVisible { get; }
-    
+
     /// <summary>
     /// Gets the underlying AppWindow.
     /// </summary>

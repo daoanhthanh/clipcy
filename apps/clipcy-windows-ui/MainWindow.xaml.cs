@@ -9,18 +9,18 @@ namespace Clipcy;
 public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
-    
+
     private readonly IWindowService _windowService;
     private readonly IPreviewService _previewService;
 
     public MainWindow()
     {
         this.InitializeComponent();
-        
+
         // Manual Dependency Injection
         _windowService = new WindowService(this);
         _windowService.Initialize();
-        
+
         _previewService = new PreviewService(this, RootGrid, _windowService);
 
         ViewModel = new MainViewModel();
@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
 
         this.Activated += MainWindow_Activated;
         this.Closed += MainWindow_Closed;
-        
+
         ViewModel.RefreshHistory();
     }
 
@@ -235,7 +235,7 @@ public sealed partial class MainWindow : Window
     {
         _previewService.Hide();
     }
-    
+
     private PreviewData MapToPreviewData(ClipboardItemViewModel vm)
     {
         return new PreviewData
@@ -248,14 +248,14 @@ public sealed partial class MainWindow : Window
             RelativeTime = vm.RelativeTime,
             SourceApp = vm.SourceApp,
             IsPinned = vm.Pinned,
-            LoadFullData = async () => 
+            LoadFullData = async () =>
             {
                 if (App.Bridge != null && !string.IsNullOrEmpty(vm.Id))
                 {
                     return await System.Threading.Tasks.Task.Run(() => App.Bridge.GetItemData(vm.Id));
                 }
                 return null;
-            }
+            },
         };
     }
 }

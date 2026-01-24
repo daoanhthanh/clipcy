@@ -42,13 +42,14 @@ public class PreviewService : IPreviewService
 
     public void Dispose()
     {
-        if (_disposed) return;
-        
+        if (_disposed)
+            return;
+
         ThemeManager.ThemeChanged -= OnThemeChanged;
-        
+
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
-        
+
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
@@ -57,7 +58,7 @@ public class PreviewService : IPreviewService
                 ThemeManager.UnregisterElement(_previewPopupRoot);
             }
         }
-        
+
         _disposed = true;
     }
 
@@ -120,7 +121,7 @@ public class PreviewService : IPreviewService
 
         // Use ThemeBrushHelper for acrylic background that updates with theme
         outerBorder.Background = ThemeBrushHelper.CreateThemedAcrylicBrush(outerBorder, 0.85);
-        
+
         // Use ThemeBrushHelper for border that updates with theme
         ThemeBrushHelper.SetBorderBrush(outerBorder, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
 
@@ -268,8 +269,9 @@ public class PreviewService : IPreviewService
 
     public void ScheduleShow(PreviewData data, FrameworkElement target)
     {
-        if (_disposed) return;
-        
+        if (_disposed)
+            return;
+
         _dispatcherQueue.TryEnqueue(() =>
         {
             // Stop any pending hide timer immediately
@@ -298,7 +300,8 @@ public class PreviewService : IPreviewService
 
     public void ScheduleHide()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _dispatcherQueue.TryEnqueue(() =>
         {
@@ -324,7 +327,8 @@ public class PreviewService : IPreviewService
 
     public void Hide()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _dispatcherQueue.TryEnqueue(() =>
         {
@@ -412,9 +416,9 @@ public class PreviewService : IPreviewService
                     }
                     else
                     {
-                         // If we have no image data yet but know it's an image, hide for now
-                         _previewImage.Visibility = Visibility.Collapsed;
-                         _previewImageBorder.Visibility = Visibility.Collapsed;
+                        // If we have no image data yet but know it's an image, hide for now
+                        _previewImage.Visibility = Visibility.Collapsed;
+                        _previewImageBorder.Visibility = Visibility.Collapsed;
                     }
 
                     // Trigger async full load if available
@@ -436,7 +440,7 @@ public class PreviewService : IPreviewService
             if (_previewTarget != null)
             {
                 popup.XamlRoot = _previewTarget.XamlRoot;
-                
+
                 // Get target position in Window-Relative DIPs
                 var transform = _previewTarget.TransformToVisual(null);
                 var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
@@ -448,34 +452,37 @@ public class PreviewService : IPreviewService
                 var popupWidth = _previewPopupRoot?.DesiredSize.Width ?? 360.0;
                 var popupHeight = _previewPopupRoot?.DesiredSize.Height ?? 260.0;
                 var spacing = 10.0;
-                
+
                 // Get Monitor/Window info in Physical Pixels
                 var appWindow = _windowService.AppWindow;
-                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(appWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
+                    appWindow.Id,
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Nearest
+                );
                 var workArea = displayArea.WorkArea; // Physical
 
                 double dpiScale = _windowService.GetDpiScale();
-                
+
                 // Convert Window Position to Physical (AppWindow.Position is Physical)
                 double winX = appWindow.Position.X;
                 double winY = appWindow.Position.Y;
-                
+
                 // Calculate Target Position in Physical Screen Coordinates
                 double targetPhysicalX = winX + (targetPos.X * dpiScale);
                 double targetPhysicalY = winY + (targetPos.Y * dpiScale);
                 double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
                 double targetPhysicalHeight = _previewTarget.ActualHeight * dpiScale;
-                
+
                 double popupPhysicalWidth = popupWidth * dpiScale;
                 double popupPhysicalHeight = popupHeight * dpiScale;
                 double spacingPhysical = spacing * dpiScale;
-                
+
                 // --- Positioning Logic (Physical Domain) ---
-                
+
                 // Default: Right of target, Top aligned
                 double finalPhysicalX = targetPhysicalX + targetPhysicalWidth + spacingPhysical;
                 double finalPhysicalY = targetPhysicalY;
-                
+
                 // 1. Check Horizontal Fit (Right)
                 if (finalPhysicalX + popupPhysicalWidth > workArea.X + workArea.Width)
                 {
@@ -492,7 +499,7 @@ public class PreviewService : IPreviewService
                         finalPhysicalX = (workArea.X + workArea.Width) - popupPhysicalWidth - spacingPhysical;
                     }
                 }
-                
+
                 // 2. Check Vertical Fit (Bottom)
                 if (finalPhysicalY + popupPhysicalHeight > workArea.Y + workArea.Height)
                 {
@@ -500,7 +507,7 @@ public class PreviewService : IPreviewService
                     // Position = BottomEdge - Height - Padding
                     finalPhysicalY = (workArea.Y + workArea.Height) - popupPhysicalHeight - spacingPhysical;
                 }
-                
+
                 // Ensure Top is not cut off
                 if (finalPhysicalY < workArea.Y)
                 {
@@ -509,7 +516,7 @@ public class PreviewService : IPreviewService
 
                 // --- Convert back to Window-Relative DIPs ---
                 // Offset = (ScreenPos - WindowPos) / Scale
-                
+
                 popup.HorizontalOffset = (finalPhysicalX - winX) / dpiScale;
                 popup.VerticalOffset = (finalPhysicalY - winY) / dpiScale;
 
@@ -528,11 +535,17 @@ public class PreviewService : IPreviewService
         try
         {
             var fullData = await data.LoadFullData!();
-            
+
             _dispatcherQueue.TryEnqueue(() =>
             {
-                // Verify we are still showing the same item
-                if (_currentPreviewData?.Id != data.Id || !_previewPopup.IsOpen) return;
+                // Verify we are still showing the same item and UI is valid
+                if (
+                    _currentPreviewData?.Id != data.Id
+                    || _previewPopup?.IsOpen != true
+                    || _previewImage == null
+                    || _previewImageBorder == null
+                )
+                    return;
 
                 if (fullData != null && fullData.Length > 0)
                 {
@@ -562,75 +575,77 @@ public class PreviewService : IPreviewService
 
     private void UpdateMetadata(PreviewData data)
     {
-            if (_previewMetadata == null) return;
+        if (_previewMetadata == null)
+            return;
 
-            // Build metadata string
-            var metadata = new System.Text.StringBuilder();
+        // Build metadata string
+        var metadata = new System.Text.StringBuilder();
 
-            // Created time
-            metadata.AppendLine($"Copied: {data.RelativeTime}");
+        // Created time
+        metadata.AppendLine($"Copied: {data.RelativeTime}");
 
-            // Content-specific metadata
-            switch (data.PreviewType)
-            {
-                case "Text":
-                case "RichText":
-                case "Html":
-                    if (!string.IsNullOrEmpty(data.TextContent))
+        // Content-specific metadata
+        switch (data.PreviewType)
+        {
+            case "Text":
+            case "RichText":
+            case "Html":
+                if (!string.IsNullOrEmpty(data.TextContent))
+                {
+                    var charCount = data.TextContent.Length;
+                    var wordCount = data
+                        .TextContent.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Length;
+                    var lineCount = data.TextContent.Split('\n').Length;
+                    metadata.AppendLine($"Characters: {charCount:N0}");
+                    metadata.AppendLine($"Words: {wordCount:N0}");
+                    if (lineCount > 1)
+                        metadata.AppendLine($"Lines: {lineCount:N0}");
+                }
+                break;
+
+            case "Image":
+                if (_previewImage?.Source is Microsoft.UI.Xaml.Media.Imaging.BitmapImage bmp)
+                {
+                    // Note: PixelWidth/Height might not be available immediately if lazy loaded,
+                    // but updating metadata after load ensures it catches it.
+                    if (bmp.PixelWidth > 0)
                     {
-                        var charCount = data.TextContent.Length;
-                        var wordCount = data.TextContent
-                            .Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                            .Length;
-                        var lineCount = data.TextContent.Split('\n').Length;
-                        metadata.AppendLine($"Characters: {charCount:N0}");
-                        metadata.AppendLine($"Words: {wordCount:N0}");
-                        if (lineCount > 1)
-                            metadata.AppendLine($"Lines: {lineCount:N0}");
+                        metadata.AppendLine($"Dimensions: {bmp.PixelWidth} x {bmp.PixelHeight}");
                     }
-                    break;
+                }
 
-                case "Image":
-                    if (_previewImage?.Source is Microsoft.UI.Xaml.Media.Imaging.BitmapImage bmp)
-                    {
-                        // Note: PixelWidth/Height might not be available immediately if lazy loaded, 
-                        // but updating metadata after load ensures it catches it.
-                        if (bmp.PixelWidth > 0)
-                        {
-                            metadata.AppendLine($"Dimensions: {bmp.PixelWidth} x {bmp.PixelHeight}");
-                        }
-                    }
-                    
-                    int sizeBytes = (data.ImageBytes?.Length ?? 0);
-                    // Only fall back to thumbnail size if full data isn't there
-                    if (sizeBytes == 0) sizeBytes = (data.Thumbnail?.Length ?? 0);
-                    
-                    if (sizeBytes > 0)
-                    {
-                        var sizeKB = sizeBytes / 1024.0;
-                        metadata.AppendLine($"Size: {sizeKB:N1} KB");
-                    }
-                    break;
+                int sizeBytes = (data.ImageBytes?.Length ?? 0);
+                // Only fall back to thumbnail size if full data isn't there
+                if (sizeBytes == 0)
+                    sizeBytes = (data.Thumbnail?.Length ?? 0);
 
-                case "Files":
-                     if (!string.IsNullOrEmpty(data.TextContent))
-                     {
-                        var files = data.TextContent.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
-                        metadata.AppendLine($"Files: {files.Length}");
-                     }
-                    break;
-            }
+                if (sizeBytes > 0)
+                {
+                    var sizeKB = sizeBytes / 1024.0;
+                    metadata.AppendLine($"Size: {sizeKB:N1} KB");
+                }
+                break;
 
-            if (!string.IsNullOrEmpty(data.SourceApp))
-            {
-                metadata.AppendLine($"Source: {data.SourceApp}");
-            }
+            case "Files":
+                if (!string.IsNullOrEmpty(data.TextContent))
+                {
+                    var files = data.TextContent.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
+                    metadata.AppendLine($"Files: {files.Length}");
+                }
+                break;
+        }
 
-            if (data.IsPinned)
-            {
-                metadata.AppendLine("Pinned");
-            }
+        if (!string.IsNullOrEmpty(data.SourceApp))
+        {
+            metadata.AppendLine($"Source: {data.SourceApp}");
+        }
 
-            _previewMetadata.Text = metadata.ToString().TrimEnd();
+        if (data.IsPinned)
+        {
+            metadata.AppendLine("Pinned");
+        }
+
+        _previewMetadata.Text = metadata.ToString().TrimEnd();
     }
 }
