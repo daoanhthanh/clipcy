@@ -260,7 +260,7 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" MinWidth="80" />
+                      <ColumnDefinition Width="120" />
                     </Grid.ColumnDefinitions>
 
                     <FontIcon
@@ -303,7 +303,7 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" MinWidth="80" />
+                      <ColumnDefinition Width="120" />
                     </Grid.ColumnDefinitions>
 
                     <FontIcon
@@ -346,7 +346,7 @@
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="*" />
-                      <ColumnDefinition Width="Auto" MinWidth="80" />
+                      <ColumnDefinition Width="120" />
                     </Grid.ColumnDefinitions>
 
                     <FontIcon
