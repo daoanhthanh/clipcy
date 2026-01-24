@@ -14,7 +14,7 @@ namespace Clipcy;
 public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
-    private Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration? _configurationSource;
+    private SystemBackdropConfiguration? _configurationSource;
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);
@@ -178,11 +178,10 @@ public sealed partial class MainWindow : Window
         {
             if (DesktopAcrylicController.IsSupported())
             {
-                // Use the simple approach which works well for popups
                 this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
 
                 // Setup configuration for keeping backdrop active
-                _configurationSource = new Microsoft.UI.Composition.SystemBackdrops.SystemBackdropConfiguration();
+                _configurationSource = new SystemBackdropConfiguration();
                 _configurationSource.IsInputActive = true;
             }
         }
@@ -493,17 +492,6 @@ public sealed partial class MainWindow : Window
             XamlRoot = RootGrid?.XamlRoot,
         };
 
-        bool IsDarkTheme()
-        {
-            return ThemeManager.CurrentTheme switch
-            {
-                Clipcy.Services.AppTheme.Dark => true,
-                Clipcy.Services.AppTheme.Light => false,
-                _ => (RootGrid?.ActualTheme == ElementTheme.Dark)
-                        || (RootGrid?.ActualTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark)
-            };
-        }
-
         // Align popup theme immediately so resource lookups match
         popup.RequestedTheme = ThemeManager.CurrentTheme switch
         {
@@ -512,31 +500,24 @@ public sealed partial class MainWindow : Window
             _ => ElementTheme.Default,
         };
 
-        var isDark = IsDarkTheme();
+        // Helper to resolve theme-aware brushes without ThemeResourceExtension
+        Microsoft.UI.Xaml.Media.Brush ThemeBrush(string key)
+        {
+            return Application.Current.Resources.TryGetValue(key, out var val) && val is Microsoft.UI.Xaml.Media.Brush b
+                ? b
+                : new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        }
 
-        // Create outer border for shadow and rounded corners (Windows 11 style)
-        // Use explicit brushes bound to theme to avoid incorrect defaults
-        Microsoft.UI.Xaml.Media.Brush backgroundBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            isDark
-                ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
-                : Windows.UI.Color.FromArgb(255, 245, 245, 245)
-        );
-
-        Microsoft.UI.Xaml.Media.Brush borderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            isDark
-                ? Windows.UI.Color.FromArgb(60, 255, 255, 255)
-                : Windows.UI.Color.FromArgb(60, 0, 0, 0)
-        );
-
-
+        // Bind outer chrome to theme resources (fallback to light/dark if missing)
         var outerBorder = new Border
         {
-            Background = backgroundBrush,
+            Background = ThemeBrush("LayerFillColorDefaultBrush"),
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
-            BorderBrush = borderBrush,
+            BorderBrush = ThemeBrush("SurfaceStrokeColorDefaultBrush"),
             Width = 360,
             MaxHeight = 400,
+            RequestedTheme = popup.RequestedTheme,
         };
 
         // Register the popup's root element for theme management (including text colors)
@@ -567,38 +548,18 @@ public sealed partial class MainWindow : Window
             ScheduleHidePreview();
         };
 
-        // Theme-aware brushes using explicit colors (resource overrides if present)
-        var textPrimaryBrush = Application.Current.Resources.TryGetValue("TextFillColorPrimaryBrush", out var tp)
-            ? (Microsoft.UI.Xaml.Media.Brush)tp
-            : new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                isDark
-                    ? Windows.UI.Color.FromArgb(255, 240, 240, 240)
-                    : Windows.UI.Color.FromArgb(255, 32, 32, 32)
-            );
-
-        var textSecondaryBrush = Application.Current.Resources.TryGetValue("TextFillColorSecondaryBrush", out var ts)
-            ? (Microsoft.UI.Xaml.Media.Brush)ts
-            : new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                isDark
-                    ? Windows.UI.Color.FromArgb(255, 200, 200, 200)
-                    : Windows.UI.Color.FromArgb(255, 100, 100, 100)
-            );
-
-        var dividerBrush = Application.Current.Resources.TryGetValue("SurfaceStrokeColorDefaultBrush", out var db)
-            ? (Microsoft.UI.Xaml.Media.Brush)db
-            : new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                isDark
-                    ? Windows.UI.Color.FromArgb(60, 255, 255, 255)
-                    : Windows.UI.Color.FromArgb(40, 0, 0, 0)
-            );
+        // Theme-aware brushes resolved from resources
+        var textPrimaryBrush = ThemeBrush("TextFillColorPrimaryBrush");
+        var textSecondaryBrush = ThemeBrush("TextFillColorSecondaryBrush");
+        var dividerBrush = ThemeBrush("SurfaceStrokeColorDefaultBrush");
 
         // Header
         _previewContentType = new TextBlock
         {
             FontSize = 13,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = textPrimaryBrush,
             Margin = new Thickness(0, 0, 0, 4),
+            Foreground = textPrimaryBrush,
         };
         Grid.SetRow(_previewContentType, 0);
         grid.Children.Add(_previewContentType);
@@ -653,8 +614,8 @@ public sealed partial class MainWindow : Window
         {
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
-            Foreground = textSecondaryBrush,
             LineHeight = 16,
+            Foreground = textSecondaryBrush,
         };
         metadataStack.Children.Add(_previewMetadata);
 
