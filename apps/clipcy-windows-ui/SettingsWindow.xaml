@@ -374,6 +374,7 @@
                       OnContent=""
                       OffContent=""
                       VerticalAlignment="Center"
+                      HorizontalAlignment="Right"
                     />
                   </Grid>
                 </Border>
