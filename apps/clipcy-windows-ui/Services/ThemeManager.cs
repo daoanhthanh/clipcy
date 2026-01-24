@@ -1,6 +1,4 @@
 using Microsoft.UI.Xaml;
-using System;
-using System.Collections.Generic;
 
 namespace Clipcy.Services
 {

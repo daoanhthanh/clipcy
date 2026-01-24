@@ -7,7 +7,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.Foundation;
-using Windows.Storage.Streams;
 using WinRT.Interop;
 
 namespace Clipcy;
@@ -491,49 +490,43 @@ public sealed partial class MainWindow : Window
         {
             IsLightDismissEnabled = false,
             ShouldConstrainToRootBounds = false,
+            XamlRoot = RootGrid?.XamlRoot,
         };
 
-        // Create outer border for shadow and rounded corners (Windows 11 style)
-        // Use theme resource for acrylic background
-        Microsoft.UI.Xaml.Media.Brush backgroundBrush;
-        try
+        bool IsDarkTheme()
         {
-            backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)
-                Application.Current.Resources["AcrylicBackgroundFillColorDefaultBrush"];
-        }
-        catch
-        {
-            // Fallback to LayerFillColorDefaultBrush if AcrylicBackgroundFillColorDefaultBrush doesn't exist
-            try
+            return ThemeManager.CurrentTheme switch
             {
-                backgroundBrush = (Microsoft.UI.Xaml.Media.Brush)
-                    Application.Current.Resources["LayerFillColorDefaultBrush"];
-            }
-            catch
-            {
-                // Final fallback - create acrylic brush manually
-                backgroundBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                    Application.Current.RequestedTheme == ApplicationTheme.Dark
-                        ? Windows.UI.Color.FromArgb(242, 44, 44, 44)
-                        : Windows.UI.Color.FromArgb(249, 252, 252, 252)
-                );
-            }
+                Clipcy.Services.AppTheme.Dark => true,
+                Clipcy.Services.AppTheme.Light => false,
+                _ => (RootGrid?.ActualTheme == ElementTheme.Dark)
+                        || (RootGrid?.ActualTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark)
+            };
         }
 
-        Microsoft.UI.Xaml.Media.Brush borderBrush;
-        try
+        // Align popup theme immediately so resource lookups match
+        popup.RequestedTheme = ThemeManager.CurrentTheme switch
         {
-            borderBrush = (Microsoft.UI.Xaml.Media.Brush)
-                Application.Current.Resources["SurfaceStrokeColorDefaultBrush"];
-        }
-        catch
-        {
-            borderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(40, 255, 255, 255)
-                    : Windows.UI.Color.FromArgb(20, 0, 0, 0)
-            );
-        }
+            Clipcy.Services.AppTheme.Light => ElementTheme.Light,
+            Clipcy.Services.AppTheme.Dark => ElementTheme.Dark,
+            _ => ElementTheme.Default,
+        };
+
+        var isDark = IsDarkTheme();
+
+        // Create outer border for shadow and rounded corners (Windows 11 style)
+        // Use explicit brushes bound to theme to avoid incorrect defaults
+        Microsoft.UI.Xaml.Media.Brush backgroundBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            isDark
+                ? Windows.UI.Color.FromArgb(255, 32, 32, 32)
+                : Windows.UI.Color.FromArgb(255, 245, 245, 245)
+        );
+
+        Microsoft.UI.Xaml.Media.Brush borderBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            isDark
+                ? Windows.UI.Color.FromArgb(60, 255, 255, 255)
+                : Windows.UI.Color.FromArgb(60, 0, 0, 0)
+        );
 
 
         var outerBorder = new Border
@@ -546,9 +539,10 @@ public sealed partial class MainWindow : Window
             MaxHeight = 400,
         };
 
-        // Register the popup's root element for theme management
+        // Register the popup's root element for theme management (including text colors)
         ThemeManager.RegisterElement(outerBorder);
         ThemeManager.ApplyThemeToElement(outerBorder, ThemeManager.CurrentTheme);
+        outerBorder.RequestedTheme = popup.RequestedTheme;
 
         // Add shadow effect
         outerBorder.Shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
@@ -573,16 +567,37 @@ public sealed partial class MainWindow : Window
             ScheduleHidePreview();
         };
 
+        // Theme-aware brushes using explicit colors (resource overrides if present)
+        var textPrimaryBrush = Application.Current.Resources.TryGetValue("TextFillColorPrimaryBrush", out var tp)
+            ? (Microsoft.UI.Xaml.Media.Brush)tp
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                isDark
+                    ? Windows.UI.Color.FromArgb(255, 240, 240, 240)
+                    : Windows.UI.Color.FromArgb(255, 32, 32, 32)
+            );
+
+        var textSecondaryBrush = Application.Current.Resources.TryGetValue("TextFillColorSecondaryBrush", out var ts)
+            ? (Microsoft.UI.Xaml.Media.Brush)ts
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                isDark
+                    ? Windows.UI.Color.FromArgb(255, 200, 200, 200)
+                    : Windows.UI.Color.FromArgb(255, 100, 100, 100)
+            );
+
+        var dividerBrush = Application.Current.Resources.TryGetValue("SurfaceStrokeColorDefaultBrush", out var db)
+            ? (Microsoft.UI.Xaml.Media.Brush)db
+            : new Microsoft.UI.Xaml.Media.SolidColorBrush(
+                isDark
+                    ? Windows.UI.Color.FromArgb(60, 255, 255, 255)
+                    : Windows.UI.Color.FromArgb(40, 0, 0, 0)
+            );
+
         // Header
         _previewContentType = new TextBlock
         {
             FontSize = 13,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Microsoft.UI.Colors.White
-                    : Windows.UI.Color.FromArgb(255, 32, 32, 32)
-            ),
+            Foreground = textPrimaryBrush,
             Margin = new Thickness(0, 0, 0, 4),
         };
         Grid.SetRow(_previewContentType, 0);
@@ -599,11 +614,7 @@ public sealed partial class MainWindow : Window
             FontSize = 13,
             Visibility = Visibility.Collapsed,
             LineHeight = 20,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(255, 230, 230, 230)
-                    : Windows.UI.Color.FromArgb(255, 50, 50, 50)
-            ),
+            Foreground = textPrimaryBrush,
         };
         contentStack.Children.Add(_previewText);
 
@@ -634,11 +645,7 @@ public sealed partial class MainWindow : Window
         {
             Height = 1,
             Margin = new Thickness(0, 6, 0, 6),
-            Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(40, 255, 255, 255)
-                    : Windows.UI.Color.FromArgb(40, 0, 0, 0)
-            ),
+            Background = dividerBrush,
         };
         metadataStack.Children.Add(divider);
 
@@ -646,11 +653,7 @@ public sealed partial class MainWindow : Window
         {
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
-            Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(
-                Application.Current.RequestedTheme == ApplicationTheme.Dark
-                    ? Windows.UI.Color.FromArgb(255, 160, 160, 160)
-                    : Windows.UI.Color.FromArgb(255, 100, 100, 100)
-            ),
+            Foreground = textSecondaryBrush,
             LineHeight = 16,
         };
         metadataStack.Children.Add(_previewMetadata);
@@ -733,7 +736,7 @@ public sealed partial class MainWindow : Window
     private void ListViewItem_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         // If SearchBox has focus, clear it by focusing the item or list
-        if (SearchBox.FocusState != FocusState.Unfocused)
+        if (SearchBox != null && SearchBox.FocusState != FocusState.Unfocused)
         {
             // Focus the list view itself or the item to blur search box
             if (sender is ListViewItem item)
