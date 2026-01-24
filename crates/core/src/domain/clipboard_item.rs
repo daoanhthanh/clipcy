@@ -197,7 +197,16 @@ impl ClipboardItem {
     /// Create new text clipboard item
     pub fn new_text(text: impl Into<String>) -> Self {
         let text = text.into();
-        let preview = text.chars().take(100).collect();
+        
+        // For preview: show only the first non-empty line (trimmed), max 100 chars
+        let preview = text
+            .lines()
+            .map(|line| line.trim())
+            .find(|line| !line.is_empty())
+            .unwrap_or("")
+            .chars()
+            .take(100)
+            .collect();
 
         Self {
             id: Uuid::new_v4(),
@@ -251,7 +260,17 @@ impl ClipboardItem {
     pub fn new_html(html: impl Into<String>) -> Self {
         let html = html.into();
         // Extract text preview from HTML (strip tags for preview)
-        let preview = strip_html_tags(&html).chars().take(100).collect();
+        let plain_text = strip_html_tags(&html);
+        
+        // For preview: show only the first non-empty line (trimmed), max 100 chars
+        let preview = plain_text
+            .lines()
+            .map(|line| line.trim())
+            .find(|line| !line.is_empty())
+            .unwrap_or("")
+            .chars()
+            .take(100)
+            .collect();
 
         Self {
             id: Uuid::new_v4(),
@@ -270,14 +289,15 @@ impl ClipboardItem {
         let rtf = rtf.into();
         // Extract plain text from RTF for preview
         let plain_text = extract_rtf_text(&rtf);
-        // For preview in menu (single line), collapse newlines to spaces
+        
+        // For preview in menu: show only the first non-empty line (trimmed), max 100 chars
         let preview = if !plain_text.is_empty() {
+            // Find the first non-empty line
             plain_text
                 .lines()
                 .map(|line| line.trim())
-                .filter(|line| !line.is_empty())
-                .collect::<Vec<_>>()
-                .join(" ")
+                .find(|line| !line.is_empty())
+                .unwrap_or("")
                 .chars()
                 .take(100)
                 .collect()
@@ -322,6 +342,12 @@ mod tests {
         let item = ClipboardItem::new_text("Hello World");
         assert_eq!(item.content_type, ContentType::Text);
         assert_eq!(item.as_text(), Some("Hello World"));
+        assert_eq!(item.preview, "Hello World");
+    }
+
+    #[test]
+    fn test_new_text_with_leading_whitespace() {
+        let item = ClipboardItem::new_text("\n\n  Hello World\n  Second Line");
         assert_eq!(item.preview, "Hello World");
     }
 

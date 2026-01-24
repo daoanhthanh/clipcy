@@ -242,7 +242,7 @@ public sealed partial class MainWindow : Window
         {
             Id = vm.Id,
             PreviewType = vm.ContentType,
-            TextContent = vm.Preview,
+            TextContent = vm.Preview, // Default to preview, will be replaced with full data below
             ImageBytes = null, // Will be populated by LoadFullData if available
             Thumbnail = vm.Thumbnail,
             RelativeTime = vm.RelativeTime,
@@ -258,23 +258,38 @@ public sealed partial class MainWindow : Window
             },
         };
 
-        // For RichText, load the full RTF data synchronously for preview
-        if (vm.ContentType == "RichText" && App.Bridge != null && !string.IsNullOrEmpty(vm.Id))
+        // Load full content for preview panel (not just the truncated preview)
+        if (App.Bridge != null && !string.IsNullOrEmpty(vm.Id))
         {
             try
             {
-                var rtfBytes = App.Bridge.GetItemData(vm.Id);
-                if (rtfBytes != null && rtfBytes.Length > 0)
+                var fullDataBytes = App.Bridge.GetItemData(vm.Id);
+                if (fullDataBytes != null && fullDataBytes.Length > 0)
                 {
-                    data.RtfContent = System.Text.Encoding.UTF8.GetString(rtfBytes);
-                    
-                    // Also extract plain text with newlines for fallback display
-                    data.TextContent = ExtractPlainTextFromRtf(data.RtfContent);
+                    switch (vm.ContentType)
+                    {
+                        case "Text":
+                        case "Html":
+                            // Load full text content with newlines preserved
+                            data.TextContent = System.Text.Encoding.UTF8.GetString(fullDataBytes);
+                            break;
+
+                        case "RichText":
+                            // Load RTF and extract plain text for fallback
+                            data.RtfContent = System.Text.Encoding.UTF8.GetString(fullDataBytes);
+                            data.TextContent = ExtractPlainTextFromRtf(data.RtfContent);
+                            break;
+
+                        case "Files":
+                            // Load file paths
+                            data.TextContent = System.Text.Encoding.UTF8.GetString(fullDataBytes);
+                            break;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading RTF data: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error loading full data: {ex.Message}");
             }
         }
 
