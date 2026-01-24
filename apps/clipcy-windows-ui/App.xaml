@@ -10,6 +10,8 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+        <!-- Load SettingsCard after base resources -->
+        <ResourceDictionary Source="Controls/SettingsCard.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <!-- Converters -->
