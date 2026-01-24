@@ -21,4 +21,9 @@ public class PreviewData
     
     // Raw thumbnail data (used if full image not loaded yet)
     public byte[]? Thumbnail { get; set; }
+
+    /// <summary>
+    /// Optional delegate to asynchronously load full data (e.g. high-res image).
+    /// </summary>
+    public System.Func<System.Threading.Tasks.Task<byte[]?>>? LoadFullData { get; set; }
 }

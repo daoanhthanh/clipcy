@@ -412,8 +412,15 @@ public class PreviewService : IPreviewService
                     }
                     else
                     {
-                         // If we have no image data yet but know it's an image, maybe show placeholder?
-                         // For now just hide if no bytes
+                         // If we have no image data yet but know it's an image, hide for now
+                         _previewImage.Visibility = Visibility.Collapsed;
+                         _previewImageBorder.Visibility = Visibility.Collapsed;
+                    }
+
+                    // Trigger async full load if available
+                    if (data.LoadFullData != null)
+                    {
+                        _ = LoadFullImageAsync(data);
                     }
                     break;
 
@@ -423,6 +430,140 @@ public class PreviewService : IPreviewService
                     break;
             }
 
+            UpdateMetadata(data);
+
+            // Position and show the popup
+            if (_previewTarget != null)
+            {
+                popup.XamlRoot = _previewTarget.XamlRoot;
+                
+                // Get target position in Window-Relative DIPs
+                var transform = _previewTarget.TransformToVisual(null);
+                var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+
+                if (_previewPopupRoot != null)
+                {
+                    _previewPopupRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                }
+                var popupWidth = _previewPopupRoot?.DesiredSize.Width ?? 360.0;
+                var popupHeight = _previewPopupRoot?.DesiredSize.Height ?? 260.0;
+                var spacing = 10.0;
+                
+                // Get Monitor/Window info in Physical Pixels
+                var appWindow = _windowService.AppWindow;
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(appWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+                var workArea = displayArea.WorkArea; // Physical
+
+                double dpiScale = _windowService.GetDpiScale();
+                
+                // Convert Window Position to Physical (AppWindow.Position is Physical)
+                double winX = appWindow.Position.X;
+                double winY = appWindow.Position.Y;
+                
+                // Calculate Target Position in Physical Screen Coordinates
+                double targetPhysicalX = winX + (targetPos.X * dpiScale);
+                double targetPhysicalY = winY + (targetPos.Y * dpiScale);
+                double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
+                double targetPhysicalHeight = _previewTarget.ActualHeight * dpiScale;
+                
+                double popupPhysicalWidth = popupWidth * dpiScale;
+                double popupPhysicalHeight = popupHeight * dpiScale;
+                double spacingPhysical = spacing * dpiScale;
+                
+                // --- Positioning Logic (Physical Domain) ---
+                
+                // Default: Right of target, Top aligned
+                double finalPhysicalX = targetPhysicalX + targetPhysicalWidth + spacingPhysical;
+                double finalPhysicalY = targetPhysicalY;
+                
+                // 1. Check Horizontal Fit (Right)
+                if (finalPhysicalX + popupPhysicalWidth > workArea.X + workArea.Width)
+                {
+                    // No fit right, try Left: TargetX - PopupWidth - Spacing
+                    double leftTry = targetPhysicalX - popupPhysicalWidth - spacingPhysical;
+                    if (leftTry >= workArea.X)
+                    {
+                        finalPhysicalX = leftTry;
+                    }
+                    else
+                    {
+                        // Fits nowhere? Align with edge or keep right depending on preference?
+                        // Let's force it inside from the right edge
+                        finalPhysicalX = (workArea.X + workArea.Width) - popupPhysicalWidth - spacingPhysical;
+                    }
+                }
+                
+                // 2. Check Vertical Fit (Bottom)
+                if (finalPhysicalY + popupPhysicalHeight > workArea.Y + workArea.Height)
+                {
+                    // Shift Up to fit
+                    // Position = BottomEdge - Height - Padding
+                    finalPhysicalY = (workArea.Y + workArea.Height) - popupPhysicalHeight - spacingPhysical;
+                }
+                
+                // Ensure Top is not cut off
+                if (finalPhysicalY < workArea.Y)
+                {
+                    finalPhysicalY = workArea.Y + spacingPhysical;
+                }
+
+                // --- Convert back to Window-Relative DIPs ---
+                // Offset = (ScreenPos - WindowPos) / Scale
+                
+                popup.HorizontalOffset = (finalPhysicalX - winX) / dpiScale;
+                popup.VerticalOffset = (finalPhysicalY - winY) / dpiScale;
+
+                popup.IsOpen = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ShowPreview error: {ex.Message}");
+            HidePreviewInternal();
+        }
+    }
+
+    private async Task LoadFullImageAsync(PreviewData data)
+    {
+        try
+        {
+            var fullData = await data.LoadFullData!();
+            
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                // Verify we are still showing the same item
+                if (_currentPreviewData?.Id != data.Id || !_previewPopup.IsOpen) return;
+
+                if (fullData != null && fullData.Length > 0)
+                {
+                    // Update Data object
+                    data.ImageBytes = fullData;
+
+                    // Update Image UI
+                    using (var stream = new MemoryStream(fullData))
+                    {
+                        var bitmap = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage();
+                        bitmap.SetSource(stream.AsRandomAccessStream());
+                        _previewImage.Source = bitmap;
+                        _previewImage.Visibility = Visibility.Visible;
+                        _previewImageBorder.Visibility = Visibility.Visible;
+                    }
+
+                    // Refresh Metadata (Size, Dimensions)
+                    UpdateMetadata(data);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadFullImageAsync error: {ex.Message}");
+        }
+    }
+
+    private void UpdateMetadata(PreviewData data)
+    {
+            if (_previewMetadata == null) return;
+
             // Build metadata string
             var metadata = new System.Text.StringBuilder();
 
@@ -430,11 +571,6 @@ public class PreviewService : IPreviewService
             metadata.AppendLine($"Copied: {data.RelativeTime}");
 
             // Content-specific metadata
-            // Use the metadata from the DTO directly if available to avoid re-parsing logic here?
-            // Or re-implement the parsing logic inside the DTO creation.
-            // For now, let's duplicate the simple parsing logic or create a helper.
-            
-            // Re-parsing for display:
             switch (data.PreviewType)
             {
                 case "Text":
@@ -455,10 +591,10 @@ public class PreviewService : IPreviewService
                     break;
 
                 case "Image":
-                    if (_previewImage.Source is Microsoft.UI.Xaml.Media.Imaging.BitmapImage bmp)
+                    if (_previewImage?.Source is Microsoft.UI.Xaml.Media.Imaging.BitmapImage bmp)
                     {
-                        // Note: PixelWidth/Height might not be available until loaded.
-                        // Can't rely on it synchronously effectively if not loaded.
+                        // Note: PixelWidth/Height might not be available immediately if lazy loaded, 
+                        // but updating metadata after load ensures it catches it.
                         if (bmp.PixelWidth > 0)
                         {
                             metadata.AppendLine($"Dimensions: {bmp.PixelWidth} x {bmp.PixelHeight}");
@@ -466,6 +602,7 @@ public class PreviewService : IPreviewService
                     }
                     
                     int sizeBytes = (data.ImageBytes?.Length ?? 0);
+                    // Only fall back to thumbnail size if full data isn't there
                     if (sizeBytes == 0) sizeBytes = (data.Thumbnail?.Length ?? 0);
                     
                     if (sizeBytes > 0)
@@ -495,81 +632,5 @@ public class PreviewService : IPreviewService
             }
 
             _previewMetadata.Text = metadata.ToString().TrimEnd();
-
-            // Position and show the popup
-            if (_previewTarget != null)
-            {
-                popup.XamlRoot = _previewTarget.XamlRoot;
-                var transform = _previewTarget.TransformToVisual(null);
-                var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
-
-                if (_previewPopupRoot != null)
-                {
-                    _previewPopupRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                }
-                var popupWidth = _previewPopupRoot?.DesiredSize.Width ?? 360.0;
-                var popupHeight = _previewPopupRoot?.DesiredSize.Height ?? 260.0;
-                var spacing = 10.0;
-                
-                // Get bounds info via WindowService
-                var appWindow = _windowService.AppWindow;
-                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(appWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
-                var wa = displayArea.WorkArea; // Physical
-
-                // Convert calculations to physical pixels for bounds checking
-                double dpiScale = _windowService.GetDpiScale();
-                
-                double winX = appWindow.Position.X;
-                double winY = appWindow.Position.Y;
-                
-                double targetPhysicalX = winX + (targetPos.X * dpiScale);
-                double targetPhysicalY = winY + (targetPos.Y * dpiScale);
-                
-                double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
-                double popupPhysicalWidth = popupWidth * dpiScale;
-                double popupPhysicalHeight = popupHeight * dpiScale;
-                double spacingPhysical = spacing * dpiScale;
-                
-                bool showOnLeft = false;
-                
-                double rightEdgePhysical = targetPhysicalX + targetPhysicalWidth + spacingPhysical + popupPhysicalWidth;
-                
-                if (rightEdgePhysical > wa.X + wa.Width)
-                {
-                    showOnLeft = true;
-                }
-                
-                double bottomEdgePhysical = targetPhysicalY + popupPhysicalHeight;
-                double verticalAdjustPhysical = 0;
-                
-                if (bottomEdgePhysical > wa.Y + wa.Height)
-                {
-                     double excess = bottomEdgePhysical - (wa.Y + wa.Height);
-                     verticalAdjustPhysical = -excess - spacingPhysical;
-                }
-                
-                double hOffset;
-                if (showOnLeft)
-                {
-                    hOffset = -popupWidth - spacing;
-                }
-                else
-                {
-                    hOffset = _previewTarget.ActualWidth + spacing;
-                }
-                
-                double vOffset = verticalAdjustPhysical / dpiScale;
-                
-                popup.HorizontalOffset = hOffset;
-                popup.VerticalOffset = vOffset;
-
-                popup.IsOpen = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"ShowPreview error: {ex.Message}");
-            HidePreviewInternal();
-        }
     }
 }

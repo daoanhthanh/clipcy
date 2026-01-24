@@ -243,13 +243,19 @@ public sealed partial class MainWindow : Window
             Id = vm.Id,
             PreviewType = vm.ContentType,
             TextContent = vm.Preview,
-            // For now using Thumbnail for image preview to avoid complex async fetching logic in View.
-            // If full resolution is needed, a dedicated data provider service should be introduced.
-            ImageBytes = null, 
+            ImageBytes = null, // Will be populated by LoadFullData if available
             Thumbnail = vm.Thumbnail,
             RelativeTime = vm.RelativeTime,
             SourceApp = vm.SourceApp,
-            IsPinned = vm.Pinned
+            IsPinned = vm.Pinned,
+            LoadFullData = async () => 
+            {
+                if (App.Bridge != null && !string.IsNullOrEmpty(vm.Id))
+                {
+                    return await System.Threading.Tasks.Task.Run(() => App.Bridge.GetItemData(vm.Id));
+                }
+                return null;
+            }
         };
     }
 }
