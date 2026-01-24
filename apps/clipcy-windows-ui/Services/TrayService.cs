@@ -57,6 +57,16 @@ public class TrayService : IDisposable
         exitItem.Click += (s, e) => ExitApplication();
         contextMenu.Items.Add(exitItem);
 
+        // Register menu items for theme management
+        foreach (var item in contextMenu.Items)
+        {
+            if (item is MenuFlyoutItem fe)
+            {
+                Clipcy.Services.ThemeManager.RegisterElement(fe);
+            }
+        }
+        Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.CurrentTheme);
+
         // Create tray icon
         _trayIcon = new TaskbarIcon
         {

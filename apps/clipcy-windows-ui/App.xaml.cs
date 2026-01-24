@@ -60,6 +60,16 @@ public partial class App : Application
             return;
         }
 
+        // Set theme from saved settings if available
+        string? themeTag = null;
+        try
+        {
+            var settings = Bridge?.GetSettings();
+            themeTag = settings?.Theme;
+        }
+        catch { }
+        Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(themeTag));
+
         // Create the main popup window (hidden initially)
         MainPopup = new MainWindow();
 

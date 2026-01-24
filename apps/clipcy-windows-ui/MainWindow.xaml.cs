@@ -122,6 +122,13 @@ public sealed partial class MainWindow : Window
         ViewModel = new MainViewModel();
         ((FrameworkElement)this.Content).DataContext = this;
 
+        // Register for theme management
+        if (RootGrid != null)
+        {
+            Clipcy.Services.ThemeManager.RegisterElement(RootGrid);
+            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.CurrentTheme); // Apply current global theme
+        }
+
         this.Activated += MainWindow_Activated;
         ViewModel.RefreshHistory();
     }

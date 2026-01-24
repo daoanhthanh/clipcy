@@ -54,6 +54,13 @@ public sealed partial class SettingsWindow : Window
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
         LoadSettingsToUI();
 
+        // Register for theme management
+        if (RootGrid != null)
+        {
+            Clipcy.Services.ThemeManager.RegisterElement(RootGrid);
+            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(_settings.Theme));
+        }
+
         // Update title bar colors after content is loaded
         if (Content is FrameworkElement rootElement)
         {
@@ -572,22 +579,8 @@ public sealed partial class SettingsWindow : Window
             _settings.Theme = themeTag;
             SaveSettings();
 
-            // Apply theme immediately to the root element
-            if (RootGrid != null)
-            {
-                switch (themeTag)
-                {
-                    case "Light":
-                        RootGrid.RequestedTheme = ElementTheme.Light;
-                        break;
-                    case "Dark":
-                        RootGrid.RequestedTheme = ElementTheme.Dark;
-                        break;
-                    default:
-                        RootGrid.RequestedTheme = ElementTheme.Default;
-                        break;
-                }
-            }
+            // Apply theme globally using ThemeManager
+            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(themeTag));
         }
     }
 
@@ -608,5 +601,7 @@ public sealed partial class SettingsWindow : Window
         _settings = new SettingsViewModel();
         LoadSettingsToUI();
         SaveSettings();
+        // Reset theme to default (system)
+        Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(_settings.Theme));
     }
 }
