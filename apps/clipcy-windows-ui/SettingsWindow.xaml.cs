@@ -3,6 +3,7 @@ using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage;
 using Windows.System;
 
 namespace Clipcy;
@@ -29,6 +30,7 @@ public sealed partial class SettingsWindow : Window
         SetupAcrylicBackdrop();
         SetupTitleBar();
         this.Activated += SettingsWindow_Activated;
+        this.Closed += SettingsWindow_Closed;
 
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
         if (File.Exists(iconPath))
@@ -36,8 +38,8 @@ public sealed partial class SettingsWindow : Window
             AppWindow.SetIcon(iconPath);
         }
 
-        // Set window size and minimum size
-        AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 720 });
+        // Restore window size or use default
+        RestoreWindowSize();
 
         // Set minimum size using presenter
         var presenter = AppWindow.Presenter as Microsoft.UI.Windowing.OverlappedPresenter;
@@ -158,6 +160,47 @@ public sealed partial class SettingsWindow : Window
         if (_configurationSource != null)
         {
             _configurationSource.IsInputActive = args.WindowActivationState != WindowActivationState.Deactivated;
+        }
+    }
+
+    private void RestoreWindowSize()
+    {
+        try
+        {
+            var localSettings = ApplicationData.Current.LocalSettings;
+
+            if (localSettings.Values.TryGetValue("SettingsWindowWidth", out var width) &&
+                localSettings.Values.TryGetValue("SettingsWindowHeight", out var height))
+            {
+                var w = Math.Max((int)width, MinWindowWidth);
+                var h = Math.Max((int)height, MinWindowHeight);
+
+                AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = w, Height = h });
+            }
+            else
+            {
+                // Default size
+                AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 720 });
+            }
+        }
+        catch
+        {
+            // Fallback to default size if restoration fails
+            AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = 1400, Height = 720 });
+        }
+    }
+
+    private void SettingsWindow_Closed(object sender, WindowEventArgs args)
+    {
+        try
+        {
+            var localSettings = ApplicationData.Current.LocalSettings;
+            localSettings.Values["SettingsWindowWidth"] = AppWindow.Size.Width;
+            localSettings.Values["SettingsWindowHeight"] = AppWindow.Size.Height;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to save window size: {ex.Message}");
         }
     }
 
