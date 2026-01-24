@@ -61,20 +61,14 @@
           </Grid.RowDefinitions>
 
           <!-- Page content area -->
-          <ScrollViewer Grid.Row="0" Padding="0">
-            <Grid
-              x:Name="ContentHost"
-              Padding="40,32,40,32"
-              MinWidth="{StaticResource ContentGridMinWidth}"
-              MaxWidth="{StaticResource ContentGridMaxWidth}"
-              Width="{StaticResource ContentGridMaxWidth}"
-              HorizontalAlignment="Center"
-            >
+          <ScrollViewer Grid.Row="0" Padding="40,32,40,32">
+            <Grid x:Name="ContentHost" MaxWidth="800" HorizontalAlignment="Center">
               <!-- General Page -->
               <StackPanel
                 x:Name="GeneralPage"
                 Spacing="4"
                 Visibility="Visible"
+                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="General"
@@ -244,6 +238,7 @@
                 x:Name="BehaviorPage"
                 Spacing="4"
                 Visibility="Collapsed"
+                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="Behavior"
@@ -389,6 +384,7 @@
                 x:Name="AppearancePage"
                 Spacing="4"
                 Visibility="Collapsed"
+                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="Appearance"
@@ -453,6 +449,7 @@
                 x:Name="AboutPage"
                 Spacing="4"
                 Visibility="Collapsed"
+                Width="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
                   Text="About"
