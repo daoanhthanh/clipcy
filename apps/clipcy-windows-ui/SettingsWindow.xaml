@@ -53,7 +53,7 @@
         <Grid
           x:Name="ContentPanel"
           Grid.Column="1"
-          Background="{ThemeResource LayerFillColorDefaultBrush}"
+          Background="Transparent"
         >
           <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -67,6 +67,7 @@
               Padding="40,32,40,32"
               MinWidth="{StaticResource ContentGridMinWidth}"
               MaxWidth="{StaticResource ContentGridMaxWidth}"
+              Width="{StaticResource ContentGridMaxWidth}"
               HorizontalAlignment="Center"
             >
               <!-- General Page -->
@@ -88,14 +89,7 @@
                 />
 
                 <!-- Max History Items -->
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="16"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -140,14 +134,7 @@
                 </Border>
 
                 <!-- Hotkey -->
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="16"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -271,14 +258,7 @@
                 />
 
                 <!-- Start on boot -->
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="16"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -320,14 +300,7 @@
                 </Border>
 
                 <!-- Show preview panel -->
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="16"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -369,14 +342,7 @@
                 </Border>
 
                 <!-- Show notifications -->
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="16"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -437,14 +403,7 @@
                 />
 
                 <!-- Theme -->
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="16"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
@@ -507,14 +466,7 @@
                   Margin="0,0,0,24"
                 />
 
-                <Border
-                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                  CornerRadius="8"
-                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                  BorderThickness="1"
-                  Padding="20"
-                  Margin="0,0,0,8"
-                >
+                <Border Style="{StaticResource SettingsCardStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="Auto" />
