@@ -175,7 +175,7 @@ public sealed partial class SettingsWindow : Window
         // Initialize debounce timer for saving window size
         _saveWindowSizeTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(500) // Save 500ms after user stops resizing
+            Interval = TimeSpan.FromMilliseconds(500), // Save 500ms after user stops resizing
         };
         _saveWindowSizeTimer.Tick += SaveWindowSizeTimer_Tick;
 
@@ -186,13 +186,16 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
-    private void AppWindow_Changed(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowChangedEventArgs args)
+    private void AppWindow_Changed(
+        Microsoft.UI.Windowing.AppWindow sender,
+        Microsoft.UI.Windowing.AppWindowChangedEventArgs args
+    )
     {
         // Track size changes
         if (args.DidSizeChange && !_isRestoringSize)
         {
             System.Diagnostics.Debug.WriteLine($"Window size changed: {sender.Size.Width}x{sender.Size.Height}");
-            
+
             // Restart debounce timer
             if (_saveWindowSizeTimer != null)
             {
@@ -208,14 +211,16 @@ public sealed partial class SettingsWindow : Window
         {
             _isRestoringSize = true;
             System.Diagnostics.Debug.WriteLine("Attempting to restore window size...");
-            
+
             var windowSizeFile = GetWindowSizeFilePath();
             if (File.Exists(windowSizeFile))
             {
                 var lines = File.ReadAllLines(windowSizeFile);
-                if (lines.Length >= 2 && 
-                    int.TryParse(lines[0], out var width) && 
-                    int.TryParse(lines[1], out var height))
+                if (
+                    lines.Length >= 2
+                    && int.TryParse(lines[0], out var width)
+                    && int.TryParse(lines[1], out var height)
+                )
                 {
                     System.Diagnostics.Debug.WriteLine($"Found saved size: {width}x{height}");
                     var w = Math.Max(width, MinWindowWidth);

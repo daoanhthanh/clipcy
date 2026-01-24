@@ -51,11 +51,7 @@
         <Border x:Name="SidebarSpacer" Grid.Column="0" />
 
         <!-- Content takes the right column in expanded mode, or full width in compact -->
-        <Grid
-          x:Name="ContentPanel"
-          Grid.Column="1"
-          Background="Transparent"
-        >
+        <Grid x:Name="ContentPanel" Grid.Column="1" Background="Transparent">
           <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -87,7 +83,8 @@
                 <!-- Max History Items -->
                 <controls:SettingsCard
                   Header="Maximum history items"
-                  Description="Number of clipboard items to keep (10-1000)">
+                  Description="Number of clipboard items to keep (10-1000)"
+                >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE81C;"
@@ -110,7 +107,8 @@
                 <!-- Hotkey -->
                 <controls:SettingsCard
                   Header="Keyboard shortcut"
-                  Description="Global hotkey to open clipboard history">
+                  Description="Global hotkey to open clipboard history"
+                >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE765;"
@@ -118,11 +116,7 @@
                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                     />
                   </controls:SettingsCard.HeaderIcon>
-                  <StackPanel
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    VerticalAlignment="Center"
-                  >
+                  <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="4">
                       <Border
                         x:Name="WinKeyDisplayButton"
@@ -214,7 +208,8 @@
                 <!-- Start on boot -->
                 <controls:SettingsCard
                   Header="Start on boot"
-                  Description="Launch Clipcy when Windows starts">
+                  Description="Launch Clipcy when Windows starts"
+                >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE7E8;"
@@ -233,7 +228,8 @@
                 <!-- Show preview panel -->
                 <controls:SettingsCard
                   Header="Show preview panel"
-                  Description="Display content preview in the popup">
+                  Description="Display content preview in the popup"
+                >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE8A1;"
@@ -252,7 +248,8 @@
                 <!-- Show notifications -->
                 <controls:SettingsCard
                   Header="Show notifications"
-                  Description="Notify when clipboard content changes">
+                  Description="Notify when clipboard content changes"
+                >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE91C;"
@@ -292,7 +289,8 @@
                 <!-- Theme -->
                 <controls:SettingsCard
                   Header="App theme"
-                  Description="Choose between light, dark, or system theme">
+                  Description="Choose between light, dark, or system theme"
+                >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE793;"
@@ -333,9 +331,7 @@
                   Margin="0,0,0,24"
                 />
 
-                <controls:SettingsCard
-                  Header="Clipcy"
-                  Description="Clipboard Manager for Windows">
+                <controls:SettingsCard Header="Clipcy" Description="Clipboard Manager for Windows">
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
                       Glyph="&#xE8C8;"

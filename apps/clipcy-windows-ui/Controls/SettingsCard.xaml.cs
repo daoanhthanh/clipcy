@@ -8,7 +8,7 @@ public sealed class SettingsCard : ContentControl
     public SettingsCard()
     {
         DefaultStyleKey = typeof(SettingsCard);
-        
+
         // Initialize visibility states
         UpdateHeaderIconVisibility();
         UpdateHeaderTextVisibility();
@@ -17,12 +17,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // HeaderIcon property (can be a FontIcon, BitmapIcon, or any icon)
-    public static readonly DependencyProperty HeaderIconProperty =
-        DependencyProperty.Register(
-            nameof(HeaderIcon),
-            typeof(object),
-            typeof(SettingsCard),
-            new PropertyMetadata(null, OnHeaderIconChanged));
+    public static readonly DependencyProperty HeaderIconProperty = DependencyProperty.Register(
+        nameof(HeaderIcon),
+        typeof(object),
+        typeof(SettingsCard),
+        new PropertyMetadata(null, OnHeaderIconChanged)
+    );
 
     public object? HeaderIcon
     {
@@ -39,12 +39,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // Header property (main title text)
-    public static readonly DependencyProperty HeaderProperty =
-        DependencyProperty.Register(
-            nameof(Header),
-            typeof(string),
-            typeof(SettingsCard),
-            new PropertyMetadata(string.Empty, OnHeaderChanged));
+    public static readonly DependencyProperty HeaderProperty = DependencyProperty.Register(
+        nameof(Header),
+        typeof(string),
+        typeof(SettingsCard),
+        new PropertyMetadata(string.Empty, OnHeaderChanged)
+    );
 
     public string Header
     {
@@ -62,12 +62,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // Description property (subtitle/caption text)
-    public static readonly DependencyProperty DescriptionProperty =
-        DependencyProperty.Register(
-            nameof(Description),
-            typeof(string),
-            typeof(SettingsCard),
-            new PropertyMetadata(string.Empty, OnDescriptionChanged));
+    public static readonly DependencyProperty DescriptionProperty = DependencyProperty.Register(
+        nameof(Description),
+        typeof(string),
+        typeof(SettingsCard),
+        new PropertyMetadata(string.Empty, OnDescriptionChanged)
+    );
 
     public string Description
     {
@@ -85,12 +85,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // HeaderIconVisibility property
-    public static readonly DependencyProperty HeaderIconVisibilityProperty =
-        DependencyProperty.Register(
-            nameof(HeaderIconVisibility),
-            typeof(Visibility),
-            typeof(SettingsCard),
-            new PropertyMetadata(Visibility.Collapsed));
+    public static readonly DependencyProperty HeaderIconVisibilityProperty = DependencyProperty.Register(
+        nameof(HeaderIconVisibility),
+        typeof(Visibility),
+        typeof(SettingsCard),
+        new PropertyMetadata(Visibility.Collapsed)
+    );
 
     public Visibility HeaderIconVisibility
     {
@@ -99,12 +99,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // HeaderTextVisibility property
-    public static readonly DependencyProperty HeaderTextVisibilityProperty =
-        DependencyProperty.Register(
-            nameof(HeaderTextVisibility),
-            typeof(Visibility),
-            typeof(SettingsCard),
-            new PropertyMetadata(Visibility.Collapsed));
+    public static readonly DependencyProperty HeaderTextVisibilityProperty = DependencyProperty.Register(
+        nameof(HeaderTextVisibility),
+        typeof(Visibility),
+        typeof(SettingsCard),
+        new PropertyMetadata(Visibility.Collapsed)
+    );
 
     public Visibility HeaderTextVisibility
     {
@@ -113,12 +113,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // DescriptionVisibility property
-    public static readonly DependencyProperty DescriptionVisibilityProperty =
-        DependencyProperty.Register(
-            nameof(DescriptionVisibility),
-            typeof(Visibility),
-            typeof(SettingsCard),
-            new PropertyMetadata(Visibility.Collapsed));
+    public static readonly DependencyProperty DescriptionVisibilityProperty = DependencyProperty.Register(
+        nameof(DescriptionVisibility),
+        typeof(Visibility),
+        typeof(SettingsCard),
+        new PropertyMetadata(Visibility.Collapsed)
+    );
 
     public Visibility DescriptionVisibility
     {
@@ -127,12 +127,12 @@ public sealed class SettingsCard : ContentControl
     }
 
     // HeaderVisibility property (computed from Header and Description)
-    public static readonly DependencyProperty HeaderVisibilityProperty =
-        DependencyProperty.Register(
-            nameof(HeaderVisibility),
-            typeof(Visibility),
-            typeof(SettingsCard),
-            new PropertyMetadata(Visibility.Collapsed));
+    public static readonly DependencyProperty HeaderVisibilityProperty = DependencyProperty.Register(
+        nameof(HeaderVisibility),
+        typeof(Visibility),
+        typeof(SettingsCard),
+        new PropertyMetadata(Visibility.Collapsed)
+    );
 
     public Visibility HeaderVisibility
     {
@@ -157,9 +157,9 @@ public sealed class SettingsCard : ContentControl
 
     private void UpdateHeaderVisibility()
     {
-        HeaderVisibility = (!string.IsNullOrEmpty(Header) || !string.IsNullOrEmpty(Description))
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        HeaderVisibility =
+            (!string.IsNullOrEmpty(Header) || !string.IsNullOrEmpty(Description))
+                ? Visibility.Visible
+                : Visibility.Collapsed;
     }
 }
-

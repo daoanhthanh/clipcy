@@ -6,7 +6,7 @@ namespace Clipcy.Services
     {
         System,
         Light,
-        Dark
+        Dark,
     }
 
     public static class ThemeManager
@@ -64,7 +64,7 @@ namespace Clipcy.Services
             {
                 "Light" => AppTheme.Light,
                 "Dark" => AppTheme.Dark,
-                _ => AppTheme.System
+                _ => AppTheme.System,
             };
         }
     }

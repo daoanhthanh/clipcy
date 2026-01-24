@@ -19,15 +19,15 @@ namespace Clipcy.Services
             public const string TextSecondary = "TextFillColorSecondaryBrush";
             public const string TextTertiary = "TextFillColorTertiaryBrush";
             public const string TextDisabled = "TextFillColorDisabledBrush";
-            
+
             public const string AccentPrimary = "AccentTextFillColorPrimaryBrush";
-            
+
             public const string LayerDefault = "LayerFillColorDefaultBrush";
             public const string LayerAlt = "LayerFillColorAltBrush";
-            
+
             public const string SurfaceStroke = "SurfaceStrokeColorDefaultBrush";
             public const string ControlStroke = "ControlStrokeColorDefaultBrush";
-            
+
             public const string ControlFillDefault = "ControlFillColorDefaultBrush";
             public const string SubtleFill = "SubtleFillColorSecondaryBrush";
         }
@@ -154,32 +154,29 @@ namespace Clipcy.Services
             FrameworkElement element,
             double tintOpacity = 0.85,
             Windows.UI.Color? lightTintColor = null,
-            Windows.UI.Color? darkTintColor = null)
+            Windows.UI.Color? darkTintColor = null
+        )
         {
             var lightColor = lightTintColor ?? Microsoft.UI.ColorHelper.FromArgb(255, 243, 243, 243);
             var darkColor = darkTintColor ?? Microsoft.UI.ColorHelper.FromArgb(255, 32, 32, 32);
 
-            var brush = new AcrylicBrush
-            {
-                TintOpacity = tintOpacity,
-                TintLuminosityOpacity = tintOpacity,
-            };
+            var brush = new AcrylicBrush { TintOpacity = tintOpacity, TintLuminosityOpacity = tintOpacity };
 
             void UpdateBrush(AppTheme theme)
             {
                 element.DispatcherQueue.TryEnqueue(() =>
                 {
-                    var isDark = theme == AppTheme.Dark ||
-                                 (theme == AppTheme.System && IsSystemDarkTheme());
-                    
+                    var isDark = theme == AppTheme.Dark || (theme == AppTheme.System && IsSystemDarkTheme());
+
                     brush.TintColor = isDark ? darkColor : lightColor;
                     brush.FallbackColor = isDark ? darkColor : lightColor;
                 });
             }
 
             // Set initial colors
-            var initialIsDark = ThemeManager.CurrentTheme == AppTheme.Dark ||
-                               (ThemeManager.CurrentTheme == AppTheme.System && IsSystemDarkTheme());
+            var initialIsDark =
+                ThemeManager.CurrentTheme == AppTheme.Dark
+                || (ThemeManager.CurrentTheme == AppTheme.System && IsSystemDarkTheme());
             brush.TintColor = initialIsDark ? darkColor : lightColor;
             brush.FallbackColor = initialIsDark ? darkColor : lightColor;
 

@@ -530,7 +530,7 @@ public sealed partial class MainWindow : Window
 
         // Use ThemeBrushHelper for acrylic background that updates with theme
         outerBorder.Background = ThemeBrushHelper.CreateThemedAcrylicBrush(outerBorder, 0.85);
-        
+
         // Use ThemeBrushHelper for border that updates with theme
         ThemeBrushHelper.SetBorderBrush(outerBorder, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
 
@@ -610,11 +610,7 @@ public sealed partial class MainWindow : Window
 
         // Metadata
         var metadataStack = new StackPanel { Spacing = 4 };
-        var divider = new Border
-        {
-            Height = 1,
-            Margin = new Thickness(0, 6, 0, 6),
-        };
+        var divider = new Border { Height = 1, Margin = new Thickness(0, 6, 0, 6) };
         ThemeBrushHelper.SetBackground(divider, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
         metadataStack.Children.Add(divider);
 
