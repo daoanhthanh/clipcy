@@ -290,6 +290,7 @@
                       OnContent=""
                       OffContent=""
                       VerticalAlignment="Center"
+                      HorizontalAlignment="Right"
                     />
                   </Grid>
                 </Border>
@@ -332,6 +333,7 @@
                       OnContent=""
                       OffContent=""
                       VerticalAlignment="Center"
+                      HorizontalAlignment="Right"
                     />
                   </Grid>
                 </Border>
