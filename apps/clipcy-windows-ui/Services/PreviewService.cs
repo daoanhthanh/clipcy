@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Clipcy.ViewModels;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -8,15 +8,16 @@ using Windows.Foundation;
 
 namespace Clipcy.Services;
 
-public class PreviewService
+public class PreviewService : IPreviewService
 {
     private readonly Window _window;
     private readonly Grid _rootGrid;
-    private readonly WindowService _windowService;
+    private readonly IWindowService _windowService;
+    private readonly DispatcherQueue _dispatcherQueue;
 
     private DispatcherTimer? _previewDelayTimer;
     private DispatcherTimer? _hideTimer;
-    private ClipboardItemViewModel? _pendingPreviewItem;
+    private PreviewData? _pendingPreviewData;
     private FrameworkElement? _previewTarget;
     private Microsoft.UI.Xaml.Controls.Primitives.Popup? _previewPopup;
     private FrameworkElement? _previewPopupRoot;
@@ -26,20 +27,28 @@ public class PreviewService
     private Border? _previewImageBorder;
     private TextBlock? _previewMetadata;
     private bool _isPointerOverPreview = false;
-    private ClipboardItemViewModel? _currentPreviewItem;
+    private PreviewData? _currentPreviewData;
+    private bool _disposed;
 
-    public PreviewService(Window window, Grid rootGrid, WindowService windowService)
+    public PreviewService(Window window, Grid rootGrid, IWindowService windowService)
     {
         _window = window;
         _rootGrid = rootGrid;
         _windowService = windowService;
+        _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         ThemeManager.ThemeChanged += OnThemeChanged;
     }
 
-    private void OnThemeChanged(AppTheme theme)
+    public void Dispose()
     {
-        // Invalidate the cached preview popup so it gets recreated with the new theme colors
+        if (_disposed) return;
+        
+        ThemeManager.ThemeChanged -= OnThemeChanged;
+        
+        _previewDelayTimer?.Stop();
+        _hideTimer?.Stop();
+        
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
@@ -47,9 +56,27 @@ public class PreviewService
             {
                 ThemeManager.UnregisterElement(_previewPopupRoot);
             }
-            _previewPopup = null;
-            _previewPopupRoot = null;
         }
+        
+        _disposed = true;
+    }
+
+    private void OnThemeChanged(AppTheme theme)
+    {
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            // Invalidate the cached preview popup so it gets recreated with the new theme colors
+            if (_previewPopup != null)
+            {
+                _previewPopup.IsOpen = false;
+                if (_previewPopupRoot != null)
+                {
+                    ThemeManager.UnregisterElement(_previewPopupRoot);
+                }
+                _previewPopup = null;
+                _previewPopupRoot = null;
+            }
+        });
     }
 
     private Microsoft.UI.Xaml.Controls.Primitives.Popup PreviewPopup
@@ -122,7 +149,7 @@ public class PreviewService
         grid.PointerExited += (s, e) =>
         {
             _isPointerOverPreview = false;
-            ScheduleHidePreview();
+            ScheduleHide();
         };
 
         // Header - use ThemeBrushHelper for theme-aware text color
@@ -239,52 +266,73 @@ public class PreviewService
         return popup;
     }
 
-    public void ScheduleShowPreview(ClipboardItemViewModel viewModel, FrameworkElement target)
+    public void ScheduleShow(PreviewData data, FrameworkElement target)
     {
-        // Stop any pending hide timer immediately
-        _hideTimer?.Stop();
-
-        // If already showing the same item, do nothing
-        if (_currentPreviewItem == viewModel && _previewPopup != null && _previewPopup.IsOpen == true)
-            return;
-
-        _pendingPreviewItem = viewModel;
-        _previewTarget = target;
-
-        // Delay preview by 300ms
-        if (_previewDelayTimer == null)
+        if (_disposed) return;
+        
+        _dispatcherQueue.TryEnqueue(() =>
         {
-            _previewDelayTimer = new DispatcherTimer();
-            _previewDelayTimer.Interval = TimeSpan.FromMilliseconds(300);
-            _previewDelayTimer.Tick += PreviewDelayTimer_Tick;
-        }
+            // Stop any pending hide timer immediately
+            _hideTimer?.Stop();
 
-        _previewDelayTimer.Stop();
-        _previewDelayTimer.Start();
-    }
+            // If already showing the same item (by ID), do nothing
+            // Note: We compare ID instead of reference since DTOs might be recreated
+            if (_currentPreviewData?.Id == data.Id && _previewPopup != null && _previewPopup.IsOpen == true)
+                return;
 
-    public void ScheduleHidePreview()
-    {
-        // Create hide timer if needed
-        if (_hideTimer == null)
-        {
-            _hideTimer = new DispatcherTimer();
-            _hideTimer.Interval = TimeSpan.FromMilliseconds(150);
-            _hideTimer.Tick += (s, e) =>
+            _pendingPreviewData = data;
+            _previewTarget = target;
+
+            // Delay preview by 300ms
+            if (_previewDelayTimer == null)
             {
-                _hideTimer?.Stop();
-                if (!_isPointerOverPreview)
-                {
-                    HidePreview();
-                }
-            };
-        }
+                _previewDelayTimer = new DispatcherTimer();
+                _previewDelayTimer.Interval = TimeSpan.FromMilliseconds(300);
+                _previewDelayTimer.Tick += PreviewDelayTimer_Tick;
+            }
 
-        _hideTimer.Stop();
-        _hideTimer.Start();
+            _previewDelayTimer.Stop();
+            _previewDelayTimer.Start();
+        });
     }
 
-    public void HidePreview()
+    public void ScheduleHide()
+    {
+        if (_disposed) return;
+
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            // Create hide timer if needed
+            if (_hideTimer == null)
+            {
+                _hideTimer = new DispatcherTimer();
+                _hideTimer.Interval = TimeSpan.FromMilliseconds(150);
+                _hideTimer.Tick += (s, e) =>
+                {
+                    _hideTimer?.Stop();
+                    if (!_isPointerOverPreview)
+                    {
+                        Hide();
+                    }
+                };
+            }
+
+            _hideTimer.Stop();
+            _hideTimer.Start();
+        });
+    }
+
+    public void Hide()
+    {
+        if (_disposed) return;
+
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            HidePreviewInternal();
+        });
+    }
+
+    private void HidePreviewInternal()
     {
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
@@ -292,22 +340,22 @@ public class PreviewService
         {
             _previewPopup.IsOpen = false;
         }
-        _currentPreviewItem = null;
+        _currentPreviewData = null;
     }
 
     private void PreviewDelayTimer_Tick(object? sender, object e)
     {
         _previewDelayTimer?.Stop();
-        if (_pendingPreviewItem != null)
+        if (_pendingPreviewData != null)
         {
-            ShowPreview(_pendingPreviewItem);
+            ShowPreviewInternal(_pendingPreviewData);
         }
     }
 
-    private async void ShowPreview(ClipboardItemViewModel item)
+    private void ShowPreviewInternal(PreviewData data)
     {
         // Prevent showing if already visible for the same item
-        if (_currentPreviewItem == item && PreviewPopup.IsOpen == true)
+        if (_currentPreviewData?.Id == data.Id && PreviewPopup.IsOpen == true)
             return;
 
         try
@@ -329,47 +377,27 @@ public class PreviewService
                 return;
 
             // Set current preview item
-            _currentPreviewItem = item;
+            _currentPreviewData = data;
 
             // Set content type header
-            _previewContentType.Text = item.ContentType;
+            _previewContentType.Text = data.PreviewType;
 
             // Reset visibility
             _previewText.Visibility = Visibility.Collapsed;
             _previewImageBorder.Visibility = Visibility.Collapsed;
 
             // Show preview based on content type
-            switch (item.ContentType)
+            switch (data.PreviewType)
             {
                 case "Text":
                 case "RichText":
                 case "Html":
-                    // Get full text from bridge if available
-                    var fullText = item.Preview;
-                    if (App.Bridge != null && !string.IsNullOrEmpty(item.Id))
-                    {
-                        var data = App.Bridge.GetItemData(item.Id);
-                        if (data != null && data.Length > 0)
-                        {
-                            fullText = System.Text.Encoding.UTF8.GetString(data);
-                        }
-                    }
-                    _previewText.Text = fullText;
+                    _previewText.Text = data.TextContent ?? string.Empty;
                     _previewText.Visibility = Visibility.Visible;
                     break;
 
                 case "Image":
-                    byte[]? imageData = item.Thumbnail;
-
-                    // Try to get full image data
-                    if (App.Bridge != null && !string.IsNullOrEmpty(item.Id))
-                    {
-                        var fullData = await Task.Run(() => App.Bridge.GetItemData(item.Id));
-                        if (fullData != null && fullData.Length > 0)
-                        {
-                            imageData = fullData;
-                        }
-                    }
+                    byte[]? imageData = data.ImageBytes ?? data.Thumbnail;
 
                     if (imageData != null && imageData.Length > 0)
                     {
@@ -382,10 +410,15 @@ public class PreviewService
                             _previewImageBorder.Visibility = Visibility.Visible;
                         }
                     }
+                    else
+                    {
+                         // If we have no image data yet but know it's an image, maybe show placeholder?
+                         // For now just hide if no bytes
+                    }
                     break;
 
                 case "Files":
-                    _previewText.Text = item.Preview;
+                    _previewText.Text = data.TextContent ?? string.Empty;
                     _previewText.Visibility = Visibility.Visible;
                     break;
             }
@@ -394,49 +427,69 @@ public class PreviewService
             var metadata = new System.Text.StringBuilder();
 
             // Created time
-            metadata.AppendLine($"Copied: {item.RelativeTime}");
+            metadata.AppendLine($"Copied: {data.RelativeTime}");
 
             // Content-specific metadata
-            switch (item.ContentType)
+            // Use the metadata from the DTO directly if available to avoid re-parsing logic here?
+            // Or re-implement the parsing logic inside the DTO creation.
+            // For now, let's duplicate the simple parsing logic or create a helper.
+            
+            // Re-parsing for display:
+            switch (data.PreviewType)
             {
                 case "Text":
                 case "RichText":
                 case "Html":
-                    var charCount = _previewText.Text.Length;
-                    var wordCount = _previewText
-                        .Text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Length;
-                    var lineCount = _previewText.Text.Split('\n').Length;
-                    metadata.AppendLine($"Characters: {charCount:N0}");
-                    metadata.AppendLine($"Words: {wordCount:N0}");
-                    if (lineCount > 1)
-                        metadata.AppendLine($"Lines: {lineCount:N0}");
+                    if (!string.IsNullOrEmpty(data.TextContent))
+                    {
+                        var charCount = data.TextContent.Length;
+                        var wordCount = data.TextContent
+                            .Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Length;
+                        var lineCount = data.TextContent.Split('\n').Length;
+                        metadata.AppendLine($"Characters: {charCount:N0}");
+                        metadata.AppendLine($"Words: {wordCount:N0}");
+                        if (lineCount > 1)
+                            metadata.AppendLine($"Lines: {lineCount:N0}");
+                    }
                     break;
 
                 case "Image":
                     if (_previewImage.Source is Microsoft.UI.Xaml.Media.Imaging.BitmapImage bmp)
                     {
-                        metadata.AppendLine($"Dimensions: {bmp.PixelWidth} x {bmp.PixelHeight}");
+                        // Note: PixelWidth/Height might not be available until loaded.
+                        // Can't rely on it synchronously effectively if not loaded.
+                        if (bmp.PixelWidth > 0)
+                        {
+                            metadata.AppendLine($"Dimensions: {bmp.PixelWidth} x {bmp.PixelHeight}");
+                        }
                     }
-                    if (item.Thumbnail != null)
+                    
+                    int sizeBytes = (data.ImageBytes?.Length ?? 0);
+                    if (sizeBytes == 0) sizeBytes = (data.Thumbnail?.Length ?? 0);
+                    
+                    if (sizeBytes > 0)
                     {
-                        var sizeKB = item.Thumbnail.Length / 1024.0;
+                        var sizeKB = sizeBytes / 1024.0;
                         metadata.AppendLine($"Size: {sizeKB:N1} KB");
                     }
                     break;
 
                 case "Files":
-                    var files = item.Preview.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
-                    metadata.AppendLine($"Files: {files.Length}");
+                     if (!string.IsNullOrEmpty(data.TextContent))
+                     {
+                        var files = data.TextContent.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
+                        metadata.AppendLine($"Files: {files.Length}");
+                     }
                     break;
             }
 
-            if (!string.IsNullOrEmpty(item.SourceApp))
+            if (!string.IsNullOrEmpty(data.SourceApp))
             {
-                metadata.AppendLine($"Source: {item.SourceApp}");
+                metadata.AppendLine($"Source: {data.SourceApp}");
             }
 
-            if (item.Pinned)
+            if (data.IsPinned)
             {
                 metadata.AppendLine("Pinned");
             }
@@ -446,14 +499,10 @@ public class PreviewService
             // Position and show the popup
             if (_previewTarget != null)
             {
-                // Set XamlRoot for the popup (required in WinUI 3)
                 popup.XamlRoot = _previewTarget.XamlRoot;
-
-                // Get the position of the target element relative to window
                 var transform = _previewTarget.TransformToVisual(null);
                 var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
 
-                // Force measure to get accurate size
                 if (_previewPopupRoot != null)
                 {
                     _previewPopupRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -461,71 +510,27 @@ public class PreviewService
                 var popupWidth = _previewPopupRoot?.DesiredSize.Width ?? 360.0;
                 var popupHeight = _previewPopupRoot?.DesiredSize.Height ?? 260.0;
                 var spacing = 10.0;
+                
+                // Get bounds info via WindowService
+                var appWindow = _windowService.AppWindow;
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(appWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+                var wa = displayArea.WorkArea; // Physical
 
-                // Get screen info
-                var windowPos = _window.AppWindow.Position;
-                var windowSize = _window.AppWindow.Size;
-                var scale = popup.XamlRoot.RasterizationScale;
-                
-                // Need to use WindowService's DPI scale to convert back to physical pixels for calculations if needed
-                // But here we're doing calculations largely in DIPs/Logical pixels if using XamlRoot scale
-                // Wait, the previous code mixed things. Let's stick to logical coords for Popup.HorizontalOffset
-                // BUT we need to check screen bounds which are often physical or mixed.
-
-                // Re-implementing the positioning logic carefully
-                
-                // Get absolute physical position of target on screen
-                // Note: transform.TransformPoint gives coordinates relative to the window content area (DIPs)
-                
-                var workArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(_window.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest).WorkArea;
-                
-                // We need to be careful here. AppWindow.Position is in physical pixels.
-                // targetPos is in DIPs.
-                // We want to calculate where to put the popup. Popup.HorizontalOffset is in DIPs relative to target!
-                
-                // Let's simplify: Place it relative to target, and flip if it goes out of window bounds?
-                // No, it's a separate popup window basically (Primitives.Popup).
-                // It needs to stay within screen bounds.
-                
-                // Let's use the logic we had, but cleaned up.
-                // The previous logic used P/Invoke MonitorFromPoint which uses physical pixels.
-                // We should map everything to DIPs or Physical.
-                
-                // Mixing native P/Invoke for monitor info (Physical) with Xaml coordinates (DIPs) requires conversion.
+                // Convert calculations to physical pixels for bounds checking
                 double dpiScale = _windowService.GetDpiScale();
                 
-                // Physical coordinates of the window top-left
-                int winX = windowPos.X;
-                int winY = windowPos.Y;
+                double winX = appWindow.Position.X;
+                double winY = appWindow.Position.Y;
                 
-                // Physical coordinates of the target top-left relative to screen
                 double targetPhysicalX = winX + (targetPos.X * dpiScale);
                 double targetPhysicalY = winY + (targetPos.Y * dpiScale);
                 
                 double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
-                double targetPhysicalHeight = _previewTarget.ActualHeight * dpiScale;
-                
                 double popupPhysicalWidth = popupWidth * dpiScale;
                 double popupPhysicalHeight = popupHeight * dpiScale;
                 double spacingPhysical = spacing * dpiScale;
                 
-                // Check if it fits on right
                 bool showOnLeft = false;
-                
-                // Check against work area right edge
-                // Use a simpler display area check if possible, or fallback to the one passed via windowService?
-                // Creating a simplified version here using simple edge detection if we can or just trust the previous logic which was complex
-                // Let's stick to the previous logic but adapted.
-                
-                // Actually, let's keep it simple: Default right, flip left if overflow.
-                // Flip up if overflow bottom.
-                
-                // Since we don't have easy access to MonitorFromPoint here without duplicating P/Invokes,
-                // let's try to trust Xaml's bounds handling or pass the work area in.
-                
-                // For now, I'll perform a simplified bounds check assuming primary monitor or the window's current monitor
-                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(_window.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
-                var wa = displayArea.WorkArea; // Physical pixels
                 
                 double rightEdgePhysical = targetPhysicalX + targetPhysicalWidth + spacingPhysical + popupPhysicalWidth;
                 
@@ -543,18 +548,13 @@ public class PreviewService
                      verticalAdjustPhysical = -excess - spacingPhysical;
                 }
                 
-                // Calculate offsets in DIPs (relative to target)
-                // Popup.HorizontalOffset is relative to the PlacementTarget (or XamlRoot context if explicit)
-                
                 double hOffset;
                 if (showOnLeft)
                 {
-                    // Left of target
                     hOffset = -popupWidth - spacing;
                 }
                 else
                 {
-                    // Right of target
                     hOffset = _previewTarget.ActualWidth + spacing;
                 }
                 
@@ -569,7 +569,7 @@ public class PreviewService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"ShowPreview error: {ex.Message}");
-            HidePreview();
+            HidePreviewInternal();
         }
     }
 }

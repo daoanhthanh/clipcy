@@ -10,18 +10,17 @@ public sealed partial class MainWindow : Window
 {
     public MainViewModel ViewModel { get; }
     
-    private readonly WindowService _windowService;
-    private readonly PreviewService _previewService;
+    private readonly IWindowService _windowService;
+    private readonly IPreviewService _previewService;
 
     public MainWindow()
     {
         this.InitializeComponent();
         
-        // Initialize services
+        // Manual Dependency Injection
         _windowService = new WindowService(this);
         _windowService.Initialize();
         
-        // RootGrid is available after InitializeComponent
         _previewService = new PreviewService(this, RootGrid, _windowService);
 
         ViewModel = new MainViewModel();
@@ -31,20 +30,26 @@ public sealed partial class MainWindow : Window
         if (RootGrid != null)
         {
             ThemeManager.RegisterElement(RootGrid);
-            ThemeManager.SetTheme(ThemeManager.CurrentTheme); // Apply current global theme
+            ThemeManager.SetTheme(ThemeManager.CurrentTheme);
         }
 
         this.Activated += MainWindow_Activated;
+        this.Closed += MainWindow_Closed;
+        
         ViewModel.RefreshHistory();
+    }
+
+    private void MainWindow_Closed(object sender, WindowEventArgs args)
+    {
+        _previewService.Dispose();
+        // WindowService doesn't implement IDisposable but if it did, call it here
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated)
         {
-            // Only hide if the window was previously visible
-            // This prevents hiding immediately after showing
-            if (this.AppWindow.IsVisible)
+            if (_windowService.IsVisible)
             {
                 this.HidePopup();
             }
@@ -54,16 +59,12 @@ public sealed partial class MainWindow : Window
             || args.WindowActivationState == WindowActivationState.PointerActivated
         )
         {
-            // Use async version to avoid blocking UI thread
             _ = ViewModel.RefreshHistoryAsync();
             SearchBox.Text = string.Empty;
 
-            // Don't set any focus - let user navigate with mouse or arrow keys
-            // Force focus to RootGrid or ListView to prevent SearchBox from getting it
             HistoryListView.SelectedIndex = -1;
             RootGrid.Focus(FocusState.Programmatic);
 
-            // Keep acrylic effect active
             _windowService.EnsureBackdropActive();
         }
     }
@@ -83,7 +84,6 @@ public sealed partial class MainWindow : Window
 
     private void PasteSelectedItem(ClipboardItemViewModel item)
     {
-        // Hide popup first
         HidePopup();
 
         try
@@ -112,7 +112,6 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        // Handle Enter to paste selected item
         if (e.Key == Windows.System.VirtualKey.Enter)
         {
             if (HistoryListView.SelectedItem is ClipboardItemViewModel item)
@@ -123,10 +122,8 @@ public sealed partial class MainWindow : Window
             }
         }
 
-        // Handle Up/Down arrow keys for navigation
         if (e.Key == Windows.System.VirtualKey.Down)
         {
-            // If search box has focus, move to list
             if (SearchBox.FocusState != FocusState.Unfocused)
             {
                 e.Handled = true;
@@ -142,7 +139,6 @@ public sealed partial class MainWindow : Window
 
             if (HistoryListView.SelectedIndex < 0)
             {
-                // No selection, select first item
                 if (ViewModel.Items.Count > 0)
                 {
                     HistoryListView.SelectedIndex = 0;
@@ -151,7 +147,6 @@ public sealed partial class MainWindow : Window
             }
             else if (HistoryListView.SelectedIndex < ViewModel.Items.Count - 1)
             {
-                // Move down
                 HistoryListView.SelectedIndex++;
             }
         }
@@ -161,12 +156,10 @@ public sealed partial class MainWindow : Window
 
             if (HistoryListView.SelectedIndex > 0)
             {
-                // Move up
                 HistoryListView.SelectedIndex--;
             }
             else if (HistoryListView.SelectedIndex == 0)
             {
-                // At top, deselect - user can manually click search box if needed
                 HistoryListView.SelectedIndex = -1;
                 RootGrid.Focus(FocusState.Keyboard);
             }
@@ -180,23 +173,21 @@ public sealed partial class MainWindow : Window
 
     public void HidePopup()
     {
-        _previewService.HidePreview();
-        this.AppWindow.Hide();
+        _previewService.Hide();
+        _windowService.Hide();
     }
 
-    public bool IsVisible => this.AppWindow.IsVisible;
+    public bool IsVisible => _windowService.IsVisible;
 
     private void HistoryListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (args.ItemContainer is ListViewItem item)
         {
-            // Remove old handlers first to avoid duplicates
             item.PointerEntered -= ListViewItem_PointerEntered;
             item.PointerExited -= ListViewItem_PointerExited;
             item.GotFocus -= ListViewItem_GotFocus;
             item.LostFocus -= ListViewItem_LostFocus;
 
-            // Attach new handlers
             item.PointerEntered += ListViewItem_PointerEntered;
             item.PointerExited += ListViewItem_PointerExited;
             item.GotFocus += ListViewItem_GotFocus;
@@ -206,10 +197,8 @@ public sealed partial class MainWindow : Window
 
     private void ListViewItem_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        // If SearchBox has focus, clear it by focusing the item or list
         if (SearchBox != null && SearchBox.FocusState != FocusState.Unfocused)
         {
-            // Focus the list view itself or the item to blur search box
             if (sender is ListViewItem item)
             {
                 item.Focus(FocusState.Pointer);
@@ -218,34 +207,49 @@ public sealed partial class MainWindow : Window
 
         if (sender is ListViewItem li && li.Content is ClipboardItemViewModel viewModel)
         {
-            // Schedule preview with delay (same as keyboard navigation)
-            _previewService.ScheduleShowPreview(viewModel, li);
+            var data = MapToPreviewData(viewModel);
+            _previewService.ScheduleShow(data, li);
         }
     }
 
     private void ListViewItem_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        // Schedule hide with delay
-        _previewService.ScheduleHidePreview();
+        _previewService.ScheduleHide();
     }
 
     private void ListViewItem_GotFocus(object sender, RoutedEventArgs e)
     {
         if (sender is ListViewItem item && item.Content is ClipboardItemViewModel viewModel)
         {
-            // Treat focus same as hover - schedule preview with delay
-            _previewService.ScheduleShowPreview(viewModel, item);
+            var data = MapToPreviewData(viewModel);
+            _previewService.ScheduleShow(data, item);
         }
     }
 
     private void ListViewItem_LostFocus(object sender, RoutedEventArgs e)
     {
-        // Cancel pending and schedule hide
-        _previewService.ScheduleHidePreview();
+        _previewService.ScheduleHide();
     }
 
     private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
     {
-        _previewService.HidePreview();
+        _previewService.Hide();
+    }
+    
+    private PreviewData MapToPreviewData(ClipboardItemViewModel vm)
+    {
+        return new PreviewData
+        {
+            Id = vm.Id,
+            PreviewType = vm.ContentType,
+            TextContent = vm.Preview,
+            // For now using Thumbnail for image preview to avoid complex async fetching logic in View.
+            // If full resolution is needed, a dedicated data provider service should be introduced.
+            ImageBytes = null, 
+            Thumbnail = vm.Thumbnail,
+            RelativeTime = vm.RelativeTime,
+            SourceApp = vm.SourceApp,
+            IsPinned = vm.Pinned
+        };
     }
 }

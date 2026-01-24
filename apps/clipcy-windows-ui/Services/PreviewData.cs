@@ -1,0 +1,24 @@
+using System.Collections.Generic;
+
+namespace Clipcy.Services;
+
+/// <summary>
+/// Represents data needed to render a preview, decoupled from the source ViewModel.
+/// </summary>
+public class PreviewData
+{
+    public string Id { get; set; } = string.Empty;
+    public string PreviewType { get; set; } = "Text"; // Text, Image, Files
+    
+    // Content payload
+    public string? TextContent { get; set; }
+    public byte[]? ImageBytes { get; set; }
+    
+    // Metadata for display
+    public string RelativeTime { get; set; } = string.Empty;
+    public string? SourceApp { get; set; }
+    public bool IsPinned { get; set; }
+    
+    // Raw thumbnail data (used if full image not loaded yet)
+    public byte[]? Thumbnail { get; set; }
+}

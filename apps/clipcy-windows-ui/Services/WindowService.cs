@@ -6,7 +6,7 @@ using WinRT.Interop;
 
 namespace Clipcy.Services;
 
-public class WindowService
+public class WindowService : IWindowService
 {
     private readonly Window _window;
     private SystemBackdropConfiguration? _configurationSource;
@@ -99,6 +99,9 @@ public class WindowService
 
     #endregion
 
+    public AppWindow AppWindow => _window.AppWindow;
+    public bool IsVisible => _window.AppWindow.IsVisible;
+
     public WindowService(Window window)
     {
         _window = window;
@@ -110,6 +113,11 @@ public class WindowService
         SetupAcrylicBackdrop();
         ApplyRoundedCorners();
         MakeToolWindow();
+    }
+
+    public void Hide()
+    {
+        _window.AppWindow.Hide();
     }
 
     private void ConfigureWindowStyle()
