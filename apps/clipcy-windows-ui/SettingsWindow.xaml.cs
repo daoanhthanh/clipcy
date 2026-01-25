@@ -80,6 +80,8 @@ public sealed partial class SettingsWindow : Window
 
     private void UpdateTitleBarColors()
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Console.WriteLine($"[TIMING] SettingsWindow.UpdateTitleBarColors started at {DateTime.Now:HH:mm:ss.fff}");
         try
         {
             if (AppWindow == null || AppWindow.TitleBar == null)
@@ -120,6 +122,7 @@ public sealed partial class SettingsWindow : Window
             titleBar.ButtonPressedForegroundColor = foregroundColor;
         }
         catch { }
+        Console.WriteLine($"[TIMING] SettingsWindow.UpdateTitleBarColors finished at {sw.ElapsedMilliseconds}ms");
     }
 
     private void SetupAcrylicBackdrop()
@@ -145,22 +148,29 @@ public sealed partial class SettingsWindow : Window
 
     private void OnThemeChanged(Services.AppTheme theme)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Console.WriteLine($"[TIMING] SettingsWindow.OnThemeChanged started at {DateTime.Now:HH:mm:ss.fff}");
         if (this.Content is FrameworkElement content)
         {
             content.DispatcherQueue.TryEnqueue(() =>
             {
+                Console.WriteLine($"[TIMING] SettingsWindow dispatched to UI thread after {sw.ElapsedMilliseconds}ms");
                 ApplyTheme(theme);
                 UpdateTitleBarColors();
             });
         }
+        Console.WriteLine($"[TIMING] SettingsWindow.OnThemeChanged finished at {sw.ElapsedMilliseconds}ms");
     }
 
     private void ApplyTheme(Services.AppTheme theme)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Console.WriteLine($"[TIMING] SettingsWindow.ApplyTheme started at {DateTime.Now:HH:mm:ss.fff}");
         if (this.Content is FrameworkElement content)
         {
             content.RequestedTheme = Services.ThemeManager.GetElementTheme(theme);
         }
+        Console.WriteLine($"[TIMING] SettingsWindow.ApplyTheme finished at {sw.ElapsedMilliseconds}ms");
     }
 
     private void SetupWindowSizeTracking()
