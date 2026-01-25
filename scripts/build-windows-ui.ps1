@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ProjectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
 $RustProject = $ProjectRoot
 $CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows-ui"
 $BindingsDir = Join-Path $CSharpProject "Bindings"
