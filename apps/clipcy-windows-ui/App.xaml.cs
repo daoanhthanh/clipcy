@@ -60,7 +60,8 @@ public partial class App : Application
             return;
         }
 
-        // Set theme from saved settings if available
+        // Initialize theme manager and set theme from saved settings
+        Services.ThemeManager.Initialize();
         string? themeTag = null;
         try
         {

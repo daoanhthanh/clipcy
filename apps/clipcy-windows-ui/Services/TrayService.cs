@@ -96,9 +96,9 @@ public class TrayService : IDisposable
         if (_contextMenu == null)
             return;
 
+        // MenuFlyout doesn't have RequestedTheme, so apply to items directly
+        // This is still fast since we only have a few menu items
         var elementTheme = ThemeManager.GetElementTheme(theme);
-
-        // Apply theme to each menu item - MenuFlyoutItems are FrameworkElements
         foreach (var item in _contextMenu.Items)
         {
             if (item is FrameworkElement fe)

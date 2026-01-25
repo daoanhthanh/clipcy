@@ -63,12 +63,32 @@ public class PreviewService : IPreviewService
     {
         _dispatcherQueue.TryEnqueue(() =>
         {
-            // Invalidate the popup so it gets recreated with correct theme colors
-            if (_previewPopup != null)
+            try
             {
-                _previewPopup.IsOpen = false;
-                _previewPopup = null;
-                _previewPopupRoot = null;
+                // Update theme on existing popup - faster than recreating
+                // XAML will propagate theme to child elements automatically
+                if (_previewPopup != null)
+                {
+                    var elementTheme = ThemeManager.GetElementTheme(theme);
+                    _previewPopup.RequestedTheme = elementTheme;
+                    
+                    if (_previewPopupRoot is FrameworkElement root)
+                    {
+                        root.RequestedTheme = elementTheme;
+                    }
+                    
+                    // For hardcoded colors, we need to recreate the popup
+                    // But only if it's currently closed to avoid visual glitches
+                    if (!_previewPopup.IsOpen)
+                    {
+                        _previewPopup = null;
+                        _previewPopupRoot = null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OnThemeChanged error: {ex.Message}");
             }
         });
     }
@@ -85,37 +105,11 @@ public class PreviewService : IPreviewService
         }
     }
 
-    /// <summary>
-    /// Determines if the app should use dark theme based on ThemeManager setting.
-    /// When set to System, checks the OS theme.
-    /// </summary>
-    private static bool IsDarkTheme()
-    {
-        var appTheme = ThemeManager.CurrentTheme;
-        
-        if (appTheme == AppTheme.Dark)
-            return true;
-        if (appTheme == AppTheme.Light)
-            return false;
-            
-        // System theme - check OS setting
-        try
-        {
-            var uiSettings = new Windows.UI.ViewManagement.UISettings();
-            var foreground = uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
-            // If foreground is light (close to white), system is in dark mode
-            return ((foreground.R + foreground.G + foreground.B) / 3.0) > 128;
-        }
-        catch
-        {
-            return false;
-        }
-    }
 
     private Microsoft.UI.Xaml.Controls.Primitives.Popup CreatePreviewPopup()
     {
         var elementTheme = ThemeManager.CurrentElementTheme;
-        var isDarkTheme = IsDarkTheme();
+        var isDarkTheme = ThemeManager.IsDarkTheme();
 
         var popup = new Microsoft.UI.Xaml.Controls.Primitives.Popup
         {

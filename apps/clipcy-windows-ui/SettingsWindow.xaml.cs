@@ -87,32 +87,8 @@ public sealed partial class SettingsWindow : Window
 
             var titleBar = AppWindow.TitleBar;
 
-            // Detect if we're in dark mode using UISettings
-            bool isDarkMode = false;
-
-            try
-            {
-                var uiSettings = new Windows.UI.ViewManagement.UISettings();
-                var foreground = uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
-                // If foreground is light (close to white), we're in dark mode
-                isDarkMode = ((foreground.R + foreground.G + foreground.B) / 3.0) > 128;
-            }
-            catch
-            {
-                // Fallback to checking element theme
-                var rootElement = Content as FrameworkElement;
-                if (rootElement != null)
-                {
-                    if (rootElement.ActualTheme == ElementTheme.Dark)
-                    {
-                        isDarkMode = true;
-                    }
-                    else if (rootElement.ActualTheme == ElementTheme.Default)
-                    {
-                        isDarkMode = Application.Current.RequestedTheme == ApplicationTheme.Dark;
-                    }
-                }
-            }
+            // Use centralized ThemeManager for consistent, fast dark mode detection
+            bool isDarkMode = Services.ThemeManager.IsDarkTheme();
 
             // Set button foreground colors based on theme
             // ALWAYS white in dark mode, ALWAYS black in light mode
