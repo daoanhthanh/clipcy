@@ -51,41 +51,77 @@ namespace Clipcy.Services
 
                 // Get initial system theme state from Rust bridge
                 _lastResolvedIsDark = GetSystemThemeFromBridge();
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Initialized. Initial isDark: {_lastResolvedIsDark}");
 
                 // Subscribe to theme changes from Rust bridge
                 if (App.Bridge != null)
                 {
                     App.Bridge.OnThemeChanged += OnBridgeThemeChanged;
+                    System.Diagnostics.Debug.WriteLine("[ThemeManager] Subscribed to Bridge.OnThemeChanged");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[ThemeManager] WARNING: App.Bridge is null during initialization!");
                 }
             }
         }
 
         /// <summary>
         /// Called when Rust bridge detects a theme change via registry notification.
-        /// This is already on the UI thread thanks to RustBridgeService.DispatchEvent.
         /// </summary>
         private static void OnBridgeThemeChanged(bool isDark)
         {
+            System.Diagnostics.Debug.WriteLine($"[ThemeManager] OnBridgeThemeChanged called. isDark: {isDark}, currentTheme: {_currentTheme}, lastResolvedIsDark: {_lastResolvedIsDark}");
+
             // Only process if we're following system theme
             if (_currentTheme != AppTheme.System)
-                return;
-
-            lock (_lock)
             {
-                if (isDark == _lastResolvedIsDark)
-                    return;
-
-                _lastResolvedIsDark = isDark;
+                System.Diagnostics.Debug.WriteLine("[ThemeManager] Not in System theme mode, ignoring bridge theme change");
+                return;
             }
 
-            // Already on UI thread from bridge dispatch, fire immediately
+            bool shouldUpdate;
+            lock (_lock)
+            {
+                // Check if theme actually changed
+                shouldUpdate = isDark != _lastResolvedIsDark;
+                if (shouldUpdate)
+                {
+                    _lastResolvedIsDark = isDark;
+                }
+            }
+
+            if (!shouldUpdate)
+            {
+                System.Diagnostics.Debug.WriteLine("[ThemeManager] Theme value unchanged, skipping update");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ThemeManager] Theme changed! Firing ThemeChanged event...");
+
+            // Dispatch to UI thread if needed
+            if (_dispatcherQueue?.HasThreadAccess == true)
+            {
+                FireThemeChanged();
+            }
+            else
+            {
+                _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, FireThemeChanged);
+            }
+        }
+
+        private static void FireThemeChanged()
+        {
             try
             {
+                var subscriberCount = ThemeChanged?.GetInvocationList().Length ?? 0;
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Firing ThemeChanged to {subscriberCount} subscribers");
                 ThemeChanged?.Invoke(_currentTheme);
+                System.Diagnostics.Debug.WriteLine("[ThemeManager] ThemeChanged event fired successfully");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ThemeChanged event error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] ThemeChanged event error: {ex.Message}");
             }
         }
 
@@ -95,6 +131,8 @@ namespace Clipcy.Services
         /// <param name="theme">The new theme setting</param>
         public static void SetTheme(AppTheme theme)
         {
+            System.Diagnostics.Debug.WriteLine($"[ThemeManager] SetTheme called with: {theme}");
+
             // Initialize on first use if not already done
             if (!_isInitialized)
                 Initialize();
@@ -108,14 +146,11 @@ namespace Clipcy.Services
             // Fire immediately on current thread if on UI thread, otherwise marshal
             if (_dispatcherQueue?.HasThreadAccess == true)
             {
-                ThemeChanged?.Invoke(theme);
+                FireThemeChanged();
             }
             else
             {
-                _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, () =>
-                {
-                    ThemeChanged?.Invoke(theme);
-                });
+                _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, FireThemeChanged);
             }
         }
 
