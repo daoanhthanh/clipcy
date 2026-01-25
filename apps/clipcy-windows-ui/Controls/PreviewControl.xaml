@@ -15,18 +15,12 @@
         CornerRadius="8"
         BorderThickness="1"
         BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
-        Translation="0,0,32">
+        Translation="0,0,32"
+        Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}">
         
         <Border.Shadow>
             <ThemeShadow />
         </Border.Shadow>
-
-        <Border.Background>
-             <AcrylicBrush 
-                TintColor="{ThemeResource SolidBackgroundFillColorBase}" 
-                TintOpacity="0.8" 
-                FallbackColor="{ThemeResource SolidBackgroundFillColorBase}" />
-        </Border.Background>
 
         <Grid Padding="12,10,12,12" RowSpacing="10">
             <Grid.RowDefinitions>
