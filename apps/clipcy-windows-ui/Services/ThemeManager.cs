@@ -11,8 +11,7 @@ namespace Clipcy.Services
     }
 
     /// <summary>
-    /// Centralized theme manager that uses the Rust bridge for theme detection.
-    /// This provides zero-polling, instant theme change detection via registry notifications.
+    /// Centralized theme manager that uses WMI RegistryValueChangeEvent for instant theme detection.
     /// Windows and controls should subscribe to ThemeChanged and set their
     /// Content.RequestedTheme accordingly to leverage WinUI 3's built-in theming.
     /// </summary>
@@ -20,8 +19,8 @@ namespace Clipcy.Services
     {
         private static AppTheme _currentTheme = AppTheme.System;
         private static bool _isInitialized;
-        private static bool _lastResolvedIsDark;
         private static DispatcherQueue? _dispatcherQueue;
+        private static ThemeListener? _themeListener;
         private static readonly object _lock = new object();
 
         /// <summary>
@@ -36,7 +35,7 @@ namespace Clipcy.Services
         public static AppTheme CurrentTheme => _currentTheme;
 
         /// <summary>
-        /// Initialize the theme manager and start listening for system theme changes via Rust bridge.
+        /// Initialize the theme manager and start listening for system theme changes via WMI.
         /// Call this early during app startup on the UI thread.
         /// </summary>
         public static void Initialize()
@@ -49,65 +48,35 @@ namespace Clipcy.Services
                 _isInitialized = true;
                 _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
-                // Get initial system theme state from Rust bridge
-                _lastResolvedIsDark = GetSystemThemeFromBridge();
-                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Initialized. Initial isDark: {_lastResolvedIsDark}");
+                // Create WMI-based theme listener for instant notification
+                _themeListener = new ThemeListener();
+                _themeListener.ThemeChanged += OnSystemThemeChanged;
 
-                // Subscribe to theme changes from Rust bridge
-                if (App.Bridge != null)
-                {
-                    App.Bridge.OnThemeChanged += OnBridgeThemeChanged;
-                    System.Diagnostics.Debug.WriteLine("[ThemeManager] Subscribed to Bridge.OnThemeChanged");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("[ThemeManager] WARNING: App.Bridge is null during initialization!");
-                }
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Initialized with WMI listener. Initial isDark: {_themeListener.IsDarkTheme}");
             }
         }
 
         /// <summary>
-        /// Called when Rust bridge detects a theme change via registry notification.
+        /// Called when WMI detects a theme change via RegistryValueChangeEvent.
+        /// This is called from a WMI thread, so we must dispatch to UI thread.
         /// </summary>
-        private static void OnBridgeThemeChanged(bool isDark)
+        private static void OnSystemThemeChanged(bool isDark)
         {
-            System.Diagnostics.Debug.WriteLine($"[ThemeManager] OnBridgeThemeChanged called. isDark: {isDark}, currentTheme: {_currentTheme}, lastResolvedIsDark: {_lastResolvedIsDark}");
+            System.Diagnostics.Debug.WriteLine($"[ThemeManager] WMI ThemeChanged! isDark: {isDark}, currentTheme: {_currentTheme}");
 
             // Only process if we're following system theme
             if (_currentTheme != AppTheme.System)
             {
-                System.Diagnostics.Debug.WriteLine("[ThemeManager] Not in System theme mode, ignoring bridge theme change");
+                System.Diagnostics.Debug.WriteLine("[ThemeManager] Not in System theme mode, ignoring");
                 return;
             }
 
-            bool shouldUpdate;
-            lock (_lock)
+            // Dispatch to UI thread with high priority for instant update
+            _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, () =>
             {
-                // Check if theme actually changed
-                shouldUpdate = isDark != _lastResolvedIsDark;
-                if (shouldUpdate)
-                {
-                    _lastResolvedIsDark = isDark;
-                }
-            }
-
-            if (!shouldUpdate)
-            {
-                System.Diagnostics.Debug.WriteLine("[ThemeManager] Theme value unchanged, skipping update");
-                return;
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[ThemeManager] Theme changed! Firing ThemeChanged event...");
-
-            // Dispatch to UI thread if needed
-            if (_dispatcherQueue?.HasThreadAccess == true)
-            {
+                System.Diagnostics.Debug.WriteLine("[ThemeManager] Firing ThemeChanged on UI thread...");
                 FireThemeChanged();
-            }
-            else
-            {
-                _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, FireThemeChanged);
-            }
+            });
         }
 
         private static void FireThemeChanged()
@@ -115,13 +84,12 @@ namespace Clipcy.Services
             try
             {
                 var subscriberCount = ThemeChanged?.GetInvocationList().Length ?? 0;
-                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Firing ThemeChanged to {subscriberCount} subscribers");
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Notifying {subscriberCount} subscribers");
                 ThemeChanged?.Invoke(_currentTheme);
-                System.Diagnostics.Debug.WriteLine("[ThemeManager] ThemeChanged event fired successfully");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ThemeManager] ThemeChanged event error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Error: {ex.Message}");
             }
         }
 
@@ -131,19 +99,16 @@ namespace Clipcy.Services
         /// <param name="theme">The new theme setting</param>
         public static void SetTheme(AppTheme theme)
         {
-            System.Diagnostics.Debug.WriteLine($"[ThemeManager] SetTheme called with: {theme}");
+            System.Diagnostics.Debug.WriteLine($"[ThemeManager] SetTheme: {theme}");
 
-            // Initialize on first use if not already done
             if (!_isInitialized)
                 Initialize();
 
             lock (_lock)
             {
                 _currentTheme = theme;
-                _lastResolvedIsDark = IsDarkThemeInternal();
             }
 
-            // Fire immediately on current thread if on UI thread, otherwise marshal
             if (_dispatcherQueue?.HasThreadAccess == true)
             {
                 FireThemeChanged();
@@ -186,34 +151,25 @@ namespace Clipcy.Services
         }
 
         /// <summary>
-        /// Gets system theme from Rust bridge (fastest, uses registry directly).
-        /// </summary>
-        private static bool GetSystemThemeFromBridge()
-        {
-            try
-            {
-                return App.Bridge?.IsDarkTheme() ?? false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
         /// Returns true if the effective theme (considering System setting) is dark.
-        /// Uses Rust bridge for system theme detection.
         /// </summary>
-        public static bool IsDarkTheme() => IsDarkThemeInternal();
-
-        private static bool IsDarkThemeInternal()
+        public static bool IsDarkTheme()
         {
             return _currentTheme switch
             {
                 AppTheme.Dark => true,
                 AppTheme.Light => false,
-                _ => GetSystemThemeFromBridge()
+                _ => _themeListener?.IsDarkTheme ?? false
             };
+        }
+
+        /// <summary>
+        /// Cleanup resources when app exits.
+        /// </summary>
+        public static void Shutdown()
+        {
+            _themeListener?.Dispose();
+            _themeListener = null;
         }
     }
 }

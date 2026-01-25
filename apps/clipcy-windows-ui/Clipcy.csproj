@@ -31,22 +31,13 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7463" />
     <PackageReference Include="System.Formats.Nrbf" Version="9.0.0" />
+    <PackageReference Include="System.Management" Version="10.0.2" />
   </ItemGroup>
 
   <!-- Copy Rust DLL to output directory -->
   <ItemGroup>
-    <Content
-      Include="..\..\target\release\clipcy_core.dll"
-      Link="clipcy_core.dll"
-      CopyToOutputDirectory="PreserveNewest"
-      Condition="Exists('..\..\target\release\clipcy_core.dll')"
-    />
-    <Content
-      Include="..\..\target\debug\clipcy_core.dll"
-      Link="clipcy_core.dll"
-      CopyToOutputDirectory="PreserveNewest"
-      Condition="!Exists('..\..\target\release\clipcy_core.dll') And Exists('..\..\target\debug\clipcy_core.dll')"
-    />
+    <Content Include="..\..\target\release\clipcy_core.dll" Link="clipcy_core.dll" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\target\release\clipcy_core.dll')" />
+    <Content Include="..\..\target\debug\clipcy_core.dll" Link="clipcy_core.dll" CopyToOutputDirectory="PreserveNewest" Condition="!Exists('..\..\target\release\clipcy_core.dll') And Exists('..\..\target\debug\clipcy_core.dll')" />
   </ItemGroup>
 
   <!-- Application icon -->
