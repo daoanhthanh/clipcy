@@ -15,6 +15,7 @@ public sealed partial class SettingsWindow : Window
     private SystemBackdropConfiguration? _configurationSource;
     private bool _isSidebarExpanded = true;
     private DispatcherTimer? _saveWindowSizeTimer;
+    private Microsoft.UI.Windowing.AppWindowTitleBar? _titleBar;
     private bool _isRestoringSize = false;
 
     // Responsive thresholds
@@ -80,14 +81,17 @@ public sealed partial class SettingsWindow : Window
 
     private void UpdateTitleBarColors()
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        Console.WriteLine($"[TIMING] SettingsWindow.UpdateTitleBarColors started at {DateTime.Now:HH:mm:ss.fff}");
         try
         {
-            if (AppWindow == null || AppWindow.TitleBar == null)
-                return;
+            if (AppWindow == null) return;
+            
+            // Cache title bar reference
+            if (_titleBar == null)
+            {
+                _titleBar = AppWindow.TitleBar;
+            }
 
-            var titleBar = AppWindow.TitleBar;
+            if (_titleBar == null) return;
 
             // Use centralized ThemeManager for consistent, fast dark mode detection
             bool isDarkMode = Services.ThemeManager.IsDarkTheme();
@@ -106,23 +110,22 @@ public sealed partial class SettingsWindow : Window
                 : Windows.UI.Color.FromArgb(30, 0, 0, 0);
 
             // Button colors
-            titleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
-            titleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
+            _titleBar.ButtonBackgroundColor = Microsoft.UI.Colors.Transparent;
+            _titleBar.ButtonInactiveBackgroundColor = Microsoft.UI.Colors.Transparent;
 
             // Button foreground (icon) colors
-            titleBar.ButtonForegroundColor = foregroundColor;
-            titleBar.ButtonInactiveForegroundColor = inactiveForegroundColor;
+            _titleBar.ButtonForegroundColor = foregroundColor;
+            _titleBar.ButtonInactiveForegroundColor = inactiveForegroundColor;
 
             // Hover colors
-            titleBar.ButtonHoverBackgroundColor = hoverBgColor;
-            titleBar.ButtonHoverForegroundColor = foregroundColor;
+            _titleBar.ButtonHoverBackgroundColor = hoverBgColor;
+            _titleBar.ButtonHoverForegroundColor = foregroundColor;
 
             // Pressed colors
-            titleBar.ButtonPressedBackgroundColor = pressedBgColor;
-            titleBar.ButtonPressedForegroundColor = foregroundColor;
+            _titleBar.ButtonPressedBackgroundColor = pressedBgColor;
+            _titleBar.ButtonPressedForegroundColor = foregroundColor;
         }
         catch { }
-        Console.WriteLine($"[TIMING] SettingsWindow.UpdateTitleBarColors finished at {sw.ElapsedMilliseconds}ms");
     }
 
     private void SetupAcrylicBackdrop()
@@ -148,29 +151,22 @@ public sealed partial class SettingsWindow : Window
 
     private void OnThemeChanged(Services.AppTheme theme)
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        Console.WriteLine($"[TIMING] SettingsWindow.OnThemeChanged started at {DateTime.Now:HH:mm:ss.fff}");
         if (this.Content is FrameworkElement content)
         {
             content.DispatcherQueue.TryEnqueue(() =>
             {
-                Console.WriteLine($"[TIMING] SettingsWindow dispatched to UI thread after {sw.ElapsedMilliseconds}ms");
                 ApplyTheme(theme);
                 UpdateTitleBarColors();
             });
         }
-        Console.WriteLine($"[TIMING] SettingsWindow.OnThemeChanged finished at {sw.ElapsedMilliseconds}ms");
     }
 
     private void ApplyTheme(Services.AppTheme theme)
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        Console.WriteLine($"[TIMING] SettingsWindow.ApplyTheme started at {DateTime.Now:HH:mm:ss.fff}");
         if (this.Content is FrameworkElement content)
         {
             content.RequestedTheme = Services.ThemeManager.GetElementTheme(theme);
         }
-        Console.WriteLine($"[TIMING] SettingsWindow.ApplyTheme finished at {sw.ElapsedMilliseconds}ms");
     }
 
     private void SetupWindowSizeTracking()

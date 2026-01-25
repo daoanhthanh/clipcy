@@ -62,41 +62,29 @@ namespace Clipcy.Services
         /// </summary>
         private static void OnSystemThemeChanged(bool isDark)
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            Console.WriteLine($"[TIMING] ThemeManager.OnSystemThemeChanged started at {DateTime.Now:HH:mm:ss.fff}");
-            Console.WriteLine($"[ThemeManager] WMI ThemeChanged! isDark: {isDark}, currentTheme: {_currentTheme}");
-
             // Only process if we're following system theme
             if (_currentTheme != AppTheme.System)
             {
-                Console.WriteLine("[ThemeManager] Not in System theme mode, ignoring");
                 return;
             }
 
             // Dispatch to UI thread with high priority for instant update
             _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, () =>
             {
-                Console.WriteLine($"[TIMING] ThemeManager dispatched to UI thread after {sw.ElapsedMilliseconds}ms");
-                Console.WriteLine("[ThemeManager] Firing ThemeChanged on UI thread...");
                 FireThemeChanged();
             });
         }
 
         private static void FireThemeChanged()
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            Console.WriteLine($"[TIMING] ThemeManager.FireThemeChanged started at {DateTime.Now:HH:mm:ss.fff}");
             try
             {
-                var subscriberCount = ThemeChanged?.GetInvocationList().Length ?? 0;
-                Console.WriteLine($"[ThemeManager] Notifying {subscriberCount} subscribers");
                 ThemeChanged?.Invoke(_currentTheme);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ThemeManager] Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Error: {ex.Message}");
             }
-            Console.WriteLine($"[TIMING] ThemeManager.FireThemeChanged finished at {sw.ElapsedMilliseconds}ms");
         }
 
         /// <summary>

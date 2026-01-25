@@ -48,7 +48,11 @@ public sealed partial class MainWindow : Window
     {
         if (this.Content is FrameworkElement content)
         {
-            content.RequestedTheme = ThemeManager.GetElementTheme(theme);
+            var newTheme = ThemeManager.GetElementTheme(theme);
+            if (content.RequestedTheme != newTheme)
+            {
+                content.RequestedTheme = newTheme;
+            }
         }
     }
 

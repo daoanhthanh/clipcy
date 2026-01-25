@@ -41,20 +41,14 @@ namespace Clipcy.Services
 
         private void OnColorValuesChanged(UISettings sender, object args)
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            Console.WriteLine($"[TIMING] ThemeListener.OnColorValuesChanged started at {DateTime.Now:HH:mm:ss.fff}");
-
             // Read current theme from registry (more reliable than color calculation)
             var newIsDark = GetCurrentThemeFromRegistry();
-
-            Console.WriteLine($"[ThemeListener] ColorValuesChanged! newIsDark: {newIsDark}, lastIsDark: {_lastIsDark}. GetCurrentThemeFromRegistry took {sw.ElapsedMilliseconds}ms");
 
             if (newIsDark != _lastIsDark)
             {
                 _lastIsDark = newIsDark;
                 ThemeChanged?.Invoke(newIsDark);
             }
-            Console.WriteLine($"[TIMING] ThemeListener.OnColorValuesChanged finished at {sw.ElapsedMilliseconds}ms");
         }
 
         /// <summary>
