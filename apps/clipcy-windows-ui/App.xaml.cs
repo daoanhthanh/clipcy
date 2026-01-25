@@ -68,7 +68,7 @@ public partial class App : Application
             themeTag = settings?.Theme;
         }
         catch { }
-        Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(themeTag));
+        Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(themeTag));
 
         // Create the main popup window (hidden initially)
         MainPopup = new MainWindow();

@@ -20,11 +20,10 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
 
         ParseAndDisplayHotkey(currentHotkey);
 
-        // Register for theme management
+        // Apply current theme to dialog content
         if (this.Content is FrameworkElement rootElement)
         {
-            Clipcy.Services.ThemeManager.RegisterElement(rootElement);
-            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.CurrentTheme);
+            rootElement.RequestedTheme = Services.ThemeManager.CurrentElementTheme;
         }
 
         this.KeyDown += Dialog_KeyDown;

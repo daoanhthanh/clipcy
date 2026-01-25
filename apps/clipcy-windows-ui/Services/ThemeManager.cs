@@ -9,55 +9,56 @@ namespace Clipcy.Services
         Dark,
     }
 
+    /// <summary>
+    /// Centralized theme manager that broadcasts theme changes.
+    /// Windows and controls should subscribe to ThemeChanged and set their
+    /// Content.RequestedTheme accordingly to leverage WinUI 3's built-in theming.
+    /// </summary>
     public static class ThemeManager
     {
         private static AppTheme _currentTheme = AppTheme.System;
-        private static readonly List<FrameworkElement> _registeredElements = new();
 
+        /// <summary>
+        /// Fired when the theme changes. Subscribers should update their RequestedTheme.
+        /// </summary>
         public static event Action<AppTheme>? ThemeChanged;
 
+        /// <summary>
+        /// Gets the current app theme setting.
+        /// </summary>
         public static AppTheme CurrentTheme => _currentTheme;
 
-        public static void RegisterElement(FrameworkElement element)
-        {
-            if (!_registeredElements.Contains(element))
-            {
-                _registeredElements.Add(element);
-                ApplyThemeToElement(element, _currentTheme);
-            }
-        }
-
-        public static void UnregisterElement(FrameworkElement element)
-        {
-            _registeredElements.Remove(element);
-        }
-
+        /// <summary>
+        /// Sets the app theme and notifies all subscribers.
+        /// </summary>
+        /// <param name="theme">The new theme setting</param>
         public static void SetTheme(AppTheme theme)
         {
             _currentTheme = theme;
-            foreach (var element in _registeredElements)
-            {
-                ApplyThemeToElement(element, theme);
-            }
             ThemeChanged?.Invoke(theme);
         }
 
-        public static void ApplyThemeToElement(FrameworkElement element, AppTheme theme)
+        /// <summary>
+        /// Converts AppTheme to WinUI ElementTheme for use with RequestedTheme.
+        /// </summary>
+        public static ElementTheme GetElementTheme(AppTheme theme)
         {
-            switch (theme)
+            return theme switch
             {
-                case AppTheme.Light:
-                    element.RequestedTheme = ElementTheme.Light;
-                    break;
-                case AppTheme.Dark:
-                    element.RequestedTheme = ElementTheme.Dark;
-                    break;
-                default:
-                    element.RequestedTheme = ElementTheme.Default;
-                    break;
-            }
+                AppTheme.Light => ElementTheme.Light,
+                AppTheme.Dark => ElementTheme.Dark,
+                _ => ElementTheme.Default, // System = follow OS
+            };
         }
 
+        /// <summary>
+        /// Gets the current ElementTheme based on current app theme.
+        /// </summary>
+        public static ElementTheme CurrentElementTheme => GetElementTheme(_currentTheme);
+
+        /// <summary>
+        /// Parses a theme string (from settings) to AppTheme enum.
+        /// </summary>
         public static AppTheme ParseTheme(string? themeTag)
         {
             return themeTag switch

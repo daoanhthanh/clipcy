@@ -54,10 +54,6 @@ public class PreviewService : IPreviewService
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
-            if (_previewPopupRoot != null)
-            {
-                ThemeManager.UnregisterElement(_previewPopupRoot);
-            }
         }
 
         _disposed = true;
@@ -67,14 +63,10 @@ public class PreviewService : IPreviewService
     {
         _dispatcherQueue.TryEnqueue(() =>
         {
-            // Invalidate the cached preview popup so it gets recreated with the new theme colors
+            // Invalidate the popup so it gets recreated with correct theme colors
             if (_previewPopup != null)
             {
                 _previewPopup.IsOpen = false;
-                if (_previewPopupRoot != null)
-                {
-                    ThemeManager.UnregisterElement(_previewPopupRoot);
-                }
                 _previewPopup = null;
                 _previewPopupRoot = null;
             }
@@ -93,43 +85,83 @@ public class PreviewService : IPreviewService
         }
     }
 
+    /// <summary>
+    /// Determines if the app should use dark theme based on ThemeManager setting.
+    /// When set to System, checks the OS theme.
+    /// </summary>
+    private static bool IsDarkTheme()
+    {
+        var appTheme = ThemeManager.CurrentTheme;
+        
+        if (appTheme == AppTheme.Dark)
+            return true;
+        if (appTheme == AppTheme.Light)
+            return false;
+            
+        // System theme - check OS setting
+        try
+        {
+            var uiSettings = new Windows.UI.ViewManagement.UISettings();
+            var foreground = uiSettings.GetColorValue(Windows.UI.ViewManagement.UIColorType.Foreground);
+            // If foreground is light (close to white), system is in dark mode
+            return ((foreground.R + foreground.G + foreground.B) / 3.0) > 128;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private Microsoft.UI.Xaml.Controls.Primitives.Popup CreatePreviewPopup()
     {
+        var elementTheme = ThemeManager.CurrentElementTheme;
+        var isDarkTheme = IsDarkTheme();
+
         var popup = new Microsoft.UI.Xaml.Controls.Primitives.Popup
         {
             IsLightDismissEnabled = false,
             ShouldConstrainToRootBounds = false,
             XamlRoot = _rootGrid?.XamlRoot,
+            RequestedTheme = elementTheme,
         };
 
-        // Align popup theme immediately so resource lookups match
-        popup.RequestedTheme = ThemeManager.CurrentTheme switch
+        // Helper to create brush with correct theme colors
+        // These colors match the WinUI 3 system theme colors
+        Brush GetThemedBrush(string key)
         {
-            Clipcy.Services.AppTheme.Light => ElementTheme.Light,
-            Clipcy.Services.AppTheme.Dark => ElementTheme.Dark,
-            _ => ElementTheme.Default,
-        };
+            return key switch
+            {
+                "LayerFillColorDefaultBrush" => new SolidColorBrush(
+                    isDarkTheme 
+                        ? Windows.UI.Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF)  // Dark: semi-transparent white
+                        : Windows.UI.Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF)), // Light: semi-transparent white
+                "SurfaceStrokeColorDefaultBrush" => new SolidColorBrush(
+                    isDarkTheme 
+                        ? Windows.UI.Color.FromArgb(0x66, 0x75, 0x75, 0x75)  // Dark: gray stroke
+                        : Windows.UI.Color.FromArgb(0x66, 0x75, 0x75, 0x75)), // Light: gray stroke
+                "TextFillColorPrimaryBrush" => new SolidColorBrush(
+                    isDarkTheme 
+                        ? Windows.UI.Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF)  // Dark: white text
+                        : Windows.UI.Color.FromArgb(0xFF, 0x00, 0x00, 0x00)), // Light: black text
+                "TextFillColorSecondaryBrush" => new SolidColorBrush(
+                    isDarkTheme 
+                        ? Windows.UI.Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF)  // Dark: slightly transparent white
+                        : Windows.UI.Color.FromArgb(0xC5, 0x00, 0x00, 0x00)), // Light: slightly transparent black
+                _ => new SolidColorBrush(Microsoft.UI.Colors.Transparent)
+            };
+        }
 
-        // Create the outer border first so we can use it for theme context
+        // Create the outer border with theme-aware styling
         var outerBorder = new Border
         {
             CornerRadius = new CornerRadius(8),
             BorderThickness = new Thickness(1),
             Width = 360,
             MaxHeight = 400,
-            RequestedTheme = popup.RequestedTheme,
+            RequestedTheme = elementTheme,
+            Background = GetThemedBrush("LayerFillColorDefaultBrush"),
+            BorderBrush = GetThemedBrush("SurfaceStrokeColorDefaultBrush"),
         };
-
-        // Use ThemeBrushHelper for acrylic background that updates with theme
-        outerBorder.Background = ThemeBrushHelper.CreateThemedAcrylicBrush(outerBorder, 0.85);
-
-        // Use ThemeBrushHelper for border that updates with theme
-        ThemeBrushHelper.SetBorderBrush(outerBorder, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
-
-        // Register the popup's root element for theme management
-        ThemeManager.RegisterElement(outerBorder);
-        ThemeManager.ApplyThemeToElement(outerBorder, ThemeManager.CurrentTheme);
-        outerBorder.RequestedTheme = popup.RequestedTheme;
 
         // Add shadow effect
         outerBorder.Shadow = new Microsoft.UI.Xaml.Media.ThemeShadow();
@@ -154,14 +186,14 @@ public class PreviewService : IPreviewService
             ScheduleHide();
         };
 
-        // Header - use ThemeBrushHelper for theme-aware text color
+        // Header
         _previewContentType = new TextBlock
         {
             FontSize = 13,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
+            Foreground = GetThemedBrush("TextFillColorPrimaryBrush"),
         };
-        ThemeBrushHelper.SetForeground(_previewContentType, ThemeBrushHelper.BrushKeys.TextPrimary, outerBorder);
         Grid.SetRow(_previewContentType, 0);
         grid.Children.Add(_previewContentType);
 
@@ -176,8 +208,8 @@ public class PreviewService : IPreviewService
             FontSize = 13,
             Visibility = Visibility.Collapsed,
             LineHeight = 20,
+            Foreground = GetThemedBrush("TextFillColorPrimaryBrush"),
         };
-        ThemeBrushHelper.SetForeground(_previewText, ThemeBrushHelper.BrushKeys.TextPrimary, outerBorder);
         contentStack.Children.Add(_previewText);
 
         _previewRichText = new RichEditBox
@@ -214,8 +246,12 @@ public class PreviewService : IPreviewService
 
         // Metadata
         var metadataStack = new StackPanel { Spacing = 4 };
-        var divider = new Border { Height = 1, Margin = new Thickness(0, 6, 0, 6) };
-        ThemeBrushHelper.SetBackground(divider, ThemeBrushHelper.BrushKeys.SurfaceStroke, outerBorder);
+        var divider = new Border
+        {
+            Height = 1,
+            Margin = new Thickness(0, 6, 0, 6),
+            Background = GetThemedBrush("SurfaceStrokeColorDefaultBrush"),
+        };
         metadataStack.Children.Add(divider);
 
         _previewMetadata = new TextBlock
@@ -223,8 +259,8 @@ public class PreviewService : IPreviewService
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             LineHeight = 16,
+            Foreground = GetThemedBrush("TextFillColorSecondaryBrush"),
         };
-        ThemeBrushHelper.SetForeground(_previewMetadata, ThemeBrushHelper.BrushKeys.TextSecondary, outerBorder);
         metadataStack.Children.Add(_previewMetadata);
 
         Grid.SetRow(metadataStack, 2);

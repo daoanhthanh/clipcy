@@ -54,12 +54,9 @@ public sealed partial class SettingsWindow : Window
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
         LoadSettingsToUI();
 
-        // Register for theme management
-        if (RootGrid != null)
-        {
-            Clipcy.Services.ThemeManager.RegisterElement(RootGrid);
-            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(_settings.Theme));
-        }
+        // Subscribe to theme changes and apply initial theme
+        Services.ThemeManager.ThemeChanged += OnThemeChanged;
+        ApplyTheme(Services.ThemeManager.CurrentTheme);
 
         // Update title bar colors after content is loaded
         if (Content is FrameworkElement rootElement)
@@ -170,6 +167,26 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
+    private void OnThemeChanged(Services.AppTheme theme)
+    {
+        if (this.Content is FrameworkElement content)
+        {
+            content.DispatcherQueue.TryEnqueue(() =>
+            {
+                ApplyTheme(theme);
+                UpdateTitleBarColors();
+            });
+        }
+    }
+
+    private void ApplyTheme(Services.AppTheme theme)
+    {
+        if (this.Content is FrameworkElement content)
+        {
+            content.RequestedTheme = Services.ThemeManager.GetElementTheme(theme);
+        }
+    }
+
     private void SetupWindowSizeTracking()
     {
         // Initialize debounce timer for saving window size
@@ -271,6 +288,9 @@ public sealed partial class SettingsWindow : Window
 
     private void SettingsWindow_Closed(object sender, WindowEventArgs args)
     {
+        // Unsubscribe from theme changes
+        Services.ThemeManager.ThemeChanged -= OnThemeChanged;
+
         // Unsubscribe from AppWindow.Changed
         if (AppWindow != null)
         {
@@ -585,7 +605,7 @@ public sealed partial class SettingsWindow : Window
             SaveSettings();
 
             // Apply theme globally using ThemeManager
-            Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(themeTag));
+            Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(themeTag));
         }
     }
 
@@ -607,6 +627,6 @@ public sealed partial class SettingsWindow : Window
         LoadSettingsToUI();
         SaveSettings();
         // Reset theme to default (system)
-        Clipcy.Services.ThemeManager.SetTheme(Clipcy.Services.ThemeManager.ParseTheme(_settings.Theme));
+        Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(_settings.Theme));
     }
 }

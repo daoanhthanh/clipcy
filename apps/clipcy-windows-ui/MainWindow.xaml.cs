@@ -26,12 +26,9 @@ public sealed partial class MainWindow : Window
         ViewModel = new MainViewModel();
         ((FrameworkElement)this.Content).DataContext = this;
 
-        // Register for theme management
-        if (RootGrid != null)
-        {
-            ThemeManager.RegisterElement(RootGrid);
-            ThemeManager.SetTheme(ThemeManager.CurrentTheme);
-        }
+        // Subscribe to theme changes and apply to Content
+        ThemeManager.ThemeChanged += OnThemeChanged;
+        ApplyTheme(ThemeManager.CurrentTheme);
 
         this.Activated += MainWindow_Activated;
         this.Closed += MainWindow_Closed;
@@ -39,10 +36,26 @@ public sealed partial class MainWindow : Window
         ViewModel.RefreshHistory();
     }
 
+    private void OnThemeChanged(AppTheme theme)
+    {
+        if (this.Content is FrameworkElement content)
+        {
+            content.DispatcherQueue.TryEnqueue(() => ApplyTheme(theme));
+        }
+    }
+
+    private void ApplyTheme(AppTheme theme)
+    {
+        if (this.Content is FrameworkElement content)
+        {
+            content.RequestedTheme = ThemeManager.GetElementTheme(theme);
+        }
+    }
+
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
+        ThemeManager.ThemeChanged -= OnThemeChanged;
         _previewService.Dispose();
-        // WindowService doesn't implement IDisposable but if it did, call it here
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
