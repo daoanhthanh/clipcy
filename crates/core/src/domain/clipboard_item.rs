@@ -26,6 +26,11 @@ fn strip_html_tags(html: &str) -> String {
     result.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Convert HTML content to plain text
+pub fn html_to_text(html: &str) -> String {
+    strip_html_tags(html)
+}
+
 /// Decode common HTML entities to their character equivalents
 fn decode_html_entities(s: &str) -> String {
     s.replace("&lt;", "<")
@@ -54,7 +59,7 @@ fn extract_rtf_text(rtf: &str) -> String {
         match ch {
             '{' => {
                 brace_depth += 1;
-                
+
                 // Check if this is a control group we should skip (fonttbl, colortbl, stylesheet, etc.)
                 if i + 1 < chars.len() && chars[i + 1] == '\\' {
                     // Peek ahead to see if this is a control group to skip
@@ -64,29 +69,40 @@ fn extract_rtf_text(rtf: &str) -> String {
                         control.push(chars[j]);
                         j += 1;
                     }
-                    
+
                     // Skip these control groups
                     if matches!(
                         control.as_str(),
-                        "fonttbl" | "colortbl" | "stylesheet" | "listtable" | "listoverridetable"
-                            | "rsidtbl" | "generator" | "info" | "themedata" | "colorschememapping"
-                            | "datastore" | "xmlnstbl" | "latentstyles" | "lsdexception"
+                        "fonttbl"
+                            | "colortbl"
+                            | "stylesheet"
+                            | "listtable"
+                            | "listoverridetable"
+                            | "rsidtbl"
+                            | "generator"
+                            | "info"
+                            | "themedata"
+                            | "colorschememapping"
+                            | "datastore"
+                            | "xmlnstbl"
+                            | "latentstyles"
+                            | "lsdexception"
                     ) {
                         skip_group = true;
                         skip_depth = brace_depth;
                     }
                 }
-                
+
                 i += 1;
             }
             '}' => {
                 brace_depth = brace_depth.saturating_sub(1);
-                
+
                 // If we're exiting a skipped group, stop skipping
                 if skip_group && brace_depth < skip_depth {
                     skip_group = false;
                 }
-                
+
                 i += 1;
             }
             '\\' if !skip_group => {
@@ -123,11 +139,6 @@ fn extract_rtf_text(rtf: &str) -> String {
                     }
                 }
 
-                // Skip optional space after control word
-                if i < chars.len() && chars[i] == ' ' {
-                    i += 1;
-                }
-
                 // Handle special control words
                 match control_word.as_str() {
                     "par" | "line" => result.push('\n'),
@@ -135,9 +146,8 @@ fn extract_rtf_text(rtf: &str) -> String {
                     "'" => {
                         // Hex-encoded character \'XX
                         if i + 1 < chars.len() {
-                            let hex_str: String = chars[i..std::cmp::min(i + 2, chars.len())]
-                                .iter()
-                                .collect();
+                            let hex_str: String =
+                                chars[i..std::cmp::min(i + 2, chars.len())].iter().collect();
                             if let Ok(byte_val) = u8::from_str_radix(&hex_str, 16) {
                                 // Try to convert as Windows-1252 character
                                 result.push(byte_val as char);
@@ -162,12 +172,8 @@ fn extract_rtf_text(rtf: &str) -> String {
         }
     }
 
-    // Clean up the result - preserve newlines but trim each line
-    let text = result
-        .lines()
-        .map(|line| line.trim())
-        .collect::<Vec<_>>()
-        .join("\n");
+    // Clean up the result - collapse whitespace to single spaces
+    let text = result.split_whitespace().collect::<Vec<_>>().join(" ");
 
     text.trim().to_string()
 }
@@ -197,7 +203,7 @@ impl ClipboardItem {
     /// Create new text clipboard item
     pub fn new_text(text: impl Into<String>) -> Self {
         let text = text.into();
-        
+
         // For preview: show only the first non-empty line (trimmed), max 100 chars
         let preview = text
             .lines()
@@ -261,7 +267,7 @@ impl ClipboardItem {
         let html = html.into();
         // Extract text preview from HTML (strip tags for preview)
         let plain_text = strip_html_tags(&html);
-        
+
         // For preview: show only the first non-empty line (trimmed), max 100 chars
         let preview = plain_text
             .lines()
@@ -289,7 +295,7 @@ impl ClipboardItem {
         let rtf = rtf.into();
         // Extract plain text from RTF for preview
         let plain_text = extract_rtf_text(&rtf);
-        
+
         // For preview in menu: show only the first non-empty line (trimmed), max 100 chars
         let preview = if !plain_text.is_empty() {
             // Find the first non-empty line
@@ -360,7 +366,10 @@ mod tests {
 
     #[test]
     fn test_new_files() {
-        let files = vec!["/path/to/file1.txt".to_string(), "/path/to/file2.txt".to_string()];
+        let files = vec![
+            "/path/to/file1.txt".to_string(),
+            "/path/to/file2.txt".to_string(),
+        ];
         let item = ClipboardItem::new_files(files);
         assert_eq!(item.content_type, ContentType::Files);
         assert_eq!(item.preview, "2 files");
@@ -418,7 +427,10 @@ mod tests {
 
     #[test]
     fn test_extract_rtf_text() {
-        assert_eq!(super::extract_rtf_text(r"{\rtf1 Hello World}"), "Hello World");
+        assert_eq!(
+            super::extract_rtf_text(r"{\rtf1 Hello World}"),
+            "Hello World"
+        );
         assert_eq!(
             super::extract_rtf_text(r"{\rtf1\b Bold\b0 Normal}"),
             "Bold Normal"
@@ -427,15 +439,24 @@ mod tests {
             super::extract_rtf_text(r"{\rtf1 Line1\par Line2}"),
             "Line1 Line2"
         );
-        assert_eq!(super::extract_rtf_text(r"{\rtf1 Test\\Escaped\{Braces\}}"), "Test\\Escaped{Braces}");
+        assert_eq!(
+            super::extract_rtf_text(r"{\rtf1 Test\\Escaped\{Braces\}}"),
+            "Test\\Escaped{Braces}"
+        );
     }
 
     #[test]
     fn test_strip_html_tags() {
         assert_eq!(super::strip_html_tags("<p>Hello</p>"), "Hello");
-        assert_eq!(super::strip_html_tags("<div><span>A</span> <span>B</span></div>"), "A B");
+        assert_eq!(
+            super::strip_html_tags("<div><span>A</span> <span>B</span></div>"),
+            "A B"
+        );
         assert_eq!(super::strip_html_tags("No tags here"), "No tags here");
-        assert_eq!(super::strip_html_tags("<script>alert('xss')</script>"), "alert('xss')");
+        assert_eq!(
+            super::strip_html_tags("<script>alert('xss')</script>"),
+            "alert('xss')"
+        );
     }
 
     #[test]

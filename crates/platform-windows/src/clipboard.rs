@@ -16,7 +16,7 @@ use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_HDROP, CF_UNIC
 use windows::Win32::UI::Shell::DragQueryFileW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use clipboard_core::domain::{ClipboardItem, ContentType};
+use clipboard_core::domain::{html_to_text, ClipboardItem, ContentType};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
 
@@ -473,7 +473,7 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get current clipboard item, with prioritized format detection
-    /// Priority order: Files (unless single image file with image data available) > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format > Rich Text Format > CF_UNICODETEXT
+    /// Priority order: Files (unless single image file with image data available) > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format (as text fallback) > Rich Text Format > CF_UNICODETEXT
     pub fn get_current_item() -> Option<ClipboardItem> {
         // Check available formats
         let has_files = Self::has_files_format();
@@ -553,12 +553,13 @@ impl WindowsClipboardMonitor {
             }
         }
 
-        // Priority 3: HTML content
-        if has_html {
+        // Priority 3: HTML content (treat as plain text when no CF_UNICODETEXT is available)
+        if has_html && !has_text {
             if let Some(html) = Self::get_clipboard_html() {
-                if !html.trim().is_empty() {
-                    tracing::debug!("Captured HTML: {} chars", html.len());
-                    return Some(ClipboardItem::new_html(html));
+                let plain_text = html_to_text(&html);
+                if !plain_text.trim().is_empty() {
+                    tracing::debug!("Captured HTML as text: {} chars", plain_text.len());
+                    return Some(ClipboardItem::new_text(plain_text));
                 }
             }
         }
