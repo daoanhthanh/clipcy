@@ -5,7 +5,6 @@
 using System;
 using System.Linq;
 using System.Windows;
-
 using ManagedCommon;
 using Microsoft.Win32;
 
@@ -39,29 +38,29 @@ namespace Common.UI
             Uri darkThemeUri = new Uri("pack://application:,,,/Themes/Dark.xaml");
 
             ControlzEx.Theming.ThemeManager.Current.AddLibraryTheme(
-                new ControlzEx.Theming.LibraryTheme(
-                    highContrastOneThemeUri,
-                    CustomLibraryThemeProvider.DefaultInstance));
+                new ControlzEx.Theming.LibraryTheme(highContrastOneThemeUri, CustomLibraryThemeProvider.DefaultInstance)
+            );
             ControlzEx.Theming.ThemeManager.Current.AddLibraryTheme(
-                new ControlzEx.Theming.LibraryTheme(
-                    highContrastTwoThemeUri,
-                    CustomLibraryThemeProvider.DefaultInstance));
+                new ControlzEx.Theming.LibraryTheme(highContrastTwoThemeUri, CustomLibraryThemeProvider.DefaultInstance)
+            );
             ControlzEx.Theming.ThemeManager.Current.AddLibraryTheme(
                 new ControlzEx.Theming.LibraryTheme(
                     highContrastBlackThemeUri,
-                    CustomLibraryThemeProvider.DefaultInstance));
+                    CustomLibraryThemeProvider.DefaultInstance
+                )
+            );
             ControlzEx.Theming.ThemeManager.Current.AddLibraryTheme(
                 new ControlzEx.Theming.LibraryTheme(
                     highContrastWhiteThemeUri,
-                    CustomLibraryThemeProvider.DefaultInstance));
+                    CustomLibraryThemeProvider.DefaultInstance
+                )
+            );
             ControlzEx.Theming.ThemeManager.Current.AddLibraryTheme(
-                new ControlzEx.Theming.LibraryTheme(
-                    lightThemeUri,
-                    CustomLibraryThemeProvider.DefaultInstance));
+                new ControlzEx.Theming.LibraryTheme(lightThemeUri, CustomLibraryThemeProvider.DefaultInstance)
+            );
             ControlzEx.Theming.ThemeManager.Current.AddLibraryTheme(
-                new ControlzEx.Theming.LibraryTheme(
-                    darkThemeUri,
-                    CustomLibraryThemeProvider.DefaultInstance));
+                new ControlzEx.Theming.LibraryTheme(darkThemeUri, CustomLibraryThemeProvider.DefaultInstance)
+            );
 
             ResetTheme();
             ControlzEx.Theming.ThemeManager.Current.ThemeSyncMode = ControlzEx.Theming.ThemeSyncMode.SyncWithAppMode;
@@ -69,7 +68,10 @@ namespace Common.UI
             SystemParameters.StaticPropertyChanged += SystemParameters_StaticPropertyChanged;
         }
 
-        private void SystemParameters_StaticPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void SystemParameters_StaticPropertyChanged(
+            object sender,
+            System.ComponentModel.PropertyChangedEventArgs e
+        )
         {
             if (e.PropertyName == nameof(SystemParameters.HighContrast))
             {

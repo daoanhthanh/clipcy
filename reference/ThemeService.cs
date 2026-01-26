@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-
 using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.PowerToys.Settings.UI.Library.Interfaces;
 using Microsoft.UI.Xaml;
@@ -41,7 +40,9 @@ namespace Microsoft.PowerToys.Settings.UI.Services
                 case "SYSTEM":
                     return ElementTheme.Default;
                 default:
-                    ManagedCommon.Logger.LogError($"Unexpected theme name: {_generalSettingsRepository.SettingsConfig.Theme}");
+                    ManagedCommon.Logger.LogError(
+                        $"Unexpected theme name: {_generalSettingsRepository.SettingsConfig.Theme}"
+                    );
                     return ElementTheme.Default;
             }
         }
