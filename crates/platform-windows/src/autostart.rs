@@ -1,4 +1,5 @@
 use std::{env, process::Command};
+use std::os::windows::process::CommandExt;
 
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::AutostartHandler;
@@ -10,6 +11,7 @@ use windows::Win32::System::Registry::{
 
 const APP_NAME: &str = "Clipcy";
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 // Use a per-user scheduled task (starts before Explorer Run key entries)
 const TASK_NAME: &str = r"\\Clipcy\\Autorun";
 
@@ -33,6 +35,7 @@ impl WindowsAutostartHandler {
     fn create_scheduled_task(exe_path: &str) -> Result<()> {
         // Delay a couple seconds to let Explorer initialize (mirrors PowerToys)
         let status = Command::new("schtasks")
+            .creation_flags(CREATE_NO_WINDOW)
             .args([
                 "/Create",
                 "/F",
@@ -64,6 +67,7 @@ impl WindowsAutostartHandler {
 
     fn delete_scheduled_task() -> Result<bool> {
         let status = Command::new("schtasks")
+            .creation_flags(CREATE_NO_WINDOW)
             .args(["/Delete", "/F", "/TN", TASK_NAME])
             .status()
             .map_err(|e| ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e)))?;
@@ -72,6 +76,7 @@ impl WindowsAutostartHandler {
 
     fn is_scheduled_task_present() -> Result<bool> {
         let status = Command::new("schtasks")
+            .creation_flags(CREATE_NO_WINDOW)
             .args(["/Query", "/TN", TASK_NAME])
             .status()
             .map_err(|e| ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e)))?;
