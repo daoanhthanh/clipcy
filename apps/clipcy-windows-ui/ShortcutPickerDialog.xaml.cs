@@ -24,6 +24,7 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
     private string _originalHotkey = "";
     private static readonly TimeSpan ComboResetDelay = TimeSpan.FromSeconds(1);
     private DateTimeOffset _lastKeyTime = DateTimeOffset.MinValue;
+    private bool _hasStartedCapture;
 
     public string Hotkey { get; private set; } = "";
     public bool IsSaved { get; private set; }
@@ -34,6 +35,7 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
         _originalHotkey = currentHotkey;
         Hotkey = currentHotkey;
         IsSaved = false;
+        _hasStartedCapture = false;
 
         ParseAndDisplayHotkey(currentHotkey);
 
@@ -55,6 +57,7 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
     {
         _capturedKeys.Clear();
         _lastKeyTime = DateTimeOffset.MinValue;
+        _hasStartedCapture = false;
 
         if (string.IsNullOrEmpty(hotkey))
         {
@@ -166,6 +169,12 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
         if (key == VirtualKey.None)
         {
             return;
+        }
+
+        if (!_hasStartedCapture)
+        {
+            _capturedKeys.Clear();
+            _hasStartedCapture = true;
         }
 
         var now = DateTimeOffset.UtcNow;
