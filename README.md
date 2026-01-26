@@ -101,6 +101,21 @@ graph TD
 .\scripts\build-windows-ui.ps1 -CleanBuild
 ```
 
+#### Build Installer (Windows)
+Requires Inno Setup 6 (`ISCC.exe` on PATH).
+
+```powershell
+# powershell -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1
+.\scripts\build-windows-installer.ps1
+
+# If Inno Setup is not on PATH
+.\scripts\build-windows-installer.ps1 -InnoSetupPath "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+```
+
+Outputs:
+- Published app: `dist\windows\win-x64`
+- Installer: `dist\installer`
+
 #### Manual Build
 
 1. **Build Rust Bridge (cdylib)**
