@@ -8,7 +8,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -60,26 +59,35 @@
   <!-- Fix XAML Compiler assembly binding issues -->
   <Target Name="CreateXamlCompilerConfig" BeforeTargets="MarkupCompilePass1">
     <PropertyGroup>
-      <XamlCompilerPath>$(NuGetPackageRoot)microsoft.windowsappsdk.winui\1.8.251222000\tools\net472\XamlCompiler.exe</XamlCompilerPath>
+      <XamlCompilerPath>
+        $(NuGetPackageRoot)microsoft.windowsappsdk.winui\1.8.251222000\tools\net472\XamlCompiler.exe</XamlCompilerPath>
       <XamlCompilerConfigPath>$(XamlCompilerPath).config</XamlCompilerConfigPath>
     </PropertyGroup>
     <ItemGroup>
-      <XamlCompilerConfigLines Include="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;" />
+      <XamlCompilerConfigLines
+        Include="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;" />
       <XamlCompilerConfigLines Include="&lt;configuration&gt;" />
-      <XamlCompilerConfigLines Include="  &lt;startup useLegacyV2RuntimeActivationPolicy=&quot;true&quot;&gt;" />
-      <XamlCompilerConfigLines Include="    &lt;supportedRuntime version=&quot;v4.0&quot; sku=&quot;.NETFramework,Version=v4.7.2&quot;/&gt;" />
+      <XamlCompilerConfigLines
+        Include="  &lt;startup useLegacyV2RuntimeActivationPolicy=&quot;true&quot;&gt;" />
+      <XamlCompilerConfigLines
+        Include="    &lt;supportedRuntime version=&quot;v4.0&quot; sku=&quot;.NETFramework,Version=v4.7.2&quot;/&gt;" />
       <XamlCompilerConfigLines Include="  &lt;/startup&gt;" />
       <XamlCompilerConfigLines Include="  &lt;runtime&gt;" />
-      <XamlCompilerConfigLines Include="    &lt;assemblyBinding xmlns=&quot;urn:schemas-microsoft-com:asm.v1&quot;&gt;" />
+      <XamlCompilerConfigLines
+        Include="    &lt;assemblyBinding xmlns=&quot;urn:schemas-microsoft-com:asm.v1&quot;&gt;" />
       <XamlCompilerConfigLines Include="      &lt;dependentAssembly&gt;" />
-      <XamlCompilerConfigLines Include="        &lt;assemblyIdentity name=&quot;System.Runtime.CompilerServices.Unsafe&quot; publicKeyToken=&quot;b03f5f7f11d50a3a&quot; culture=&quot;neutral&quot; /&gt;" />
-      <XamlCompilerConfigLines Include="        &lt;bindingRedirect oldVersion=&quot;0.0.0.0-6.0.0.0&quot; newVersion=&quot;6.0.0.0&quot; /&gt;" />
+      <XamlCompilerConfigLines
+        Include="        &lt;assemblyIdentity name=&quot;System.Runtime.CompilerServices.Unsafe&quot; publicKeyToken=&quot;b03f5f7f11d50a3a&quot; culture=&quot;neutral&quot; /&gt;" />
+      <XamlCompilerConfigLines
+        Include="        &lt;bindingRedirect oldVersion=&quot;0.0.0.0-6.0.0.0&quot; newVersion=&quot;6.0.0.0&quot; /&gt;" />
       <XamlCompilerConfigLines Include="      &lt;/dependentAssembly&gt;" />
       <XamlCompilerConfigLines Include="    &lt;/assemblyBinding&gt;" />
-      <XamlCompilerConfigLines Include="    &lt;AppContextSwitchOverrides value=&quot;Switch.System.IO.UseLegacyPathHandling=false;Switch.System.IO.BlockLongPaths=false&quot;/&gt;" />
+      <XamlCompilerConfigLines
+        Include="    &lt;AppContextSwitchOverrides value=&quot;Switch.System.IO.UseLegacyPathHandling=false;Switch.System.IO.BlockLongPaths=false&quot;/&gt;" />
       <XamlCompilerConfigLines Include="  &lt;/runtime&gt;" />
       <XamlCompilerConfigLines Include="&lt;/configuration&gt;" />
     </ItemGroup>
-    <WriteLinesToFile File="$(XamlCompilerConfigPath)" Lines="@(XamlCompilerConfigLines)" Overwrite="true" />
+    <WriteLinesToFile File="$(XamlCompilerConfigPath)" Lines="@(XamlCompilerConfigLines)"
+      Overwrite="true" />
   </Target>
 </Project>

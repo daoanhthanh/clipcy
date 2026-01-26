@@ -5,9 +5,9 @@
 #define PublishDir "..\dist\windows\win-x64"
 #define OutputDir "..\dist\installer"
 #define IconPath "..\apps\clipcy-windows-ui\Assets\icon.ico"
-#define AppArch "x64"
-#define ArchAllowed "x64"
-#define ArchInstallIn64BitMode "x64"
+#define AppArch "x64compatible"
+#define ArchAllowed "x64compatible"
+#define ArchInstallIn64BitMode "x64compatible"
 
 [Setup]
 AppId={{5C3623B7-30B0-4C61-8B08-7C0D9DE3B7D9}}
