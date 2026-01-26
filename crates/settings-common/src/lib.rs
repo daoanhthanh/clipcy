@@ -68,7 +68,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             max_history_items: 100,
-            hotkey: "Ctrl+Shift+V".to_string(),
+            hotkey: "Alt+V".to_string(),
             theme: ThemeMode::System,
             start_on_boot: true,
             show_notifications: false,
@@ -169,7 +169,7 @@ mod tests {
     fn test_settings_default() {
         let settings = Settings::default();
         assert_eq!(settings.max_history_items, 100);
-        assert_eq!(settings.hotkey, "Ctrl+Shift+V");
+        assert_eq!(settings.hotkey, "Alt+V");
         assert!(settings.start_on_boot);
         assert!(settings.show_preview_panel);
     }
