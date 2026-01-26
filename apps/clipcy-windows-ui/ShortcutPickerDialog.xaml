@@ -20,7 +20,7 @@
         Content="Win"
         Width="56"
         Height="48"
-        Background="#40C5F7"
+        Style="{ThemeResource AccentButtonStyle}"
         Visibility="Collapsed"
       />
       <Button
@@ -28,7 +28,7 @@
         Content="Ctrl"
         Width="56"
         Height="48"
-        Background="#40C5F7"
+        Style="{ThemeResource AccentButtonStyle}"
         Visibility="Collapsed"
       />
       <Button
@@ -36,7 +36,7 @@
         Content="Alt"
         Width="56"
         Height="48"
-        Background="#40C5F7"
+        Style="{ThemeResource AccentButtonStyle}"
         Visibility="Collapsed"
       />
       <Button
@@ -44,7 +44,7 @@
         Content="Shift"
         Width="56"
         Height="48"
-        Background="#40C5F7"
+        Style="{ThemeResource AccentButtonStyle}"
         Visibility="Collapsed"
       />
       <Button
@@ -52,7 +52,7 @@
         Content=""
         Width="56"
         Height="48"
-        Background="#40C5F7"
+        Style="{ThemeResource AccentButtonStyle}"
         Visibility="Collapsed"
       />
     </StackPanel>
