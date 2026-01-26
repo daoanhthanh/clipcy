@@ -5,6 +5,9 @@
 #define PublishDir "..\dist\windows\win-x64"
 #define OutputDir "..\dist\installer"
 #define IconPath "..\apps\clipcy-windows-ui\Assets\icon.ico"
+#define AppArch "x64"
+#define ArchAllowed "x64"
+#define ArchInstallIn64BitMode "x64"
 
 [Setup]
 AppId={{5C3623B7-30B0-4C61-8B08-7C0D9DE3B7D9}}
@@ -16,13 +19,13 @@ DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 UninstallDisplayIcon={#IconPath}
 OutputDir={#OutputDir}
-OutputBaseFilename={#AppName}-Setup-{#AppVersion}
+OutputBaseFilename={#AppName}-Setup-{#AppVersion}-{#AppArch}
 SetupIconFile={#IconPath}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed={#ArchAllowed}
+ArchitecturesInstallIn64BitMode={#ArchInstallIn64BitMode}
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

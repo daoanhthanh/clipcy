@@ -11,10 +11,36 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows-ui"
 $CargoToml = Join-Path $ProjectRoot "Cargo.toml"
 $PublishDir = Join-Path $ProjectRoot "dist" "windows" $Runtime
-$OutputDir = Join-Path $ProjectRoot "dist" "installer"
+$OutputDir = Join-Path $ProjectRoot "dist" "installer" $Runtime
 $IssPath = Join-Path $ProjectRoot "scripts" "clipcy-installer.iss"
 $IconPath = Join-Path $CSharpProject "Assets" "icon.ico"
-$AppPublisher = "ThanhDA"
+$AppPublisher = "Dao Anh Thanh (Đào Anh Thành)"
+
+$Platform = $null
+$AppArch = $null
+$ArchAllowed = $null
+$ArchInstallIn64BitMode = $null
+$RustTarget = $null
+
+switch ($Runtime) {
+    "win-x64" {
+        $Platform = "x64"
+        $AppArch = "x64"
+        $ArchAllowed = "x64"
+        $ArchInstallIn64BitMode = "x64"
+        $RustTarget = "x86_64-pc-windows-msvc"
+    }
+    "win-arm64" {
+        $Platform = "ARM64"
+        $AppArch = "arm64"
+        $ArchAllowed = "arm64"
+        $ArchInstallIn64BitMode = "arm64"
+        $RustTarget = "aarch64-pc-windows-msvc"
+    }
+    default {
+        throw "Unsupported runtime '$Runtime'. Use win-x64 or win-arm64."
+    }
+}
 
 function Get-WorkspaceVersion {
     param([string]$Path)
@@ -91,11 +117,26 @@ if ($Clean) {
 Write-Host "`n[2/4] Building Rust bridge library..." -ForegroundColor Yellow
 Push-Location $ProjectRoot
 try {
-    cargo build --release -p clipcy-bridge
+    cargo build --release -p clipcy-bridge --target $RustTarget
 }
 finally {
     Pop-Location
 }
+
+$RustOutputDir = Join-Path $ProjectRoot "target" $RustTarget "release"
+$RustDll = Join-Path $RustOutputDir "clipcy_core.dll"
+$RustDestDir = Join-Path $ProjectRoot "target" "release"
+$RustDestDll = Join-Path $RustDestDir "clipcy_core.dll"
+
+if (-not (Test-Path $RustDll)) {
+    throw "Rust build failed - clipcy_core.dll not found at $RustDll"
+}
+
+if (-not (Test-Path $RustDestDir)) {
+    New-Item -ItemType Directory -Path $RustDestDir | Out-Null
+}
+
+Copy-Item -Force $RustDll $RustDestDll
 
 Write-Host "`n[3/4] Publishing WinUI application..." -ForegroundColor Yellow
 if (-not (Test-Path $PublishDir)) {
@@ -104,7 +145,7 @@ if (-not (Test-Path $PublishDir)) {
 
 Push-Location $CSharpProject
 try {
-    dotnet publish -c $Configuration -r $Runtime -o $PublishDir
+    dotnet publish -c $Configuration -r $Runtime -o $PublishDir -p:Platform=$Platform -p:PublishTrimmed=false -p:PublishSingleFile=false
 }
 finally {
     Pop-Location
@@ -131,11 +172,14 @@ Write-Host "Debug - OutputDir: $OutputDir" -ForegroundColor Gray
 Write-Host "Debug - AppVersion: $AppVersion" -ForegroundColor Gray
 
 $isccArgs = @(
-    "/DPublishDir=`"$PublishDir`"",
-    "/DOutputDir=`"$OutputDir`"",
-    "/DAppVersion=`"$AppVersion`"",
-    "/DIconPath=`"$IconPath`"",
-    "/DAppPublisher=`"$AppPublisher`"",
+    "/DPublishDir=$PublishDir",
+    "/DOutputDir=$OutputDir",
+    "/DAppVersion=$AppVersion",
+    "/DIconPath=$IconPath",
+    "/DAppPublisher=$AppPublisher",
+    "/DAppArch=$AppArch",
+    "/DArchAllowed=$ArchAllowed",
+    "/DArchInstallIn64BitMode=$ArchInstallIn64BitMode",
     $IssPath
 )
 
