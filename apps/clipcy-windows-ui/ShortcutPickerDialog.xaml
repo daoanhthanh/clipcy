@@ -5,55 +5,85 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="Edit Hotkey"
 >
-  <StackPanel Spacing="16" MinWidth="400">
-    <TextBlock Text="Press keys to set a new hotkey combination..." TextWrapping="Wrap" />
-
-    <!-- Keyboard preview -->
-    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Padding="20">
-      <Button
-        x:Name="WinKeyButton"
-        Content="Win"
-        Width="56"
-        Height="48"
-        Style="{ThemeResource AccentButtonStyle}"
-        Visibility="Collapsed"
-      />
-      <Button
-        x:Name="CtrlKeyButton"
-        Content="Ctrl"
-        Width="56"
-        Height="48"
-        Style="{ThemeResource AccentButtonStyle}"
-        Visibility="Collapsed"
-      />
-      <Button
-        x:Name="AltKeyButton"
-        Content="Alt"
-        Width="56"
-        Height="48"
-        Style="{ThemeResource AccentButtonStyle}"
-        Visibility="Collapsed"
-      />
-      <Button
-        x:Name="ShiftKeyButton"
-        Content="Shift"
-        Width="56"
-        Height="48"
-        Style="{ThemeResource AccentButtonStyle}"
-        Visibility="Collapsed"
-      />
-      <Button
-        x:Name="MainKeyButton"
-        Content=""
-        Width="56"
-        Height="48"
-        Style="{ThemeResource AccentButtonStyle}"
-        Visibility="Collapsed"
+  <StackPanel Spacing="16" MinWidth="460">
+    <StackPanel Spacing="6">
+      <TextBlock Text="Press keys to set a new hotkey combination." TextWrapping="Wrap" />
+      <TextBlock
+        Text="Pause 1 second to start a new combination."
+        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+        TextWrapping="Wrap"
       />
     </StackPanel>
 
-    <!-- Action buttons -->
-    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+    <Border
+      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+      BorderThickness="1"
+      CornerRadius="8"
+      Padding="16"
+    >
+      <StackPanel Spacing="12" HorizontalAlignment="Center">
+        <TextBlock
+          Text="Listening for keys"
+          Style="{StaticResource BodyTextBlockStyle}"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+        />
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+          <Button
+            x:Name="WinKeyButton"
+            Content="Win"
+            MinWidth="56"
+            Height="44"
+            Padding="12,0"
+            Style="{ThemeResource AccentButtonStyle}"
+            Visibility="Collapsed"
+            IsHitTestVisible="False"
+          />
+          <Button
+            x:Name="CtrlKeyButton"
+            Content="Ctrl"
+            MinWidth="56"
+            Height="44"
+            Padding="12,0"
+            Style="{ThemeResource AccentButtonStyle}"
+            Visibility="Collapsed"
+            IsHitTestVisible="False"
+          />
+          <Button
+            x:Name="AltKeyButton"
+            Content="Alt"
+            MinWidth="56"
+            Height="44"
+            Padding="12,0"
+            Style="{ThemeResource AccentButtonStyle}"
+            Visibility="Collapsed"
+            IsHitTestVisible="False"
+          />
+          <Button
+            x:Name="ShiftKeyButton"
+            Content="Shift"
+            MinWidth="56"
+            Height="44"
+            Padding="12,0"
+            Style="{ThemeResource AccentButtonStyle}"
+            Visibility="Collapsed"
+            IsHitTestVisible="False"
+          />
+          <Button
+            x:Name="MainKeyButton"
+            Content=""
+            MinWidth="56"
+            Height="44"
+            Padding="12,0"
+            Style="{ThemeResource AccentButtonStyle}"
+            Visibility="Collapsed"
+            IsHitTestVisible="False"
+          />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
       <Button Content="Reset" Click="Reset_Click" />
       <Button Content="Clear" Click="Clear_Click" />
     </StackPanel>

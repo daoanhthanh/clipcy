@@ -521,9 +521,9 @@ public sealed partial class SettingsWindow : Window
     {
         var dialog = new ShortcutPickerDialog(_settings.Hotkey) { XamlRoot = this.Content.XamlRoot };
 
-        var result = await dialog.ShowAsync();
+        await dialog.ShowAsync();
 
-        if (result == ContentDialogResult.Primary)
+        if (dialog.IsSaved)
         {
             _settings.Hotkey = dialog.Hotkey;
             UpdateHotkeyDisplay(dialog.Hotkey);
