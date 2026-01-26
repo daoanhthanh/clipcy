@@ -170,7 +170,7 @@ impl WindowsHotkeyHandler {
                                 let _ = response.send(result.map_err(|e| e.to_string()));
                             }
                             HotkeyCommand::Unregister { id } => {
-                                let _ = UnregisterHotKey(Some(hwnd), id as i32);
+                                let _ = UnregisterHotKey(None, id as i32);
                             }
                         }
                     }
@@ -307,29 +307,31 @@ unsafe extern "system" fn hotkey_window_proc(
     msg: u32,
     wparam: WPARAM,
     lparam: LPARAM,
-) -> LRESULT { unsafe {
-    match msg {
-        WM_HOTKEY => {
-            let id = wparam.0 as u32;
-            tracing::debug!("WM_HOTKEY received for id {}", id);
+) -> LRESULT {
+    unsafe {
+        match msg {
+            WM_HOTKEY => {
+                let id = wparam.0 as u32;
+                tracing::debug!("WM_HOTKEY received for id {}", id);
 
-            let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
-                as *const Arc<RwLock<HashMap<u32, HotkeyCallback>>>;
+                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
+                    as *const Arc<RwLock<HashMap<u32, HotkeyCallback>>>;
 
-            if !ctx_ptr.is_null() {
-                let callbacks = &*ctx_ptr;
-                if let Some(callback) = callbacks.read().get(&id) {
-                    tracing::debug!("Invoking callback for hotkey id {}", id);
-                    callback();
+                if !ctx_ptr.is_null() {
+                    let callbacks = &*ctx_ptr;
+                    if let Some(callback) = callbacks.read().get(&id) {
+                        tracing::debug!("Invoking callback for hotkey id {}", id);
+                        callback();
+                    } else {
+                        tracing::warn!("No callback found for hotkey id {}", id);
+                    }
                 } else {
-                    tracing::warn!("No callback found for hotkey id {}", id);
+                    tracing::warn!("Callbacks context is null");
                 }
-            } else {
-                tracing::warn!("Callbacks context is null");
-            }
 
-            LRESULT(0)
+                LRESULT(0)
+            }
+            _ => DefWindowProcW(hwnd, msg, wparam, lparam),
         }
-        _ => DefWindowProcW(hwnd, msg, wparam, lparam),
     }
-}}
+}

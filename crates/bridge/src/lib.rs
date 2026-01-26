@@ -6,8 +6,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use tokio::runtime::{Builder, Runtime};
+use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
 
 use clipboard_core::application::ClipboardService;
@@ -27,6 +29,39 @@ use clipcy_platform_windows::{
 
 // Include the UniFFI scaffolding
 uniffi::include_scaffolding!("clipcy_core");
+
+static LOG_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
+
+fn init_logging() {
+    if LOG_GUARD.get().is_some() {
+        return;
+    }
+
+    let log_dir = match dirs::data_local_dir() {
+        Some(dir) => dir.join("clipcy").join("logs"),
+        None => return,
+    };
+
+    if std::fs::create_dir_all(&log_dir).is_err() {
+        return;
+    }
+
+    let file_appender = tracing_appender::rolling::daily(&log_dir, "clipcy.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("debug"));
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .with_thread_ids(true)
+        .with_thread_names(true)
+        .finish();
+
+    if tracing::subscriber::set_global_default(subscriber).is_ok() {
+        let _ = LOG_GUARD.set(guard);
+        tracing::info!("File logging initialized at {:?}", log_dir);
+    }
+}
 
 // ============================================
 // Data Transfer Objects
@@ -322,6 +357,8 @@ pub struct ClipboardEngine {
 impl ClipboardEngine {
     /// Create a new clipboard engine
     pub fn new(db_path: String) -> Result<Self, BridgeError> {
+        init_logging();
+
         // Create tokio runtime for async operations
         let runtime = Builder::new_multi_thread()
             .worker_threads(1)
