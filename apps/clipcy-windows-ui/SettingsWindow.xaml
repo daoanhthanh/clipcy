@@ -201,10 +201,7 @@
                       </Border>
                     </StackPanel>
 
-                    <Button
-                      Click="EditHotkey_Click"
-                      Style="{StaticResource IconHoverButtonStyle}"
-                    >
+                    <Button Click="EditHotkey_Click" Style="{StaticResource IconHoverButtonStyle}">
                       <FontIcon
                         Glyph="&#xE104;"
                         FontSize="14"
