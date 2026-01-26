@@ -31,12 +31,14 @@ namespace Clipcy.Services
         {
             // Get initial theme from registry (most accurate)
             _lastIsDark = GetCurrentThemeFromRegistry();
-            
+
             // Use UISettings for instant notification
             _uiSettings = new UISettings();
             _uiSettings.ColorValuesChanged += OnColorValuesChanged;
 
-            System.Diagnostics.Debug.WriteLine($"[ThemeListener] Started UISettings listener. Initial isDark: {_lastIsDark}");
+            System.Diagnostics.Debug.WriteLine(
+                $"[ThemeListener] Started UISettings listener. Initial isDark: {_lastIsDark}"
+            );
         }
 
         private void OnColorValuesChanged(UISettings sender, object args)
@@ -80,7 +82,7 @@ namespace Clipcy.Services
             if (_disposed)
                 return;
             _disposed = true;
-            
+
             _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
             GC.SuppressFinalize(this);
         }

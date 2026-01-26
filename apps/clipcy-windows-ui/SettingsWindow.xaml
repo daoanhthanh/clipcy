@@ -120,52 +120,72 @@
                     <StackPanel Orientation="Horizontal" Spacing="4">
                       <Border
                         x:Name="WinKeyDisplayButton"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="8,4"
                         Visibility="Collapsed"
                       >
-                        <TextBlock Text="Win" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock
+                          Text="Win"
+                          FontSize="12"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                          VerticalAlignment="Center"
+                        />
                       </Border>
                       <Border
                         x:Name="CtrlKeyDisplayButton"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="8,4"
                         Visibility="Collapsed"
                       >
-                        <TextBlock Text="Ctrl" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock
+                          Text="Ctrl"
+                          FontSize="12"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                          VerticalAlignment="Center"
+                        />
                       </Border>
                       <Border
                         x:Name="AltKeyDisplayButton"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="8,4"
                         Visibility="Collapsed"
                       >
-                        <TextBlock Text="Alt" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock
+                          Text="Alt"
+                          FontSize="12"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                          VerticalAlignment="Center"
+                        />
                       </Border>
                       <Border
                         x:Name="ShiftKeyDisplayButton"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="8,4"
                         Visibility="Collapsed"
                       >
-                        <TextBlock Text="Shift" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock
+                          Text="Shift"
+                          FontSize="12"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                          VerticalAlignment="Center"
+                        />
                       </Border>
                       <Border
                         x:Name="MainKeyDisplayButton"
-                        Background="{ThemeResource ControlFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
                         BorderThickness="1"
                         CornerRadius="4"
                         Padding="8,4"
@@ -175,12 +195,22 @@
                           x:Name="MainKeyDisplayText"
                           Text=""
                           FontSize="12"
+                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
                           VerticalAlignment="Center"
                         />
                       </Border>
                     </StackPanel>
 
-                    <Button Content="Change" Click="EditHotkey_Click" />
+                    <Button
+                      Click="EditHotkey_Click"
+                      Style="{StaticResource IconHoverButtonStyle}"
+                    >
+                      <FontIcon
+                        Glyph="&#xE104;"
+                        FontSize="14"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                      />
+                    </Button>
                   </StackPanel>
                 </controls:SettingsCard>
               </StackPanel>

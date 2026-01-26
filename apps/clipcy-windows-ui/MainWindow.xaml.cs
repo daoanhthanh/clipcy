@@ -322,15 +322,15 @@ public sealed partial class MainWindow : Window
         var braceDepth = 0;
         var skipGroup = false;
         var skipDepth = 0;
-        
+
         while (i < rtf.Length)
         {
             var ch = rtf[i];
-            
+
             if (ch == '{')
             {
                 braceDepth++;
-                
+
                 // Check if this is a control group to skip
                 if (i + 1 < rtf.Length && rtf[i + 1] == '\\')
                 {
@@ -341,9 +341,14 @@ public sealed partial class MainWindow : Window
                         controlEnd++;
                     }
                     var control = rtf.Substring(controlStart, controlEnd - controlStart);
-                    
-                    if (control == "fonttbl" || control == "colortbl" || control == "stylesheet" ||
-                        control == "generator" || control == "info")
+
+                    if (
+                        control == "fonttbl"
+                        || control == "colortbl"
+                        || control == "stylesheet"
+                        || control == "generator"
+                        || control == "info"
+                    )
                     {
                         skipGroup = true;
                         skipDepth = braceDepth;
@@ -372,7 +377,7 @@ public sealed partial class MainWindow : Window
                         i++;
                         continue;
                     }
-                    
+
                     // Read control word
                     var controlStart = i;
                     while (i < rtf.Length && char.IsLetter(rtf[i]))
@@ -380,23 +385,24 @@ public sealed partial class MainWindow : Window
                         i++;
                     }
                     var control = rtf.Substring(controlStart, i - controlStart);
-                    
+
                     // Skip numeric parameter
                     if (i < rtf.Length && (char.IsDigit(rtf[i]) || rtf[i] == '-'))
                     {
-                        if (rtf[i] == '-') i++;
+                        if (rtf[i] == '-')
+                            i++;
                         while (i < rtf.Length && char.IsDigit(rtf[i]))
                         {
                             i++;
                         }
                     }
-                    
+
                     // Skip optional space
                     if (i < rtf.Length && rtf[i] == ' ')
                     {
                         i++;
                     }
-                    
+
                     // Handle special control words
                     if (control == "par" || control == "line")
                     {
@@ -418,7 +424,7 @@ public sealed partial class MainWindow : Window
                 i++;
             }
         }
-        
+
         return result.ToString().Trim();
     }
 

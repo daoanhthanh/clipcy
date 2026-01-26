@@ -33,6 +33,67 @@
         <Setter Property="BorderThickness" Value="0" />
       </Style>
 
+      <Style x:Key="IconHoverButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="Button">
+              <Grid>
+                <Border
+                  x:Name="RootBorder"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                >
+                  <ContentPresenter
+                    Content="{TemplateBinding Content}"
+                    ContentTransitions="{TemplateBinding ContentTransitions}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="{TemplateBinding Padding}"
+                  />
+                </Border>
+                <VisualStateManager.VisualStateGroups>
+                  <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal">
+                      <VisualState.Setters>
+                        <Setter Target="RootBorder.Background" Value="Transparent" />
+                        <Setter Target="RootBorder.BorderBrush" Value="Transparent" />
+                        <Setter Target="RootBorder.BorderThickness" Value="0" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="PointerOver">
+                      <VisualState.Setters>
+                        <Setter Target="RootBorder.Background" Value="{ThemeResource ControlFillColorSecondaryBrush}" />
+                        <Setter Target="RootBorder.BorderBrush" Value="Transparent" />
+                        <Setter Target="RootBorder.BorderThickness" Value="0" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                      <VisualState.Setters>
+                        <Setter Target="RootBorder.Background" Value="{ThemeResource ControlFillColorTertiaryBrush}" />
+                        <Setter Target="RootBorder.BorderBrush" Value="Transparent" />
+                        <Setter Target="RootBorder.BorderThickness" Value="0" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Disabled">
+                      <VisualState.Setters>
+                        <Setter Target="RootBorder.Opacity" Value="0.4" />
+                      </VisualState.Setters>
+                    </VisualState>
+                  </VisualStateGroup>
+                </VisualStateManager.VisualStateGroups>
+              </Grid>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
       <Style x:Key="SettingsCardStyle" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
         <Setter Property="CornerRadius" Value="8" />

@@ -1,10 +1,10 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.IO;
 using System.Linq;
 using Clipcy.Services;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace Clipcy.Controls;
 
@@ -14,7 +14,8 @@ public sealed partial class PreviewControl : UserControl
         nameof(PreviewData),
         typeof(PreviewData),
         typeof(PreviewControl),
-        new PropertyMetadata(null, OnPreviewDataChanged));
+        new PropertyMetadata(null, OnPreviewDataChanged)
+    );
 
     public PreviewData? PreviewData
     {
@@ -37,10 +38,10 @@ public sealed partial class PreviewControl : UserControl
     public PreviewControl()
     {
         this.InitializeComponent();
-        
-        // Ensure Shadow/Translation if XAML fails (though we put it back in XAML for now, 
+
+        // Ensure Shadow/Translation if XAML fails (though we put it back in XAML for now,
         // if this fails again we will move it back to C#).
-        // Since we are rewriting, let's keep XAML clean and verify. 
+        // Since we are rewriting, let's keep XAML clean and verify.
         // Wait, I put Translation/Shadow back in XAML in the step above.
         // If it fails I'll move it here.
     }
@@ -55,7 +56,8 @@ public sealed partial class PreviewControl : UserControl
 
     private void UpdateContent(PreviewData data)
     {
-        if (data == null) return;
+        if (data == null)
+            return;
 
         // Header
         ContentTypeText.Text = data.PreviewType;
@@ -76,7 +78,7 @@ public sealed partial class PreviewControl : UserControl
                 break;
 
             case "RichText":
-                 if (!string.IsNullOrEmpty(data.RtfContent))
+                if (!string.IsNullOrEmpty(data.RtfContent))
                 {
                     try
                     {
@@ -85,8 +87,8 @@ public sealed partial class PreviewControl : UserControl
                     }
                     catch
                     {
-                         PreviewText.Text = data.TextContent ?? "[RTF Content]";
-                         PreviewText.Visibility = Visibility.Visible;
+                        PreviewText.Text = data.TextContent ?? "[RTF Content]";
+                        PreviewText.Visibility = Visibility.Visible;
                     }
                 }
                 else
@@ -132,7 +134,7 @@ public sealed partial class PreviewControl : UserControl
 
         // Created time
         if (!string.IsNullOrEmpty(data.RelativeTime))
-             metadata.AppendLine($"Copied: {data.RelativeTime}");
+            metadata.AppendLine($"Copied: {data.RelativeTime}");
 
         // Content-specific metadata
         switch (data.PreviewType)
@@ -146,14 +148,15 @@ public sealed partial class PreviewControl : UserControl
                 break;
             case "Image":
                 int sizeBytes = (data.ImageBytes?.Length ?? 0);
-                if (sizeBytes == 0) sizeBytes = (data.Thumbnail?.Length ?? 0);
+                if (sizeBytes == 0)
+                    sizeBytes = (data.Thumbnail?.Length ?? 0);
                 if (sizeBytes > 0)
                 {
                     metadata.AppendLine($"Size: {sizeBytes / 1024.0:N1} KB");
                 }
                 break;
             case "Files":
-                 if (!string.IsNullOrEmpty(data.TextContent))
+                if (!string.IsNullOrEmpty(data.TextContent))
                 {
                     var count = data.TextContent.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).Count();
                     metadata.AppendLine($"Files: {count}");

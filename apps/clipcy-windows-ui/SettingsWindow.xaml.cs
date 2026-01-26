@@ -83,15 +83,17 @@ public sealed partial class SettingsWindow : Window
     {
         try
         {
-            if (AppWindow == null) return;
-            
+            if (AppWindow == null)
+                return;
+
             // Cache title bar reference
             if (_titleBar == null)
             {
                 _titleBar = AppWindow.TitleBar;
             }
 
-            if (_titleBar == null) return;
+            if (_titleBar == null)
+                return;
 
             // Use centralized ThemeManager for consistent, fast dark mode detection
             bool isDarkMode = Services.ThemeManager.IsDarkTheme();

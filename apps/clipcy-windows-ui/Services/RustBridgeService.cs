@@ -67,9 +67,14 @@ internal class RustBridgeService : IDisposable, UiCallback
                 break;
 
             case BridgeEvent.ThemeChanged themeEvent:
-                System.Diagnostics.Debug.WriteLine($"[RustBridge] ThemeChanged event received from Rust. isDark: {themeEvent.isDark}");
-                DispatchEvent(() => {
-                    System.Diagnostics.Debug.WriteLine($"[RustBridge] Dispatching OnThemeChanged to {OnThemeChanged?.GetInvocationList().Length ?? 0} subscribers");
+                System.Diagnostics.Debug.WriteLine(
+                    $"[RustBridge] ThemeChanged event received from Rust. isDark: {themeEvent.isDark}"
+                );
+                DispatchEvent(() =>
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[RustBridge] Dispatching OnThemeChanged to {OnThemeChanged?.GetInvocationList().Length ?? 0} subscribers"
+                    );
                     OnThemeChanged?.Invoke(themeEvent.isDark);
                 });
                 break;

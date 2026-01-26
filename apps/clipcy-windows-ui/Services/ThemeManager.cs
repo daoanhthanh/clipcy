@@ -52,7 +52,9 @@ namespace Clipcy.Services
                 _themeListener = new ThemeListener();
                 _themeListener.ThemeChanged += OnSystemThemeChanged;
 
-                System.Diagnostics.Debug.WriteLine($"[ThemeManager] Initialized with WMI listener. Initial isDark: {_themeListener.IsDarkTheme}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ThemeManager] Initialized with WMI listener. Initial isDark: {_themeListener.IsDarkTheme}"
+                );
             }
         }
 
@@ -69,10 +71,13 @@ namespace Clipcy.Services
             }
 
             // Dispatch to UI thread with high priority for instant update
-            _dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.High, () =>
-            {
-                FireThemeChanged();
-            });
+            _dispatcherQueue?.TryEnqueue(
+                DispatcherQueuePriority.High,
+                () =>
+                {
+                    FireThemeChanged();
+                }
+            );
         }
 
         private static void FireThemeChanged()
@@ -153,7 +158,7 @@ namespace Clipcy.Services
             {
                 AppTheme.Dark => true,
                 AppTheme.Light => false,
-                _ => _themeListener?.IsDarkTheme ?? false
+                _ => _themeListener?.IsDarkTheme ?? false,
             };
         }
 

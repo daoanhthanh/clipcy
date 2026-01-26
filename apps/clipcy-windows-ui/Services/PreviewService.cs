@@ -19,7 +19,7 @@ public class PreviewService : IPreviewService
     private DispatcherTimer? _hideTimer;
     private PreviewData? _pendingPreviewData;
     private FrameworkElement? _previewTarget;
-    
+
     private Popup? _previewPopup;
     private PreviewControl? _previewControl;
     private PreviewData? _currentPreviewData;
@@ -73,7 +73,7 @@ public class PreviewService : IPreviewService
         };
 
         _previewControl = new PreviewControl();
-        
+
         // Track pointer over the control to prevent auto-hide
         _previewControl.PointerEntered += (s, e) =>
         {
@@ -102,7 +102,7 @@ public class PreviewService : IPreviewService
                     From = 0,
                     To = 1,
                     Duration = new Duration(TimeSpan.FromMilliseconds(150)),
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
                 };
 
                 var storyboard = new Storyboard();
@@ -122,7 +122,8 @@ public class PreviewService : IPreviewService
                     var eased = 1 - Math.Pow(1 - progress, 2);
                     rootBorder.Translation = new Vector3((float)(-10 * (1 - eased)), 0, 32);
 
-                    if (progress >= 1.0) timer.Stop();
+                    if (progress >= 1.0)
+                        timer.Stop();
                 };
                 timer.Start();
             }
@@ -133,7 +134,8 @@ public class PreviewService : IPreviewService
 
     public void ScheduleShow(PreviewData data, FrameworkElement target)
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _dispatcherQueue.TryEnqueue(() =>
         {
@@ -158,7 +160,8 @@ public class PreviewService : IPreviewService
 
     public void ScheduleHide()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         _dispatcherQueue.TryEnqueue(() =>
         {
@@ -168,7 +171,8 @@ public class PreviewService : IPreviewService
                 _hideTimer.Tick += (s, e) =>
                 {
                     _hideTimer?.Stop();
-                    if (!_isPointerOverPreview) Hide();
+                    if (!_isPointerOverPreview)
+                        Hide();
                 };
             }
 
@@ -179,7 +183,8 @@ public class PreviewService : IPreviewService
 
     public void Hide()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _dispatcherQueue.TryEnqueue(() => HidePreviewInternal());
     }
 
@@ -205,7 +210,8 @@ public class PreviewService : IPreviewService
 
     private void ShowPreviewInternal(PreviewData data)
     {
-        if (_currentPreviewData?.Id == data.Id && PreviewPopup.IsOpen) return;
+        if (_currentPreviewData?.Id == data.Id && PreviewPopup.IsOpen)
+            return;
 
         try
         {
@@ -213,13 +219,14 @@ public class PreviewService : IPreviewService
             _hideTimer?.Stop();
 
             var popup = PreviewPopup;
-            if (_previewControl == null) return;
+            if (_previewControl == null)
+                return;
 
             _currentPreviewData = data;
-            
+
             // Push data to the control
             _previewControl.PreviewData = data;
-            
+
             // Handle Async image loading
             if (data.PreviewType == "Image" && data.LoadFullData != null)
             {
@@ -230,31 +237,36 @@ public class PreviewService : IPreviewService
             if (_previewTarget != null)
             {
                 popup.XamlRoot = _previewTarget.XamlRoot;
-                
+
                 // Ensure Layout Updated to get correct size
                 _previewControl.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
                 var popupWidth = _previewControl.DesiredSize.Width;
                 var popupHeight = _previewControl.DesiredSize.Height;
-                if (popupWidth <= 0) popupWidth = 360;
-                if (popupHeight <= 0) popupHeight = 260;
+                if (popupWidth <= 0)
+                    popupWidth = 360;
+                if (popupHeight <= 0)
+                    popupHeight = 260;
 
                 var transform = _previewTarget.TransformToVisual(null);
                 var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
 
                 double dpiScale = _windowService.GetDpiScale();
-                
+
                 // Window/Monitor info (Physical)
                 var appWindow = _windowService.AppWindow;
-                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(appWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
+                    appWindow.Id,
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Nearest
+                );
                 var workArea = displayArea.WorkArea;
 
                 double winX = appWindow.Position.X;
                 double winY = appWindow.Position.Y;
-                
+
                 double targetPhysicalX = winX + (targetPos.X * dpiScale);
                 double targetPhysicalY = winY + (targetPos.Y * dpiScale);
                 double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
-                
+
                 double popupPhysicalWidth = popupWidth * dpiScale;
                 double popupPhysicalHeight = popupHeight * dpiScale;
                 double spacingPhysical = 10.0 * dpiScale;
@@ -268,7 +280,10 @@ public class PreviewService : IPreviewService
                 {
                     // Try Left
                     double leftTry = targetPhysicalX - popupPhysicalWidth - spacingPhysical;
-                    finalPhysicalX = (leftTry >= workArea.X) ? leftTry : (workArea.X + workArea.Width - popupPhysicalWidth - spacingPhysical);
+                    finalPhysicalX =
+                        (leftTry >= workArea.X)
+                            ? leftTry
+                            : (workArea.X + workArea.Width - popupPhysicalWidth - spacingPhysical);
                 }
 
                 // Check Vertical Fit
@@ -276,11 +291,12 @@ public class PreviewService : IPreviewService
                 {
                     finalPhysicalY = (workArea.Y + workArea.Height) - popupPhysicalHeight - spacingPhysical;
                 }
-                if (finalPhysicalY < workArea.Y) finalPhysicalY = workArea.Y + spacingPhysical;
+                if (finalPhysicalY < workArea.Y)
+                    finalPhysicalY = workArea.Y + spacingPhysical;
 
                 popup.HorizontalOffset = (finalPhysicalX - winX) / dpiScale;
                 popup.VerticalOffset = (finalPhysicalY - winY) / dpiScale;
-                
+
                 popup.IsOpen = true;
             }
         }
@@ -298,14 +314,15 @@ public class PreviewService : IPreviewService
             var fullData = await data.LoadFullData!();
             _dispatcherQueue.TryEnqueue(() =>
             {
-                if (_currentPreviewData?.Id != data.Id) return;
-                
+                if (_currentPreviewData?.Id != data.Id)
+                    return;
+
                 if (fullData != null && fullData.Length > 0)
                 {
                     data.ImageBytes = fullData;
                     // Trigger refresh since we updated the object in place
-                     if (_previewControl != null)
-                         _previewControl.Refresh(); 
+                    if (_previewControl != null)
+                        _previewControl.Refresh();
                 }
             });
         }
