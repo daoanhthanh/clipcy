@@ -57,7 +57,7 @@ fn default_max_history() -> usize {
 }
 
 fn default_hotkey() -> String {
-    "Ctrl+Shift+V".to_string()
+    "Alt+V".to_string()
 }
 
 fn default_true() -> bool {
