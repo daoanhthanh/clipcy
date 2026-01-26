@@ -18,6 +18,7 @@ public sealed partial class SettingsWindow : Window
     private DispatcherTimer? _saveWindowSizeTimer;
     private Microsoft.UI.Windowing.AppWindowTitleBar? _titleBar;
     private bool _isRestoringSize = false;
+    private static readonly System.Threading.SemaphoreSlim _saveLock = new(1, 1);
 
     // Responsive thresholds
     private const int MinWindowWidth = 500;
@@ -580,11 +581,12 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
-    private void SaveSettings()
+    private async void SaveSettings()
     {
         var settingsToSave = _settings;
-        Task.Run(() =>
+        await Task.Run(async () =>
         {
+            await _saveLock.WaitAsync();
             try
             {
                 App.Bridge?.SaveSettings(settingsToSave);
@@ -592,6 +594,10 @@ public sealed partial class SettingsWindow : Window
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
+            }
+            finally
+            {
+                _saveLock.Release();
             }
         });
     }
