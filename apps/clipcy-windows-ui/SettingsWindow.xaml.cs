@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
@@ -23,9 +24,13 @@ public sealed partial class SettingsWindow : Window
     private const int MinWindowHeight = 400;
     private const int SidebarCollapseThreshold = 720;
 
+    private readonly ObservableCollection<string> _hotkeyParts = new();
+    public ObservableCollection<string> HotkeyParts => _hotkeyParts;
+
     public SettingsWindow()
     {
         InitializeComponent();
+        RootGrid.DataContext = this;
 
         SetupAcrylicBackdrop();
         SetupTitleBar();
@@ -350,15 +355,7 @@ public sealed partial class SettingsWindow : Window
 
     private void UpdateHotkeyDisplay(string hotkey)
     {
-        // Skip if controls aren't loaded yet
-        if (WinKeyDisplayButton == null || MainKeyDisplayButton == null)
-            return;
-
-        WinKeyDisplayButton.Visibility = Visibility.Collapsed;
-        CtrlKeyDisplayButton.Visibility = Visibility.Collapsed;
-        AltKeyDisplayButton.Visibility = Visibility.Collapsed;
-        ShiftKeyDisplayButton.Visibility = Visibility.Collapsed;
-        MainKeyDisplayButton.Visibility = Visibility.Collapsed;
+        _hotkeyParts.Clear();
 
         if (string.IsNullOrEmpty(hotkey))
             return;
@@ -368,27 +365,17 @@ public sealed partial class SettingsWindow : Window
         foreach (var part in parts)
         {
             var trimmed = part.Trim();
-            switch (trimmed)
+            if (string.IsNullOrEmpty(trimmed))
+                continue;
+
+            var label = trimmed switch
             {
-                case "Win":
-                case "Windows":
-                    WinKeyDisplayButton.Visibility = Visibility.Visible;
-                    break;
-                case "Ctrl":
-                case "Control":
-                    CtrlKeyDisplayButton.Visibility = Visibility.Visible;
-                    break;
-                case "Alt":
-                    AltKeyDisplayButton.Visibility = Visibility.Visible;
-                    break;
-                case "Shift":
-                    ShiftKeyDisplayButton.Visibility = Visibility.Visible;
-                    break;
-                default:
-                    MainKeyDisplayText.Text = trimmed;
-                    MainKeyDisplayButton.Visibility = Visibility.Visible;
-                    break;
-            }
+                "Windows" => "Win",
+                "Control" => "Ctrl",
+                _ => trimmed,
+            };
+
+            _hotkeyParts.Add(label);
         }
     }
 

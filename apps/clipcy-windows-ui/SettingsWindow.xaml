@@ -117,89 +117,31 @@
                     />
                   </controls:SettingsCard.HeaderIcon>
                   <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                      <Border
-                        x:Name="WinKeyDisplayButton"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Visibility="Collapsed"
-                      >
-                        <TextBlock
-                          Text="Win"
-                          FontSize="12"
-                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                          VerticalAlignment="Center"
-                        />
-                      </Border>
-                      <Border
-                        x:Name="CtrlKeyDisplayButton"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Visibility="Collapsed"
-                      >
-                        <TextBlock
-                          Text="Ctrl"
-                          FontSize="12"
-                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                          VerticalAlignment="Center"
-                        />
-                      </Border>
-                      <Border
-                        x:Name="AltKeyDisplayButton"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Visibility="Collapsed"
-                      >
-                        <TextBlock
-                          Text="Alt"
-                          FontSize="12"
-                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                          VerticalAlignment="Center"
-                        />
-                      </Border>
-                      <Border
-                        x:Name="ShiftKeyDisplayButton"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Visibility="Collapsed"
-                      >
-                        <TextBlock
-                          Text="Shift"
-                          FontSize="12"
-                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                          VerticalAlignment="Center"
-                        />
-                      </Border>
-                      <Border
-                        x:Name="MainKeyDisplayButton"
-                        Background="{ThemeResource AccentFillColorDefaultBrush}"
-                        BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Visibility="Collapsed"
-                      >
-                        <TextBlock
-                          x:Name="MainKeyDisplayText"
-                          Text=""
-                          FontSize="12"
-                          Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                          VerticalAlignment="Center"
-                        />
-                      </Border>
-                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding HotkeyParts}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Orientation="Horizontal" Spacing="4" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Border
+                            Background="{ThemeResource AccentFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource AccentFillColorSecondaryBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="8,4"
+                          >
+                            <TextBlock
+                              Text="{Binding}"
+                              FontSize="12"
+                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                              VerticalAlignment="Center"
+                            />
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
                     <Button Click="EditHotkey_Click" Style="{StaticResource IconHoverButtonStyle}">
                       <FontIcon
