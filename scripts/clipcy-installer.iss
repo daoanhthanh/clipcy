@@ -18,6 +18,7 @@ AppSupportURL=mailto:daoanhthanh.work@gmail.com
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 UninstallDisplayIcon={#IconPath}
+PrivilegesRequired=lowest
 OutputDir={#OutputDir}
 OutputBaseFilename={#AppName}-Setup-{#AppVersion}-{#AppArch}
 SetupIconFile={#IconPath}
