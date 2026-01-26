@@ -74,9 +74,23 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
 
     private void Dialog_KeyDown(object sender, KeyRoutedEventArgs e)
     {
-        e.Handled = true;
-
         var key = e.Key;
+
+        if (key == VirtualKey.Escape)
+        {
+            Hotkey = _originalHotkey;
+            Hide();
+            return;
+        }
+
+        if (key == VirtualKey.Enter)
+        {
+            Hotkey = BuildHotkeyString();
+            Hide();
+            return;
+        }
+
+        e.Handled = true;
 
         if (IsModifierKey(key))
         {
@@ -89,10 +103,7 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
             return;
         }
 
-        if (key != VirtualKey.Escape)
-        {
-            _capturedKeys.Add(key);
-        }
+        _capturedKeys.Add(key);
 
         UpdateDisplay();
     }
@@ -190,13 +201,15 @@ public sealed partial class ShortcutPickerDialog : ContentDialog
         UpdateDisplay();
     }
 
-    private void PrimaryButton_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    private void Save_Click(object sender, RoutedEventArgs e)
     {
         Hotkey = BuildHotkeyString();
+        Hide();
     }
 
-    private void CloseButton_Click(ContentDialog sender, ContentDialogButtonClickEventArgs args)
+    private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         Hotkey = _originalHotkey;
+        Hide();
     }
 }
