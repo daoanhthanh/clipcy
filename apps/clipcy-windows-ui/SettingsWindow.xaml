@@ -5,7 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Clipcy"
   xmlns:controls="using:Clipcy.Controls"
-  Title="Settings"
+  Title="Clipcy Settings"
 >
   <Grid x:Name="RootGrid" Background="Transparent" SizeChanged="RootGrid_SizeChanged">
     <Grid.RowDefinitions>

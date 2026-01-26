@@ -114,7 +114,7 @@ if ($Clean) {
     }
 }
 
-Write-Host "`n[2/4] Building Rust bridge library..." -ForegroundColor Yellow
+Write-Host "`n[2/4] Building Backend (Rust) bridge library..." -ForegroundColor Yellow
 Push-Location $ProjectRoot
 try {
     cargo build --release -p clipcy-bridge --target $RustTarget
@@ -138,7 +138,7 @@ if (-not (Test-Path $RustDestDir)) {
 
 Copy-Item -Force $RustDll $RustDestDll
 
-Write-Host "`n[3/4] Publishing WinUI application..." -ForegroundColor Yellow
+Write-Host "`n[3/4] Publishing Clipcy application..." -ForegroundColor Yellow
 if (-not (Test-Path $PublishDir)) {
     New-Item -ItemType Directory -Path $PublishDir | Out-Null
 }
