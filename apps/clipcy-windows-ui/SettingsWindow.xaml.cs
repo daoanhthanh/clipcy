@@ -582,14 +582,18 @@ public sealed partial class SettingsWindow : Window
 
     private void SaveSettings()
     {
-        try
+        var settingsToSave = _settings;
+        Task.Run(() =>
         {
-            App.Bridge?.SaveSettings(_settings);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
-        }
+            try
+            {
+                App.Bridge?.SaveSettings(settingsToSave);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
+            }
+        });
     }
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)
