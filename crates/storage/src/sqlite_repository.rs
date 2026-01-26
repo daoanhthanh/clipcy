@@ -51,7 +51,7 @@ impl SqliteClipboardRepository {
         let data_dir = dirs::data_local_dir()
             .ok_or_else(|| ClipboardError::Storage("Cannot find data directory".to_string()))?;
 
-        let app_dir = data_dir.join("clipcy");
+        let app_dir = data_dir.join("Clipcy");
         std::fs::create_dir_all(&app_dir)?;
 
         let db_path = app_dir.join("clipcy.db");

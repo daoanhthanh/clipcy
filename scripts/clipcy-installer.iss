@@ -39,5 +39,11 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: deskto
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
 
+[UninstallRun]
+Filename: "cmd.exe"; Parameters: "/c taskkill /im {#AppExeName} /f"; Flags: runhidden
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Clipcy"
+
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
