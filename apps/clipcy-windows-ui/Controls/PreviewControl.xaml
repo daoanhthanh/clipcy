@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <UserControl
   x:Class="Clipcy.Controls.PreviewControl"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -6,6 +6,7 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:services="using:Clipcy.Services"
+  xmlns:media="using:Microsoft.UI.Xaml.Media"
   mc:Ignorable="d"
 >
   <Border
@@ -16,8 +17,15 @@
     BorderThickness="1"
     BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
     Translation="0,0,32"
-    Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
   >
+    <Border.Background>
+      <media:AcrylicBrush
+        TintColor="{ThemeResource LayerFillColorDefault}"
+        TintOpacity="0.5"
+        TintLuminosityOpacity="0.5"
+        FallbackColor="{ThemeResource LayerFillColorDefault}"
+      />
+    </Border.Background>
     <Border.Shadow>
       <ThemeShadow />
     </Border.Shadow>
@@ -41,7 +49,11 @@
       />
 
       <!-- Content -->
-      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="280">
+      <ScrollViewer
+        Grid.Row="1"
+        VerticalScrollBarVisibility="Auto"
+        MaxHeight="280"
+      >
         <StackPanel Spacing="10">
           <!-- Text Content -->
           <TextBlock
@@ -65,8 +77,17 @@
           />
 
           <!-- Image Content -->
-          <Border x:Name="PreviewImageBorder" CornerRadius="4" Visibility="Collapsed">
-            <Image x:Name="PreviewImage" Stretch="Uniform" MaxWidth="336" MaxHeight="260" />
+          <Border
+            x:Name="PreviewImageBorder"
+            CornerRadius="4"
+            Visibility="Collapsed"
+          >
+            <Image
+              x:Name="PreviewImage"
+              Stretch="Uniform"
+              MaxWidth="336"
+              MaxHeight="260"
+            />
           </Border>
         </StackPanel>
       </ScrollViewer>
