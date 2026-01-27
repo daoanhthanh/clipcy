@@ -986,14 +986,30 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 let ctx = Box::new((callback.clone(), running.clone()));
                 SetWindowLongPtrW(hwnd, GWLP_USERDATA, Box::into_raw(ctx) as isize);
 
-                // Message loop
+                // Message loop - use GetMessageW to block until messages arrive
+                // This eliminates CPU waste from polling and responds instantly
                 let mut msg = MSG::default();
-                while running.load(Ordering::SeqCst) {
-                    if PeekMessageW(&mut msg, Some(hwnd), 0, 0, PM_REMOVE).as_bool() {
-                        let _ = TranslateMessage(&msg);
-                        DispatchMessageW(&msg);
+                loop {
+                    // GetMessageW blocks until a message is available (0% CPU when idle)
+                    let ret = GetMessageW(&mut msg, None, 0, 0);
+
+                    if ret.0 == -1 {
+                        tracing::error!("GetMessageW error in clipboard monitor");
+                        break;
                     }
-                    thread::sleep(std::time::Duration::from_millis(10));
+
+                    if ret.0 == 0 {
+                        // WM_QUIT received
+                        break;
+                    }
+
+                    let _ = TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+
+                    // Check if we should stop (after processing current message)
+                    if !running.load(Ordering::SeqCst) {
+                        break;
+                    }
                 }
 
                 // Cleanup
@@ -1007,6 +1023,21 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
 
     fn stop(&self) -> Result<()> {
         self.running.store(false, Ordering::SeqCst);
+
+        // Post WM_QUIT to wake up GetMessageW and allow clean shutdown
+        let hwnd = self.hwnd.load(Ordering::SeqCst);
+        if hwnd != 0 {
+            unsafe {
+                use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
+                let _ = PostMessageW(
+                    Some(HWND(hwnd as *mut std::ffi::c_void)),
+                    WM_QUIT,
+                    WPARAM(0),
+                    LPARAM(0),
+                );
+            }
+        }
+
         Ok(())
     }
 
