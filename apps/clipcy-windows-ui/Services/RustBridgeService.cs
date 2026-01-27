@@ -428,7 +428,7 @@ public class ClipboardItemViewModel
 public class SettingsViewModel
 {
     public uint MaxHistoryItems { get; set; } = 100;
-    public string Hotkey { get; set; } = "Ctrl+Shift+V";
+    public string Hotkey { get; set; } = "Alt+V";
     public string Theme { get; set; } = "System";
     public bool StartOnBoot { get; set; } = true;
     public bool ShowNotifications { get; set; }

@@ -262,6 +262,7 @@ dependencies = [
  "chrono",
  "clipboard-core",
  "dirs",
+ "parking_lot",
  "serde",
  "serde_json",
  "sqlx",
@@ -345,6 +346,7 @@ name = "clipcy-settings-common"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "parking_lot",
  "serde",
  "serde_json",
  "tempfile",

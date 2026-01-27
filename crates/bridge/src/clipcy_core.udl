@@ -51,6 +51,7 @@ interface BridgeEvent {
     ThemeChanged(boolean is_dark);
     ClipboardChanged(ClipboardItemDto item);
     Error(string message);
+    Ready();
 };
 
 // ============================================

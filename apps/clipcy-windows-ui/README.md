@@ -80,7 +80,7 @@ apps/clipcy-windows-ui/
 
 - **Mica Backdrop**: Windows 11 translucent material design
 - **System Tray**: Always-accessible tray icon with context menu
-- **Global Hotkey**: Ctrl+Shift+V (configurable)
+- **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
 - **Preview Panel**: Content preview for images and text
 - **Theming**: Follows system light/dark theme

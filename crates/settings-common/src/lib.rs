@@ -35,7 +35,7 @@ pub struct Settings {
     /// Maximum number of items to keep in history
     #[serde(default = "default_max_history")]
     pub max_history_items: usize,
-    /// Hotkey combination string (e.g., "Ctrl+Shift+V")
+    /// Hotkey combination string (e.g., "Alt+V")
     #[serde(default = "default_hotkey")]
     pub hotkey: String,
     /// Theme mode (light, dark, or system)

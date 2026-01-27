@@ -221,7 +221,7 @@ cargo test test_save_and_retrieve
 
 ## Default Hotkey
 
-`Ctrl+Shift+V` - Opens the clipboard history popup
+`Alt+V` - Opens the clipboard history popup
 
 ## Notes for Contributors
 

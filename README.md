@@ -38,7 +38,7 @@ graph TD
 
 - Clipboard history with text, images, and files support
   - Image thumbnails displayed directly in the history list
-- Global hotkey (default: `Ctrl+Shift+V`)
+- Global hotkey (default: `Alt+V`)
 - System tray integration with icon and context menu
 - SQLite storage
 - Native settings UI
@@ -169,7 +169,7 @@ Settings are stored in `%LOCALAPPDATA%\clipcy\settings.json`:
 ```json
 {
   "max_history_items": 100,
-  "hotkey": "Ctrl+Shift+V",
+  "hotkey": "Alt+V",
   "theme": "system",
   "start_on_boot": true,
   "show_notifications": false,
@@ -184,7 +184,7 @@ Database: `%LOCALAPPDATA%\clipcy\clipcy.db`
 
 1. Run `Clipcy.exe`
 2. Icon appears in system tray
-3. Press `Ctrl+Shift+V` to open clipboard history
+3. Press `Alt+V` to open clipboard history
 4. Click an item to paste it
 5. Right-click tray icon for menu (Settings, Clear History, Exit)
 

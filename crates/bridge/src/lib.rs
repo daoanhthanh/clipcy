@@ -212,6 +212,8 @@ pub enum BridgeEvent {
     ClipboardChanged { item: ClipboardItemDto },
     /// An error occurred
     Error { message: String },
+    /// Background initialization completed
+    Ready,
 }
 
 // ============================================
@@ -336,11 +338,12 @@ impl UIHandler for BridgeUiHandler {
 /// Main clipboard engine - exposed to native UI via UniFFI
 pub struct ClipboardEngine {
     runtime: Runtime,
-    repository: Arc<AsyncInitRepository>,
+    repository: Arc<RwLock<Option<Arc<AsyncInitRepository>>>>,
     clipboard_service: Arc<RwLock<Option<Arc<ClipboardService>>>>,
     settings_manager: CachedSettingsManager,
     ui_handler: Arc<BridgeUiHandler>,
     is_running: Arc<RwLock<bool>>,
+    db_path: PathBuf,
 
     #[cfg(target_os = "windows")]
     monitor: Arc<WindowsClipboardMonitor>,
@@ -355,7 +358,10 @@ pub struct ClipboardEngine {
 }
 
 impl ClipboardEngine {
-    /// Create a new clipboard engine
+    /// Create a new clipboard engine (minimal initialization)
+    ///
+    /// This returns immediately without blocking on I/O.
+    /// Call start() to begin background initialization.
     pub fn new(db_path: String) -> Result<Self, BridgeError> {
         init_logging();
 
@@ -367,33 +373,23 @@ impl ClipboardEngine {
             .build()
             .map_err(|e| BridgeError::PlatformError(e.to_string()))?;
 
-        // Initialize repository asynchronously (no blocking!)
         let db_path = PathBuf::from(&db_path);
-
-        // Ensure parent directory exists
-        if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| BridgeError::StorageError(e.to_string()))?;
-        }
-
-        // Create async-initializing repository - starts init in background immediately
-        let repository = AsyncInitRepository::new(db_path, runtime.handle().clone());
-        tracing::info!("Database initialization started in background");
 
         // Initialize settings manager (cached, no blocking I/O)
         let settings_manager =
             CachedSettingsManager::new().map_err(|e| BridgeError::StorageError(e.to_string()))?;
 
-        // Create platform handlers
+        // Create platform handlers (just struct creation, no I/O)
         #[cfg(target_os = "windows")]
         {
             Ok(Self {
                 runtime,
-                repository: Arc::new(repository),
+                repository: Arc::new(RwLock::new(None)),
                 clipboard_service: Arc::new(RwLock::new(None)),
                 settings_manager,
                 ui_handler: Arc::new(BridgeUiHandler::new()),
                 is_running: Arc::new(RwLock::new(false)),
+                db_path,
                 monitor: Arc::new(WindowsClipboardMonitor::new()),
                 paste_handler: Arc::new(WindowsPasteHandler::new()),
                 hotkey_handler: Arc::new(WindowsHotkeyHandler::new()),
@@ -411,6 +407,9 @@ impl ClipboardEngine {
     }
 
     /// Start the clipboard engine with a UI callback
+    ///
+    /// This begins background initialization and returns immediately.
+    /// Services start as soon as background tasks complete.
     pub fn start(&self, callback: Box<dyn UiCallback>) -> Result<(), BridgeError> {
         if *self.is_running.read() {
             return Err(BridgeError::AlreadyRunning);
@@ -419,93 +418,133 @@ impl ClipboardEngine {
         // Set the callback
         self.ui_handler.set_callback(Arc::from(callback));
 
-        // Get settings immediately (defaults if not loaded yet)
-        // This allows the UI to start instantly without blocking on I/O
-        let settings = self.settings_manager.get();
+        // Mark as running immediately (UI can appear)
+        *self.is_running.write() = true;
+        tracing::info!("Clipboard engine starting (UI ready)");
 
-        // Start loading settings from disk in background
-        // This will update the cache once loaded
-        self.settings_manager.load_async(move |result| {
-            match result {
-                Ok(_loaded_settings) => {
-                    tracing::info!("Settings loaded asynchronously");
-                    // Notify UI that settings have been loaded if needed
-                    // For now, settings changes will be picked up on next restart
-                    // or when UI queries settings again
+        // Start background initialization
+        self.start_background_init();
+
+        Ok(())
+    }
+
+    /// Initialize services in background (non-blocking)
+    fn start_background_init(&self) {
+        let repository = self.repository.clone();
+        let clipboard_service = self.clipboard_service.clone();
+        let settings_manager = self.settings_manager.clone();
+        let ui_handler = self.ui_handler.clone();
+        let db_path = self.db_path.clone();
+        let runtime_handle = self.runtime.handle().clone();
+
+        #[cfg(target_os = "windows")]
+        let monitor = self.monitor.clone();
+        #[cfg(target_os = "windows")]
+        let paste_handler = self.paste_handler.clone();
+        #[cfg(target_os = "windows")]
+        let hotkey_handler = self.hotkey_handler.clone();
+        #[cfg(target_os = "windows")]
+        let theme_detector = self.theme_detector.clone();
+
+        std::thread::spawn(move || {
+            tracing::info!("Background initialization started");
+
+            // Step 1: Ensure database directory exists
+            if let Some(parent) = db_path.parent() {
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    tracing::error!("Failed to create database directory: {}", e);
+                    ui_handler.send_event(BridgeEvent::Error {
+                        message: format!("Failed to create database directory: {}", e),
+                    });
+                    return;
                 }
-                Err(e) => {
-                    tracing::warn!("Failed to load settings asynchronously: {}", e);
-                    // Continue with defaults
+            }
+
+            // Step 2: Initialize repository asynchronously
+            let repo = AsyncInitRepository::new(db_path, runtime_handle.clone());
+            *repository.write() = Some(Arc::new(repo));
+            tracing::info!("Repository initialization started");
+
+            // Step 3: Load settings in background
+            settings_manager.load_async(move |result| {
+                match result {
+                    Ok(_) => tracing::info!("Settings loaded"),
+                    Err(e) => tracing::warn!("Failed to load settings: {}", e),
+                }
+            });
+
+            // Step 4: Get settings (defaults or loaded)
+            let settings = settings_manager.get();
+            let core_settings = settings.clone();
+
+            // Step 5: Create and start clipboard service
+            #[cfg(target_os = "windows")]
+            {
+                if let Some(repo) = repository.read().as_ref() {
+                    let service = Arc::new(ClipboardService::new(
+                        monitor.clone(),
+                        repo.clone(),
+                        paste_handler.clone(),
+                        core_settings,
+                        runtime_handle.clone(),
+                    ));
+
+                    *clipboard_service.write() = Some(service.clone());
+
+                    // Set up clipboard change callback
+                    let ui_handler_clone = ui_handler.clone();
+                    monitor.on_change(Box::new(move |item| {
+                        ui_handler_clone.send_event(BridgeEvent::ClipboardChanged {
+                            item: item.into(),
+                        });
+                        ui_handler_clone.send_event(BridgeEvent::HistoryUpdated);
+                    }));
+
+                    // Start monitoring
+                    if let Err(e) = service.start_monitoring() {
+                        tracing::error!("Failed to start monitoring: {}", e);
+                        ui_handler.send_event(BridgeEvent::Error {
+                            message: format!("Failed to start monitoring: {}", e),
+                        });
+                        return;
+                    }
+
+                    // Set up hotkey
+                    let ui_handler_clone = ui_handler.clone();
+                    let _ = hotkey_handler.register(
+                        &settings.hotkey,
+                        Box::new(move || {
+                            ui_handler_clone.send_event(BridgeEvent::HotkeyTriggered);
+                        }),
+                    );
+
+                    // Set up theme detection
+                    let ui_handler_clone = ui_handler.clone();
+                    match settings.theme {
+                        ThemeMode::System => {
+                            if let Ok(theme) = theme_detector.get_current() {
+                                let is_dark = matches!(theme, Theme::Dark);
+                                ui_handler_clone.send_event(BridgeEvent::ThemeChanged { is_dark });
+                            }
+
+                            let _ = theme_detector.observe(Box::new(move |theme| {
+                                let is_dark = matches!(theme, Theme::Dark);
+                                ui_handler_clone.send_event(BridgeEvent::ThemeChanged { is_dark });
+                            }));
+                        }
+                        ThemeMode::Light => {
+                            ui_handler_clone.send_event(BridgeEvent::ThemeChanged { is_dark: false });
+                        }
+                        ThemeMode::Dark => {
+                            ui_handler_clone.send_event(BridgeEvent::ThemeChanged { is_dark: true });
+                        }
+                    }
+
+                    tracing::info!("Background initialization complete");
+                    ui_handler.send_event(BridgeEvent::Ready);
                 }
             }
         });
-
-        // The settings from settings_manager is already the core Settings type
-        // (clipboard_core::domain::Settings is re-exported from clipcy_settings_common)
-        let core_settings = settings.clone();
-
-        // Create clipboard service
-        #[cfg(target_os = "windows")]
-        {
-            let service = Arc::new(ClipboardService::new(
-                self.monitor.clone(),
-                self.repository.clone(),
-                self.paste_handler.clone(),
-                core_settings,
-                self.runtime.handle().clone(),
-            ));
-
-            // Store service reference
-            *self.clipboard_service.write() = Some(service.clone());
-
-            // Set up clipboard change callback
-            let ui_handler = self.ui_handler.clone();
-            self.monitor.on_change(Box::new(move |item| {
-                ui_handler.send_event(BridgeEvent::ClipboardChanged { item: item.into() });
-                ui_handler.send_event(BridgeEvent::HistoryUpdated);
-            }));
-
-            // Start monitoring
-            service.start_monitoring().map_err(|e| {
-                BridgeError::PlatformError(format!("Failed to start monitoring: {}", e))
-            })?;
-
-            // Set up hotkey
-            let ui_handler = self.ui_handler.clone();
-            let _ = self.hotkey_handler.register(
-                &settings.hotkey,
-                Box::new(move || {
-                    ui_handler.send_event(BridgeEvent::HotkeyTriggered);
-                }),
-            );
-
-            // Set up theme detection only for System mode
-            let ui_handler = self.ui_handler.clone();
-            match settings.theme {
-                ThemeMode::System => {
-                    if let Ok(theme) = self.theme_detector.get_current() {
-                        let is_dark = matches!(theme, Theme::Dark);
-                        ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
-                    }
-
-                    let _ = self.theme_detector.observe(Box::new(move |theme| {
-                        let is_dark = matches!(theme, Theme::Dark);
-                        ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark });
-                    }));
-                }
-                ThemeMode::Light => {
-                    ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark: false });
-                }
-                ThemeMode::Dark => {
-                    ui_handler.send_event(BridgeEvent::ThemeChanged { is_dark: true });
-                }
-            }
-        }
-
-        *self.is_running.write() = true;
-        tracing::info!("Clipboard engine started");
-
-        Ok(())
     }
 
     /// Stop the clipboard engine
@@ -535,11 +574,17 @@ impl ClipboardEngine {
             return Vec::new();
         }
 
+        // Get repository if initialized
+        let repo = match self.repository.read().as_ref() {
+            Some(r) => r.clone(),
+            None => return Vec::new(), // Not ready yet
+        };
+
         // Get max_history from cached settings (no I/O)
         let limit = self.settings_manager.get().max_history_items;
 
         self.runtime
-            .block_on(self.repository.get_all_metadata(limit))
+            .block_on(repo.get_all_metadata(limit))
             .map(|items| items.into_iter().map(Into::into).collect())
             .unwrap_or_default()
     }
@@ -550,8 +595,14 @@ impl ClipboardEngine {
             return Vec::new();
         }
 
+        // Get repository if initialized
+        let repo = match self.repository.read().as_ref() {
+            Some(r) => r.clone(),
+            None => return Vec::new(), // Not ready yet
+        };
+
         self.runtime
-            .block_on(self.repository.search_metadata(&query, 50))
+            .block_on(repo.search_metadata(&query, 50))
             .map(|items| items.into_iter().map(Into::into).collect())
             .unwrap_or_default()
     }
@@ -640,8 +691,11 @@ impl ClipboardEngine {
     pub fn get_item_data(&self, id: String) -> Option<Vec<u8>> {
         let uuid = Uuid::parse_str(&id).ok()?;
 
+        // Get repository if initialized
+        let repo = self.repository.read().as_ref()?.clone();
+
         self.runtime
-            .block_on(self.repository.get_by_id(uuid))
+            .block_on(repo.get_by_id(uuid))
             .ok()
             .flatten()
             .map(|item| item.data)
