@@ -18,7 +18,7 @@ use clipboard_core::ports::{
     AutostartHandler, ClipboardMonitor, ClipboardRepository, HotkeyHandler, ThemeDetector, UIEvent,
     UIHandler,
 };
-use clipboard_storage::SqliteClipboardRepository;
+use clipboard_storage::AsyncInitRepository;
 use clipcy_settings_common::{CachedSettingsManager, ThemeMode};
 
 #[cfg(target_os = "windows")]
@@ -336,7 +336,7 @@ impl UIHandler for BridgeUiHandler {
 /// Main clipboard engine - exposed to native UI via UniFFI
 pub struct ClipboardEngine {
     runtime: Runtime,
-    repository: Arc<SqliteClipboardRepository>,
+    repository: Arc<AsyncInitRepository>,
     clipboard_service: Arc<RwLock<Option<Arc<ClipboardService>>>>,
     settings_manager: CachedSettingsManager,
     ui_handler: Arc<BridgeUiHandler>,
@@ -367,7 +367,7 @@ impl ClipboardEngine {
             .build()
             .map_err(|e| BridgeError::PlatformError(e.to_string()))?;
 
-        // Initialize repository
+        // Initialize repository asynchronously (no blocking!)
         let db_path = PathBuf::from(&db_path);
 
         // Ensure parent directory exists
@@ -376,9 +376,9 @@ impl ClipboardEngine {
                 .map_err(|e| BridgeError::StorageError(e.to_string()))?;
         }
 
-        let repository = runtime
-            .block_on(SqliteClipboardRepository::new(db_path))
-            .map_err(|e| BridgeError::StorageError(e.to_string()))?;
+        // Create async-initializing repository - starts init in background immediately
+        let repository = AsyncInitRepository::new(db_path, runtime.handle().clone());
+        tracing::info!("Database initialization started in background");
 
         // Initialize settings manager (cached, no blocking I/O)
         let settings_manager =
