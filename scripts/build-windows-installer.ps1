@@ -103,7 +103,7 @@ Write-Host "=== Clipcy Windows Installer Build ===" -ForegroundColor Cyan
 Write-Host "Project Root: $ProjectRoot"
 
 if ($Clean) {
-    Write-Host "`n[1/4] Cleaning output directories..." -ForegroundColor Yellow
+    Write-Host "`n[1/5] Cleaning output directories..." -ForegroundColor Yellow
 
     if (Test-Path $PublishDir) {
         Remove-Item -Recurse -Force $PublishDir
@@ -114,7 +114,7 @@ if ($Clean) {
     }
 }
 
-Write-Host "`n[2/4] Building Backend (Rust) bridge library..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Building Backend (Rust) bridge library..." -ForegroundColor Yellow
 Push-Location $ProjectRoot
 try {
     cargo build --release -p clipcy-bridge --target $RustTarget
@@ -138,7 +138,26 @@ if (-not (Test-Path $RustDestDir)) {
 
 Copy-Item -Force $RustDll $RustDestDll
 
-Write-Host "`n[3/4] Publishing Clipcy application..." -ForegroundColor Yellow
+Write-Host "`n[3/5] Regenerating C# bindings..." -ForegroundColor Yellow
+$BindingsDir = Join-Path $CSharpProject "Bindings"
+if (-not (Test-Path $BindingsDir)) {
+    New-Item -ItemType Directory -Path $BindingsDir | Out-Null
+}
+
+$uniffiBindgen = Get-Command "uniffi-bindgen-cs" -ErrorAction SilentlyContinue
+if (-not $uniffiBindgen) {
+    throw "uniffi-bindgen-cs not found. Install it with: cargo install uniffi-bindgen-cs"
+}
+
+try {
+    & uniffi-bindgen-cs --library $RustDestDll --out-dir $BindingsDir
+    Write-Host "C# bindings regenerated successfully" -ForegroundColor Green
+}
+catch {
+    throw "Failed to generate C# bindings: $_"
+}
+
+Write-Host "`n[4/5] Publishing Clipcy application..." -ForegroundColor Yellow
 if (-not (Test-Path $PublishDir)) {
     New-Item -ItemType Directory -Path $PublishDir | Out-Null
 }
@@ -162,7 +181,7 @@ if (-not $IsccPath) {
     throw "Inno Setup compiler not found. Install Inno Setup 6 and ensure ISCC.exe is on PATH, or pass -InnoSetupPath."
 }
 
-Write-Host "`n[4/4] Building installer with Inno Setup..." -ForegroundColor Yellow
+Write-Host "`n[5/5] Building installer with Inno Setup..." -ForegroundColor Yellow
 if (-not (Test-Path $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir | Out-Null
 }
