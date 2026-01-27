@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use parking_lot::RwLock;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -199,5 +202,146 @@ mod tests {
 
         let settings = manager.load().unwrap();
         assert_eq!(settings, Settings::default());
+    }
+}
+
+/// Cached settings manager for fast startup
+///
+/// Returns default settings immediately and loads from disk in the background.
+/// This eliminates blocking I/O during application startup.
+#[derive(Debug, Clone)]
+pub struct CachedSettingsManager {
+    cache: Arc<RwLock<Settings>>,
+    path: PathBuf,
+    loaded: Arc<AtomicBool>,
+}
+
+impl CachedSettingsManager {
+    /// Create a new cached settings manager with default path
+    pub fn new() -> Result<Self> {
+        let path = SettingsManager::default_path()?;
+        Ok(Self::with_path(path))
+    }
+
+    /// Create a cached settings manager with custom path
+    pub fn with_path(path: PathBuf) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(Settings::default())),
+            path,
+            loaded: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Get the settings file path
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    /// Get current settings (returns immediately, may be defaults or loaded)
+    pub fn get(&self) -> Settings {
+        self.cache.read().clone()
+    }
+
+    /// Check if settings have been loaded from disk
+    pub fn is_loaded(&self) -> bool {
+        self.loaded.load(Ordering::Acquire)
+    }
+
+    /// Load settings from disk synchronously (for immediate use)
+    pub fn load_now(&self) -> Result<Settings> {
+        let settings = if !self.path.exists() {
+            tracing::info!("Settings file not found, using defaults");
+            Settings::default()
+        } else {
+            let content = fs::read_to_string(&self.path)?;
+            let settings: Settings = serde_json::from_str(&content)?;
+            tracing::debug!("Loaded settings from {:?}", self.path);
+            settings
+        };
+
+        *self.cache.write() = settings.clone();
+        self.loaded.store(true, Ordering::Release);
+        Ok(settings)
+    }
+
+    /// Start loading settings from disk asynchronously
+    ///
+    /// This spawns a background task that loads settings without blocking.
+    /// Call get() to retrieve settings (will be defaults until load completes).
+    pub fn load_async<F>(&self, on_loaded: F)
+    where
+        F: FnOnce(Result<Settings>) + Send + 'static,
+    {
+        let cache = self.cache.clone();
+        let path = self.path.clone();
+        let loaded = self.loaded.clone();
+
+        std::thread::spawn(move || {
+            let result = if !path.exists() {
+                tracing::info!("Settings file not found (async load), using defaults");
+                Ok(Settings::default())
+            } else {
+                match fs::read_to_string(&path) {
+                    Ok(content) => match serde_json::from_str(&content) {
+                        Ok(settings) => {
+                            tracing::debug!("Loaded settings asynchronously from {:?}", path);
+                            Ok(settings)
+                        }
+                        Err(e) => Err(SettingsError::Json(e)),
+                    },
+                    Err(e) => Err(SettingsError::Io(e)),
+                }
+            };
+
+            if let Ok(ref settings) = result {
+                *cache.write() = settings.clone();
+                loaded.store(true, Ordering::Release);
+            }
+
+            on_loaded(result);
+        });
+    }
+
+    /// Save settings to file (atomic write)
+    pub fn save(&self, settings: &Settings) -> Result<()> {
+        // Update cache first
+        *self.cache.write() = settings.clone();
+
+        // Ensure parent directory exists
+        if let Some(parent) = self.path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        // Write to temp file first for atomic operation
+        let temp_path = self.path.with_extension("json.tmp");
+        let content = serde_json::to_string_pretty(settings)?;
+
+        {
+            let mut file = fs::File::create(&temp_path)?;
+            file.write_all(content.as_bytes())?;
+            file.sync_all()?;
+        }
+
+        // Atomic rename
+        fs::rename(&temp_path, &self.path)?;
+        self.loaded.store(true, Ordering::Release);
+        tracing::debug!("Saved settings to {:?}", self.path);
+        Ok(())
+    }
+
+    /// Load settings or create default file if it doesn't exist (synchronous)
+    pub fn load_or_create(&self) -> Result<Settings> {
+        if !self.path.exists() {
+            let settings = Settings::default();
+            self.save(&settings)?;
+            return Ok(settings);
+        }
+        self.load_now()
+    }
+}
+
+impl Default for CachedSettingsManager {
+    fn default() -> Self {
+        Self::new().expect("Failed to create cached settings manager")
     }
 }

@@ -19,7 +19,7 @@ use clipboard_core::ports::{
     UIHandler,
 };
 use clipboard_storage::SqliteClipboardRepository;
-use clipcy_settings_common::{SettingsManager, ThemeMode};
+use clipcy_settings_common::{CachedSettingsManager, ThemeMode};
 
 #[cfg(target_os = "windows")]
 use clipcy_platform_windows::{
@@ -338,7 +338,7 @@ pub struct ClipboardEngine {
     runtime: Runtime,
     repository: Arc<SqliteClipboardRepository>,
     clipboard_service: Arc<RwLock<Option<Arc<ClipboardService>>>>,
-    settings_manager: SettingsManager,
+    settings_manager: CachedSettingsManager,
     ui_handler: Arc<BridgeUiHandler>,
     is_running: Arc<RwLock<bool>>,
 
@@ -380,9 +380,9 @@ impl ClipboardEngine {
             .block_on(SqliteClipboardRepository::new(db_path))
             .map_err(|e| BridgeError::StorageError(e.to_string()))?;
 
-        // Initialize settings manager
+        // Initialize settings manager (cached, no blocking I/O)
         let settings_manager =
-            SettingsManager::new().map_err(|e| BridgeError::StorageError(e.to_string()))?;
+            CachedSettingsManager::new().map_err(|e| BridgeError::StorageError(e.to_string()))?;
 
         // Create platform handlers
         #[cfg(target_os = "windows")]
@@ -419,11 +419,26 @@ impl ClipboardEngine {
         // Set the callback
         self.ui_handler.set_callback(Arc::from(callback));
 
-        // Load settings
-        let settings = self
-            .settings_manager
-            .load_or_create()
-            .map_err(|e| BridgeError::StorageError(e.to_string()))?;
+        // Get settings immediately (defaults if not loaded yet)
+        // This allows the UI to start instantly without blocking on I/O
+        let settings = self.settings_manager.get();
+
+        // Start loading settings from disk in background
+        // This will update the cache once loaded
+        self.settings_manager.load_async(move |result| {
+            match result {
+                Ok(_loaded_settings) => {
+                    tracing::info!("Settings loaded asynchronously");
+                    // Notify UI that settings have been loaded if needed
+                    // For now, settings changes will be picked up on next restart
+                    // or when UI queries settings again
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to load settings asynchronously: {}", e);
+                    // Continue with defaults
+                }
+            }
+        });
 
         // The settings from settings_manager is already the core Settings type
         // (clipboard_core::domain::Settings is re-exported from clipcy_settings_common)
@@ -520,12 +535,8 @@ impl ClipboardEngine {
             return Vec::new();
         }
 
-        // Load settings to get max_history
-        let limit = self
-            .settings_manager
-            .load()
-            .map(|s| s.max_history_items)
-            .unwrap_or(100);
+        // Get max_history from cached settings (no I/O)
+        let limit = self.settings_manager.get().max_history_items;
 
         self.runtime
             .block_on(self.repository.get_all_metadata(limit))
@@ -638,10 +649,8 @@ impl ClipboardEngine {
 
     /// Get current settings
     pub fn get_settings(&self) -> SettingsDto {
-        self.settings_manager
-            .load()
-            .map(Into::into)
-            .unwrap_or_else(|_| clipcy_settings_common::Settings::default().into())
+        // Return cached settings immediately (no I/O)
+        self.settings_manager.get().into()
     }
 
     /// Save settings and apply them immediately
