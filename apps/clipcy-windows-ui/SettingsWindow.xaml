@@ -309,7 +309,7 @@
                     />
                   </controls:SettingsCard.HeaderIcon>
                   <TextBlock
-                    Text="Version 1.0.0"
+                    Text="Version 0.1.0"
                     Style="{StaticResource CaptionTextBlockStyle}"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                     VerticalAlignment="Center"
