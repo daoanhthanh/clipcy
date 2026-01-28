@@ -362,6 +362,8 @@ public class ClipboardItemViewModel
 
     public bool IsImage => ContentType == "Image";
 
+    public string PinUnpinText => Pinned ? "Unpin" : "Pin";
+
     private BitmapImage? _thumbnailImage;
     public BitmapImage? ThumbnailImage
     {

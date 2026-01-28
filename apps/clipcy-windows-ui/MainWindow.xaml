@@ -62,6 +62,20 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
+            <Grid.ContextFlyout>
+              <MenuFlyout>
+                <MenuFlyoutItem
+                  Text="{Binding PinUnpinText}"
+                  Click="PinUnpinMenuItem_Click"
+                />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem
+                  Text="Delete"
+                  Click="DeleteMenuItem_Click"
+                />
+              </MenuFlyout>
+            </Grid.ContextFlyout>
+
             <!-- Content Type Icon -->
             <FontIcon
               Grid.Column="0"

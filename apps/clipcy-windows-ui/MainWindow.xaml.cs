@@ -440,6 +440,38 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void PinUnpinMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is ClipboardItemViewModel vm)
+        {
+            try
+            {
+                App.Bridge?.SetPinned(vm.Id, !vm.Pinned);
+                ViewModel.RefreshHistory();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error toggling pin: {ex.Message}");
+            }
+        }
+    }
+
+    private void DeleteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is ClipboardItemViewModel vm)
+        {
+            try
+            {
+                App.Bridge?.DeleteItem(vm.Id);
+                ViewModel.RefreshHistory();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting item: {ex.Message}");
+            }
+        }
+    }
+
     private static ScrollViewer? FindScrollViewer(DependencyObject root)
     {
         var queue = new System.Collections.Generic.Queue<DependencyObject>();
