@@ -1,83 +1,83 @@
-# Clipcy - Project Context
+# Clipcy - Context for Gemini
 
 ## Project Overview
-Clipcy is a modern, cross-platform clipboard manager utilizing a hybrid architecture. It combines a high-performance **Rust backend** for core logic, storage, and system hooks with **native UIs** for each platform to ensure a seamless user experience.
 
-The architecture is described as a "Logic Sandwich":
-1.  **Rust Backend:** Handles clipboard monitoring, data storage (SQLite), hotkeys, and business logic.
-2.  **UniFFI Bridge:** Exposes the Rust core to native languages (C#, Swift, etc.).
-3.  **Native UI:** Platform-specific implementations (WinUI 3 for Windows, SwiftUI for macOS).
+**Clipcy** is a modern, cross-platform clipboard manager with a hybrid architecture. It combines a high-performance **Rust** backend with native user interfaces for each platform (currently focusing on **Windows via WinUI 3**).
 
-## Tech Stack
-*   **Core:** Rust (Edition 2024)
-*   **Windows UI:** C#, .NET 8, WinUI 3 (Windows App SDK)
-*   **Bridge:** UniFFI (Rust -> C# Bindings)
-*   **Storage:** SQLite (via `sqlx`)
-*   **Asynchronous Runtime:** Tokio
+### Architecture
 
-## Directory Structure
-The project follows a monorepo-like structure:
+The project follows a "Logic Sandwich" or Hexagonal architecture:
 
-*   **`crates/`** (Rust Workspace):
-    *   `core`: Domain models, ports, and application services.
-    *   `storage`: SQLite repository implementation.
-    *   `bridge`: The UniFFI interface definition (`.udl`) and library entry point.
-    *   `platform-*`: Platform-specific implementations (e.g., Windows hooks).
-    *   `settings-common`: Shared settings logic.
-*   **`apps/`** (Frontend Applications):
-    *   `clipcy-windows-ui`: The Windows client (C#/.NET 8/WinUI 3).
-    *   `clipcy-macos`: macOS client (Planned/Placeholder).
-    *   `clipcy-linux`: Linux client (Planned/Placeholder).
-*   **`scripts/`**: Helper scripts for building and maintenance (e.g., `build-windows-ui.ps1`).
+1.  **Rust Core (`crates/core`)**: Contains the business logic, domain models, and ports (interfaces). It is completely UI-agnostic.
+2.  **Storage (`crates/storage`)**: SQLite implementation for persisting clipboard history.
+3.  **Bridge (`crates/bridge`)**: Defines the interface between Rust and the native UIs using **UniFFI**. It exposes the core logic as a C-compatible library (`clipcy_core.dll`).
+4.  **Native UI (`apps/clipcy-windows-ui`)**: A **WinUI 3** application written in **C# (.NET 8)**. It consumes the Rust logic via generated bindings.
 
-## Building and Running
+### Key Directories
+
+*   **`apps/clipcy-windows-ui/`**: The Windows client application (C#, XAML).
+*   **`crates/`**: The Rust workspace containing all backend modules.
+    *   `bridge/`: UniFFI definitions (`clipcy_core.udl`) and library entry point.
+    *   `core/`: Core domain logic (history management, search, etc.).
+    *   `platform-windows/`: Windows-specific Rust implementations (hooks, tray, theme detection).
+    *   `storage/`: Database access layer (SQLx/SQLite).
+*   **`scripts/`**: PowerShell and Batch scripts for building and deployment.
+
+## Development Setup & Workflow
 
 ### Prerequisites
-*   **Rust:** 1.75+
-*   **Windows:** .NET 8 SDK, Visual Studio 2022 with "Windows App SDK" workload.
 
-### Windows Workflow
-The primary build script handles both the Rust core compilation and the .NET application build.
+*   **Rust**: Stable toolchain (1.75+).
+*   **C#/.NET**: .NET 8 SDK.
+*   **Visual Studio 2022**: With "Windows App SDK" workload.
+*   **UniFFI Bindings Tool**: `uniffi-bindgen-cs` (needed if modifying the bridge).
 
-**Using PowerShell Script:**
+### Building the Project (Windows)
+
+The primary build script is `scripts/build-windows-ui.ps1`.
+
+**Standard Debug Build:**
 ```powershell
-# Debug Build
 .\scripts\build-windows-ui.ps1
+```
+This builds the Rust bridge (`debug`), restores NuGet packages, and builds the WinUI app (`debug`).
 
-# Release Build
+**Release Build:**
+```powershell
 .\scripts\build-windows-ui.ps1 -Release
+```
+This performs a release build and creates a portable ZIP archive.
 
-# Clean Build
+**Clean Build:**
+```powershell
 .\scripts\build-windows-ui.ps1 -CleanBuild
 ```
 
-**Manual Steps:**
-1.  **Build Rust Core:**
-    ```bash
-    cargo build --release -p clipcy-bridge
-    ```
-    *Output:* `target/release/clipcy_core.dll`
+**Generating Bindings:**
+If you modify the UniFFI interface (`crates/bridge/src/clipcy_core.udl`):
+```powershell
+.\scripts\build-windows-ui.ps1 -GenerateBindings
+```
+*Note: This requires `uniffi-bindgen-cs` to be installed.*
 
-2.  **Generate Bindings (if .udl changed):**
-    *   Requires `uniffi-bindgen-cs`.
-    *   Bindings are placed in `apps/clipcy-windows-ui/Bindings`.
+### Running the App
 
-3.  **Run Windows App:**
-    ```bash
-    cd apps/clipcy-windows-ui
-    dotnet run
-    ```
+After building, the executable is located at:
+*   **Debug**: `apps/clipcy-windows-ui/bin/Debug/net8.0-windows10.0.17763.0/Clipcy.exe`
+*   **Release**: `apps/clipcy-windows-ui/bin/Release/net8.0-windows10.0.17763.0/win-x64/publish/Clipcy.exe`
 
-## Development Conventions
+### Common Tasks
 
-*   **Architecture:** Hexagonal (Ports & Adapters).
-    *   **Core:** Pure Rust, no UI dependencies. Defines traits (ports) for platform interaction.
-    *   **Adapters:** Implementations in `platform-*` and `storage` crates.
-*   **Logging:** Tracing is used in Rust. Logs are stored in `%LOCALAPPDATA%\clipcy\logs\`.
-*   **Database:** `sqlx` with SQLite. Database file at `%LOCALAPPDATA%\clipcy\clipcy.db`.
-*   **UI Pattern:** MVVM (Model-View-ViewModel) is used in the C# WinUI project (`CommunityToolkit.Mvvm`).
+*   **Modifying Core Logic**: Edit files in `crates/core`. Run `cargo check` in `crates/` to verify.
+*   **Modifying UI**: Edit `.xaml` and `.cs` files in `apps/clipcy-windows-ui`.
+*   **Adding a New Feature**:
+    1.  Implement logic in `crates/core`.
+    2.  Expose it in `crates/bridge/src/clipcy_core.udl` and `lib.rs`.
+    3.  Regenerate bindings.
+    4.  Update UI in `apps/clipcy-windows-ui` to use the new API.
 
-## Key Configuration Files
-*   `Cargo.toml`: Rust workspace definition.
-*   `apps/clipcy-windows-ui/Clipcy.csproj`: Windows app project file.
-*   `crates/bridge/src/clipcy_core.udl`: UniFFI definition language file (API contract between Rust and C#).
+## Conventions
+
+*   **Rust**: Follows standard `clippy` and `rustfmt` guidelines.
+*   **C#**: Follows standard .NET coding conventions.
+*   **Architecture**: Strict separation of concerns. UI should not contain business logic; it should only display data provided by the Rust backend and delegate user actions to it.

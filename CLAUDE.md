@@ -1,257 +1,210 @@
-# CLAUDE.md - Clipcy Project Guide
+# CLAUDE.md
 
-## Core Principles
-
-- Never use emojis.
-
-## Commit Authorship
-
-When committing code changes:
-- Never add Claude as a commit author.
-- Always commit as using the default git settings
-
-## Documentation Style
-
-When creating or updating markdown documentation files:
-- **Never create .md files unless explicitly instructed.**
-- **Be extremely concise** - engineers scan, they don't read novels
-- **Only include essential information** - what they need to know, not what's possible to explain
-- **Prefer examples over prose** - show the pattern, not the theory
-- **Assume technical competence** - skip obvious explanations
-- **Front-load critical info** - put warnings and key concepts first
-- **Delete verbose explanations** - if it takes more than 3 sentences, it's probably too long
-
-Default to 1-2 sentence explanations. Only expand when complexity absolutely requires it.
-
-## Project Overview
-
-Clipcy is a cross-platform clipboard manager written in Rust. It monitors clipboard changes, stores history in SQLite,
-and provides a native UI for quick access to clipboard history via global hotkeys.
-
-## Architecture
-
-The project follows **Hexagonal Architecture** (Ports and Adapters):
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Applications                           │
-│       (clipcy-windows, clipcy-macos, clipcy-linux)          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌───────────────────────────────────────────────────────────────────────────┐
-│                           Platform Adapters                               │
-│  (clipcy-platform-windows, clipcy-platform-macos, clipcy-platform-linux)  │
-└───────────────────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                      Core Domain                            │
-│           (ports/traits, domain models, services)           │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                    Storage Adapter                          │
-│                  (SQLite via sqlx)                          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Directory Structure
-
-```
-clipcy/
-├── Cargo.toml              # Workspace configuration
-├── crates/
-│   ├── core/               # Domain logic and port definitions
-│   │   └── src/
-│   │       ├── domain/     # ClipboardItem, Settings, Theme
-│   │       ├── ports/      # Trait definitions (interfaces)
-│   │       ├── application/# ClipboardService, AppController
-│   │       └── error/      # Error types
-│   │
-│   ├── storage/            # SQLite repository implementation
-│   │   └── src/
-│   │       └── sqlite_repository.rs
-│   │
-│   ├── platform-windows/   # Windows-specific implementations
-│   │   └── src/
-│   │       ├── clipboard.rs  # WindowsClipboardMonitor
-│   │       ├── hotkey.rs     # WindowsHotkeyHandler
-│   │       ├── paste.rs      # WindowsPasteHandler
-│   │       ├── theme.rs      # WindowsThemeDetector
-│   │       └── ui/menu.rs    # WindowsUIHandler
-│   │
-│   ├── platform-macos/     # macOS stubs (not implemented)
-│   └── platform-linux/     # Linux stubs (not implemented)
-│
-└── apps/
-    ├── clipcy-windows/  # Windows application entry point
-    ├── clipcy-macos/    # macOS application entry point
-    └── clipcy-linux/    # Linux application entry point
-```
-
-## Key Components
-
-### Core Crate (`crates/core`)
-
-**Domain Models:**
-
-- `ClipboardItem` - Represents a clipboard entry (text, image, files)
-- `ContentType` - Enum for content types (Text, Image, Files, Html, Rtf)
-- `Settings` - Application settings (max history, hotkey, theme)
-- `Theme` - Light/Dark/System theme enum
-
-**Ports (Traits):**
-
-- `ClipboardMonitor` - Monitor clipboard changes, get/set content
-- `ClipboardRepository` - Persist clipboard items (save, get, search, prune)
-- `HotkeyHandler` - Register/unregister global hotkeys
-- `PasteHandler` - Simulate paste action
-- `ThemeDetector` - Detect system theme changes
-- `UIHandler` - Show/hide popup menu, handle UI events
-
-**Application Services:**
-
-- `ClipboardService` - Orchestrates clipboard monitoring and storage
-- `AppController` - Main application controller
-
-### Storage Crate (`crates/storage`)
-
-- `SqliteClipboardRepository` - Async SQLite implementation using sqlx
-- Database stored at: `%LOCALAPPDATA%/clipcy/clipcy.db`
-
-### Platform-Windows Crate (`crates/platform-windows`)
-
-- Uses `windows` crate v0.62.2
-- Hidden message window for clipboard monitoring (`WM_CLIPBOARDUPDATE`)
-- Global hotkey registration via `RegisterHotKey`
-- Native popup menu via `TrackPopupMenu`
-- Theme detection via WinRT `UISettings`
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build Commands
+
+### Windows Development (Primary Platform)
+
+**Quick Build:**
+```powershell
+# Debug build
+.\scripts\build-windows-ui.ps1
+
+# Release build
+.\scripts\build-windows-ui.ps1 -Release
+
+# Clean build with binding regeneration
+.\scripts\build-windows-ui.ps1 -CleanBuild -GenerateBindings
+```
+
+**Build Installer:**
+```powershell
+.\scripts\build-windows-installer.ps1
+# Requires Inno Setup 6 (ISCC.exe on PATH)
+# Outputs to dist/windows/win-x64 and dist/installer
+```
+
+**Manual Build Steps:**
+```bash
+# 1. Build Rust bridge library (cdylib)
+cargo build --release -p clipcy-bridge
+# Output: target/release/clipcy_core.dll
+
+# 2. Generate C# bindings (requires uniffi-bindgen-cs v0.10.0+v0.29.4)
+uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+
+# 3. Build/run WinUI 3 app
+cd apps/clipcy-windows-ui
+dotnet run                    # Debug
+dotnet build -c Release       # Release
+```
+
+**Install uniffi-bindgen-cs:**
+```bash
+cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs --tag v0.10.0+v0.29.4
+```
+
+### Rust Workspace
 
 ```bash
 # Build all crates
 cargo build --workspace
-
-# Build release
 cargo build --workspace --release
 
-# Build specific platform
-cargo build -p clipcy-windows
-
-# Run tests
-cargo test --workspace
-
-# Run the Windows application
-cargo run -p clipcy-windows
-```
-
-## Important Patterns
-
-### Send/Sync Safety for Windows Handles
-
-Windows handles (`HWND`) contain raw pointers that are not `Send`/`Sync`. We use `AtomicIsize` to store handles safely:
-
-```rust
-// Store HWND as isize to avoid Send/Sync issues
-hwnd: Arc<AtomicIsize>,
-
-// Convert back when needed
-let hwnd = HWND(hwnd_val as * mut std::ffi::c_void);
-```
-
-The structs also implement `unsafe impl Send` and `unsafe impl Sync` manually.
-
-### Windows 0.62.2 API Patterns
-
-```rust
-// CreateWindowExW returns Result
-let hwnd = match CreateWindowExW(...) {
-Ok(h) => h,
-Err(e) => { /* handle error */ }
-};
-
-// Many functions take Option<HWND> or Option<HANDLE>
-RegisterHotKey(Some(hwnd), ...);
-SetClipboardData(format, Some(handle));
-
-// Boolean parameters use bool, not BOOL
-InsertMenuItemW(menu, index, true, & item);
-```
-
-### Async Repository
-
-The storage layer uses async sqlx:
-
-```rust
-pub async fn new(path: PathBuf) -> Result<Self>
-pub async fn save(&self, item: &ClipboardItem) -> Result<()>
-pub async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>>
-```
-
-### Debouncing
-
-Clipboard changes are debounced (300ms) to avoid duplicate entries from rapid clipboard updates.
-
-## Dependencies
-
-| Dependency       | Purpose                         |
-|------------------|---------------------------------|
-| `windows` 0.62.2 | Windows API bindings            |
-| `sqlx` 0.8       | Async SQLite                    |
-| `tokio`          | Async runtime                   |
-| `parking_lot`    | Fast synchronization primitives |
-| `uuid`           | Unique IDs for clipboard items  |
-| `chrono`         | Timestamps                      |
-| `serde`          | Serialization                   |
-| `tracing`        | Logging                         |
-
-## Testing
-
-Unit tests are in `crates/core/src/domain/clipboard_item.rs`.
-
-Integration tests for the repository are in `crates/storage/tests/repository_test.rs`.
-
-```bash
 # Run all tests
 cargo test --workspace
 
-# Run specific test
+# Run specific test by name
 cargo test test_save_and_retrieve
 ```
 
-## Default Hotkey
+## Architecture Overview
 
-`Alt+V` - Opens the clipboard history popup
+Clipcy uses a "Logic Sandwich" architecture with **Hexagonal (Ports & Adapters)** pattern:
 
-## Notes for Contributors
+```
+┌─────────────────────────────────────┐
+│  Native UI (WinUI 3 C#)             │
+│  - MainWindow, SettingsWindow       │
+│  - ViewModels (MVVM)                │
+│  - Services (RustBridgeService)     │
+└──────────────┬──────────────────────┘
+               │ UniFFI Bindings (C#)
+┌──────────────▼──────────────────────┐
+│  Bridge (crates/bridge)             │
+│  - ClipboardEngine                  │
+│  - DTOs (ClipboardItemDto, etc)     │
+│  - BridgeEvent, UiCallback          │
+└──────────────┬──────────────────────┘
+               │ UniFFI (.udl)
+┌──────────────▼──────────────────────┐
+│  Core (crates/core)                 │
+│  - domain: Models                   │
+│  - ports: Trait definitions         │
+│  - application: Services            │
+└──────────────┬──────────────────────┘
+               │ Implemented by adapters
+┌──────────────▼──────────────────────┐
+│  Adapters                           │
+│  - storage: SQLite repository       │
+│  - platform-windows: Win handlers   │
+└─────────────────────────────────────┘
+```
 
-1. Always use the port traits from `clipboard_core::ports` - don't depend on platform implementations directly
-2. Platform-specific code goes in `platform-*` crates
-3. The core crate should have no platform-specific dependencies
-4. Use `tracing` for logging, not `println!`
-5. Handle Windows API errors gracefully - many functions return `Result`
-6. Test on Windows before committing platform-windows changes
+### Key Layers
 
+**1. Core Domain (`crates/core/`)**
+- Pure business logic, no dependencies on UI or platform
+- `domain/`: ClipboardItem, ContentType, Settings, Theme
+- `ports/`: Trait definitions (ClipboardRepository, ClipboardMonitor, HotkeyHandler, PasteHandler, ThemeDetector, UIHandler)
+- `application/`: ClipboardService, AppController
 
-## Core Principles
+**2. Adapters**
+- `crates/storage/`: SQLite implementation
+  - `AsyncInitRepository`: Non-blocking initialization wrapper
+  - `SqliteClipboardRepository`: Main repository
+- `crates/platform-windows/`: Windows-specific implementations
+  - WindowsClipboardMonitor, WindowsHotkeyHandler, WindowsPasteHandler, WindowsThemeDetector, WindowsAutostartHandler
+- `crates/platform-macos/`, `crates/platform-linux/`: Placeholders (planned)
 
-- Never use emojis.
+**3. Bridge Layer (`crates/bridge/`)**
+- UniFFI-based FFI boundary connecting Rust ↔ C#
+- `ClipboardEngine`: Main API exposed to native UI
+- DTOs for cross-language data transfer
+- `BridgeEvent` enum: Events sent to UI (HistoryUpdated, HotkeyTriggered, ThemeChanged, ClipboardChanged, etc.)
+- `UiCallback` trait: Implemented by native UI to receive events
 
-## Commit Authorship
+**4. Native UI (`apps/clipcy-windows-ui/`)**
+- WinUI 3 C# application (MVVM pattern)
+- `Services/RustBridgeService.cs`: Wraps Rust ClipboardEngine
+- `ViewModels/`: MainViewModel, ClipboardItemViewModel
+- `Services/`: TrayService, PreviewService, WindowService, ThemeManager
 
-When committing code changes:
-- Never add Claude as a commit author.
-- Always commit as using the default git settings
+### Critical Patterns
 
-## Documentation Style
+**Async Initialization:**
+- `AsyncInitRepository` initializes SQLite database on background thread
+- UI shows immediately while backend initializes
+- `BridgeEvent::Ready` sent when initialization complete
 
-When creating or updating markdown documentation files:
-- **Never create .md files unless explicitly instructed.**
-- **Be extremely concise** - engineers scan, they don't read novels
-- **Only include essential information** - what they need to know, not what's possible to explain
-- **Prefer examples over prose** - show the pattern, not the theory
-- **Assume technical competence** - skip obvious explanations
-- **Front-load critical info** - put warnings and key concepts first
-- **Delete verbose explanations** - if it takes more than 3 sentences, it's probably too long
+**Event Flow:**
+- Rust → C#: ClipboardEngine sends `BridgeEvent` via `UiCallback.on_event()`
+- C# → Rust: UI calls methods on ClipboardEngine (get_history, paste_item, etc.)
+- Background thread handles I/O, events marshaled to UI thread
 
-Default to 1-2 sentence explanations. Only expand when complexity absolutely requires it.
+**Settings Management:**
+- `CachedSettingsManager` keeps settings in memory
+- File: `%LOCALAPPDATA%\clipcy\settings.json`
+- Changes applied immediately via `ClipboardEngine::save_settings()`
+
+## Development Workflows
+
+### Modifying Rust Backend
+
+1. Edit code in `crates/core/`, `crates/storage/`, or `crates/platform-windows/`
+2. Rebuild bridge: `cargo build --release -p clipcy-bridge`
+3. If UniFFI interface changed (`crates/bridge/src/clipcy_core.udl`), regenerate bindings:
+   ```bash
+   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+   ```
+4. Rebuild C# app: `cd apps/clipcy-windows-ui && dotnet build`
+
+### Modifying Windows UI Only
+
+1. Edit files in `apps/clipcy-windows-ui/`
+2. Run: `dotnet run` (no Rust rebuild needed)
+
+### Adding New Content Type
+
+1. Add variant to `ContentType` in `crates/core/src/domain/clipboard_item.rs`
+2. Update `ContentTypeDto` mapping in `crates/bridge/src/lib.rs`
+3. Handle in `crates/storage/src/sqlite_repository.rs`
+4. Update UI rendering in `apps/clipcy-windows-ui/Services/PreviewService.cs`
+
+### Adding New Setting
+
+1. Add field to `Settings` in `crates/settings-common/src/lib.rs`
+2. Update `SettingsDto` in `crates/bridge/src/lib.rs`
+3. Add UI control in `apps/clipcy-windows-ui/SettingsWindow.xaml`
+4. Update `Settings::default()` for default value
+5. Apply in `ClipboardEngine::save_settings()` if runtime change needed
+
+### Adding Platform Feature
+
+1. Define trait in `crates/core/src/ports/`
+2. Implement in `crates/platform-windows/src/`
+3. Wire up in `crates/bridge/src/lib.rs` ClipboardEngine
+4. Expose through bridge if UI needs access
+
+## Data Locations
+
+- Settings: `%LOCALAPPDATA%\clipcy\settings.json`
+- Database: `%LOCALAPPDATA%\clipcy\clipcy.db` (SQLite with WAL mode)
+- Logs: `%LOCALAPPDATA%\clipcy\logs\YYYY-MM-DD.clipcy.log`
+
+## Code Style
+
+**Rust:**
+- Use `tracing` for logging, not `println!`
+- Keep platform code out of `crates/core`
+- Async code uses tokio runtime
+
+**C# (.editorconfig):**
+- 4-space indentation, CRLF
+- PascalCase for classes/methods
+- Max line length: 120 characters
+
+## Common Issues
+
+**Build fails with "cannot find DLL":**
+- Ensure `cargo build --release -p clipcy-bridge` succeeded
+- Check `target/release/clipcy_core.dll` exists
+
+**C# bindings out of sync:**
+- Regenerate after UniFFI interface changes
+- Interface defined in `crates/bridge/src/clipcy_core.udl`
+
+**Database locked errors:**
+- Only one instance should run
+- Check for zombie processes
