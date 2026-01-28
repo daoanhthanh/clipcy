@@ -176,7 +176,7 @@ impl SqliteClipboardRepository {
 
     pub async fn get_all_metadata(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned FROM clipboard_items ORDER BY created_at DESC LIMIT $1"
+            "SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned FROM clipboard_items ORDER BY pinned DESC, created_at DESC LIMIT $1"
         )
             .bind(limit as i64)
             .fetch_all(&self.pool)
@@ -201,7 +201,7 @@ impl SqliteClipboardRepository {
             SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned
             FROM clipboard_items
             WHERE preview LIKE $1
-            ORDER BY created_at DESC
+            ORDER BY pinned DESC, created_at DESC
             LIMIT $2
             "#,
         )
