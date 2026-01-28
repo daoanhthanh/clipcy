@@ -2,6 +2,11 @@ use clipboard_core::domain::ClipboardItem;
 use clipboard_core::error::{ClipboardError, Result};
 use std::collections::VecDeque;
 use tracing::{debug, warn};
+use tokio::runtime::Handle;
+use tokio::task;
+
+use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
+use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
 
 use chrono::{DateTime, Utc};
 use windows::ApplicationModel::DataTransfer::{Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView, HtmlFormatHelper, StandardDataFormats};
@@ -12,8 +17,8 @@ const WINDOWS_TO_UNIX_EPOCH_100NS: i64 = 116_444_736_000_000_000;
 
 /// Import clipboard history items from Windows. Falls back to an empty list on failure.
 pub async fn import_system_clipboard_history() -> Result<VecDeque<ClipboardItem>> {
-    match import_history_internal().await {
-        Ok(items) => {
+    match task::spawn_blocking(|| import_history_sta()).await {
+        Ok(Ok(items)) => {
             if !items.is_empty() {
                 tracing::info!("Successfully imported {} clipboard history items", items.len());
             } else {
@@ -21,9 +26,49 @@ pub async fn import_system_clipboard_history() -> Result<VecDeque<ClipboardItem>
             }
             Ok(items)
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             warn!("Failed to import system clipboard history: {}", e);
             Ok(VecDeque::new())
+        }
+        Err(e) => {
+            warn!("Failed to join clipboard history task: {}", e);
+            Ok(VecDeque::new())
+        }
+    }
+}
+
+fn import_history_sta() -> Result<VecDeque<ClipboardItem>> {
+    let _com = ComStaGuard::new()?;
+    let handle = Handle::current();
+    handle.block_on(import_history_internal())
+}
+
+struct ComStaGuard;
+
+impl ComStaGuard {
+    fn new() -> Result<Self> {
+        unsafe {
+            let hr = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+            if hr.is_err() {
+                if hr == RPC_E_CHANGED_MODE {
+                    return Err(ClipboardError::ClipboardAccess(
+                        "Clipboard history requires STA thread (got MTA)".to_string(),
+                    ));
+                }
+                return Err(ClipboardError::ClipboardAccess(format!(
+                    "Failed to initialize COM STA: 0x{:08X}",
+                    hr.0
+                )));
+            }
+        }
+        Ok(Self)
+    }
+}
+
+impl Drop for ComStaGuard {
+    fn drop(&mut self) {
+        unsafe {
+            CoUninitialize();
         }
     }
 }
