@@ -1,6 +1,7 @@
 using System.Drawing;
 using CommunityToolkit.Mvvm.Input;
 using H.NotifyIcon;
+using H.NotifyIcon.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -29,6 +30,7 @@ public class TrayService : IDisposable
         {
             App.Bridge.OnHotkeyTriggered += OnHotkeyTriggered;
             App.Bridge.OnHistoryUpdated += OnHistoryUpdated;
+            App.Bridge.OnNotification += OnNotification;
         }
     }
 
@@ -118,6 +120,21 @@ public class TrayService : IDisposable
         // Could update tray tooltip with item count, etc.
     }
 
+    private void OnNotification(string message)
+    {
+        _trayIcon?.ShowNotification(
+            "Clipcy",
+            message,
+            NotificationIcon.Info,
+            customIconHandle: null,
+            largeIcon: false,
+            sound: true,
+            respectQuietTime: true,
+            realtime: true,
+            timeout: null
+        );
+    }
+
     private void ShowMainWindow()
     {
         _mainWindow.ShowAtCursor();
@@ -161,6 +178,7 @@ public class TrayService : IDisposable
         {
             App.Bridge.OnHotkeyTriggered -= OnHotkeyTriggered;
             App.Bridge.OnHistoryUpdated -= OnHistoryUpdated;
+            App.Bridge.OnNotification -= OnNotification;
         }
 
         _trayIcon?.Dispose();

@@ -53,6 +53,7 @@ interface BridgeEvent {
     ClipboardChanged(ClipboardItemDto item);
     Error(string message);
     Ready();
+    Notification(string message);
 };
 
 // ============================================
