@@ -468,15 +468,14 @@ impl ClipboardEngine {
             *repository.write() = Some(Arc::new(repo));
             tracing::info!("Repository initialization started");
 
-            // Step 3: Load settings in background
-            settings_manager.load_async(move |result| {
-                match result {
-                    Ok(_) => tracing::info!("Settings loaded"),
-                    Err(e) => tracing::warn!("Failed to load settings: {}", e),
-                }
-            });
+            // Step 3: Load settings (already on background thread)
+            if let Err(e) = settings_manager.load_now() {
+                tracing::warn!("Failed to load settings: {}", e);
+            } else {
+                tracing::info!("Settings loaded");
+            }
 
-            // Step 4: Get settings (defaults or loaded)
+            // Step 4: Get settings (loaded or defaults)
             let settings = settings_manager.get();
             let core_settings = settings.clone();
             let is_first_run = settings.first_run;
