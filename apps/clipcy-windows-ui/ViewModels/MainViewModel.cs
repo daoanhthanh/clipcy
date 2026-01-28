@@ -30,7 +30,10 @@ public partial class MainViewModel : ObservableObject
 
             Items.Clear();
 
-            foreach (var item in items)
+            // Sort pinned items to the top
+            var sortedItems = items.OrderByDescending(x => x.Pinned);
+
+            foreach (var item in sortedItems)
             {
                 Items.Add(item);
             }
@@ -68,7 +71,10 @@ public partial class MainViewModel : ObservableObject
             var items = bridge.Search(query);
             Items.Clear();
 
-            foreach (var item in items)
+            // Sort pinned items to the top
+            var sortedItems = items.OrderByDescending(x => x.Pinned);
+
+            foreach (var item in sortedItems)
             {
                 Items.Add(item);
             }
