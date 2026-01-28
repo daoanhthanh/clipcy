@@ -5,7 +5,7 @@ edition.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]
 clipboard-core = { path = "../core" }
-windows = { version = "0.62.2", features = [
+windows = { version = ">=0.59, <=0.62", features = [
     "Win32_Foundation",
     "Win32_System_Com",
     "Win32_System_TaskScheduler",
@@ -21,13 +21,18 @@ windows = { version = "0.62.2", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Graphics_Gdi",
     "UI_ViewManagement",
+    "ApplicationModel_DataTransfer",
+    "Graphics_Imaging",
     "Foundation",
+    "Storage",
+    "Storage_Streams",
 ] }
 tokio.workspace = true
 parking_lot.workspace = true
 tracing.workspace = true
 once_cell.workspace = true
 image.workspace = true
+chrono.workspace = true
 
 [build-dependencies]
 embed-resource = "3.0"

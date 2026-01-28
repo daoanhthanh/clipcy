@@ -499,37 +499,40 @@ impl ClipboardEngine {
                     if is_first_run {
                         let service_clone = service.clone();
                         let settings_manager_clone = settings_manager.clone();
+                        let runtime_handle_clone = runtime_handle.clone();
 
-                        runtime_handle.spawn(async move {
-                            tracing::info!("First-run detected, importing clipboard history");
-                            match clipcy_platform_windows::import_system_clipboard_history().await {
-                                Ok(items) => {
-                                    let count = items.len();
-                                    if count > 0 {
-                                        let items_vec: Vec<_> = items.into_iter().collect();
-                                        match service_clone.import_items(items_vec).await {
-                                            Ok(imported) => {
-                                                tracing::info!("Imported {} clipboard history items", imported);
+                        runtime_handle.spawn_blocking(move || {
+                            runtime_handle_clone.block_on(async move {
+                                tracing::info!("First-run detected, importing clipboard history");
+                                match clipcy_platform_windows::import_system_clipboard_history().await {
+                                    Ok(items) => {
+                                        let count = items.len();
+                                        if count > 0 {
+                                            let items_vec: Vec<_> = items.into_iter().collect();
+                                            match service_clone.import_items(items_vec).await {
+                                                Ok(imported) => {
+                                                    tracing::info!("Imported {} clipboard history items", imported);
+                                                }
+                                                Err(e) => {
+                                                    tracing::warn!("Failed to import clipboard items: {}", e);
+                                                }
                                             }
-                                            Err(e) => {
-                                                tracing::warn!("Failed to import clipboard items: {}", e);
-                                            }
+                                        } else {
+                                            tracing::info!("No clipboard history items to import");
                                         }
-                                    } else {
-                                        tracing::info!("No clipboard history items to import");
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!("Failed to retrieve clipboard history: {}", e);
                                     }
                                 }
-                                Err(e) => {
-                                    tracing::warn!("Failed to retrieve clipboard history: {}", e);
-                                }
-                            }
 
-                            // Mark first run as complete
-                            let mut updated_settings = settings_manager_clone.get();
-                            updated_settings.first_run = false;
-                            if let Err(e) = settings_manager_clone.save(&updated_settings) {
-                                tracing::warn!("Failed to save first_run flag: {}", e);
-                            }
+                                // Mark first run as complete
+                                let mut updated_settings = settings_manager_clone.get();
+                                updated_settings.first_run = false;
+                                if let Err(e) = settings_manager_clone.save(&updated_settings) {
+                                    tracing::warn!("Failed to save first_run flag: {}", e);
+                                }
+                            })
                         });
                     }
 

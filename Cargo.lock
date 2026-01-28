@@ -331,6 +331,7 @@ dependencies = [
 name = "clipcy-platform-windows"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "clipboard-core",
  "embed-resource",
  "image",

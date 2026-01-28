@@ -240,6 +240,7 @@ internal class RustBridgeService : IDisposable, UiCallback
                     StartOnBoot = settings.startOnBoot,
                     ShowNotifications = settings.showNotifications,
                     ShowPreviewPanel = settings.showPreviewPanel,
+                    FirstRun = settings.firstRun,
                     ExcludedApps = settings.excludedApps.ToList(),
                 };
             }
@@ -273,7 +274,8 @@ internal class RustBridgeService : IDisposable, UiCallback
                 startOnBoot: settings.StartOnBoot,
                 showNotifications: settings.ShowNotifications,
                 showPreviewPanel: settings.ShowPreviewPanel,
-                excludedApps: settings.ExcludedApps.ToArray()
+                excludedApps: settings.ExcludedApps.ToArray(),
+                firstRun: settings.FirstRun
             );
 
             _engine?.SaveSettings(dto);
@@ -435,5 +437,6 @@ public class SettingsViewModel
     public bool StartOnBoot { get; set; } = true;
     public bool ShowNotifications { get; set; }
     public bool ShowPreviewPanel { get; set; } = true;
+    public bool FirstRun { get; set; }
     public List<string> ExcludedApps { get; set; } = new();
 }
