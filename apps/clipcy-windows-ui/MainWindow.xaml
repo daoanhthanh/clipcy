@@ -62,16 +62,24 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- Content Type Icon / Thumbnail -->
-            <Grid Grid.Column="0">
-              <FontIcon
-                FontSize="14"
-                Glyph="{Binding ContentTypeIcon}"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                VerticalAlignment="Center"
-                Visibility="{Binding IsImage, Converter={StaticResource BoolToVisibility}, ConverterParameter=Inverse}"
-              />
+            <!-- Content Type Icon -->
+            <FontIcon
+              Grid.Column="0"
+              FontSize="14"
+              Glyph="{Binding ContentTypeIcon}"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              VerticalAlignment="Center"
+            />
+
+            <!-- Content Preview (Text or Image Thumbnail) -->
+            <Grid Grid.Column="1" ColumnSpacing="6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+
               <Border
+                Grid.Column="0"
                 CornerRadius="3"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
@@ -85,17 +93,16 @@
                   Stretch="UniformToFill"
                 />
               </Border>
-            </Grid>
 
-            <!-- Preview Text -->
-            <TextBlock
-              Grid.Column="1"
-              Text="{Binding Preview}"
-              TextTrimming="CharacterEllipsis"
-              MaxLines="1"
-              VerticalAlignment="Center"
-              FontSize="13"
-            />
+              <TextBlock
+                Grid.Column="1"
+                Text="{Binding Preview}"
+                TextTrimming="CharacterEllipsis"
+                MaxLines="1"
+                VerticalAlignment="Center"
+                FontSize="13"
+              />
+            </Grid>
 
             <!-- Pin Icon -->
             <FontIcon
