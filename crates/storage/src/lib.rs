@@ -1,5 +1,5 @@
-mod sqlite_repository;
 mod async_init_repository;
+mod sqlite_repository;
 
-pub use sqlite_repository::SqliteClipboardRepository;
 pub use async_init_repository::AsyncInitRepository;
+pub use sqlite_repository::SqliteClipboardRepository;

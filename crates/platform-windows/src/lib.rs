@@ -31,6 +31,6 @@ pub use clipboard_history::import_system_clipboard_history;
 #[cfg(target_os = "windows")]
 pub use hotkey::WindowsHotkeyHandler;
 #[cfg(target_os = "windows")]
-pub use paste::{save_foreground_window, WindowsPasteHandler};
+pub use paste::{WindowsPasteHandler, save_foreground_window};
 #[cfg(target_os = "windows")]
 pub use theme::WindowsThemeDetector;

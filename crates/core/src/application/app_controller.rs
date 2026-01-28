@@ -11,18 +11,18 @@ use crate::ports::{AutostartHandler, HotkeyHandler, ThemeDetector, UIEvent, UIHa
 /// Open the settings window by spawning the Tauri settings app
 fn open_settings_window() {
     // Try to find the settings executable relative to the main executable
-    let settings_exe = std::env::current_exe()
-        .ok()
-        .and_then(|exe| {
-            let dir = exe.parent()?;
-            // Try different possible locations
-            let candidates = [
-                dir.join("clipcy-settings.exe"),
-                dir.join("clipcy-settings"),
-                dir.parent()?.join("clipcy-settings").join("clipcy-settings.exe"),
-            ];
-            candidates.into_iter().find(|p| p.exists())
-        });
+    let settings_exe = std::env::current_exe().ok().and_then(|exe| {
+        let dir = exe.parent()?;
+        // Try different possible locations
+        let candidates = [
+            dir.join("clipcy-settings.exe"),
+            dir.join("clipcy-settings"),
+            dir.parent()?
+                .join("clipcy-settings")
+                .join("clipcy-settings.exe"),
+        ];
+        candidates.into_iter().find(|p| p.exists())
+    });
 
     match settings_exe {
         Some(exe) => {
@@ -33,7 +33,9 @@ fn open_settings_window() {
             }
         }
         None => {
-            tracing::warn!("Settings executable not found. Build with: cargo build -p clipcy-settings");
+            tracing::warn!(
+                "Settings executable not found. Build with: cargo build -p clipcy-settings"
+            );
         }
     }
 }
@@ -189,18 +191,16 @@ impl AppController {
                     UIEvent::QuitClicked => {
                         std::process::exit(0);
                     }
-                    UIEvent::SearchChanged(query) => {
-                        match clipboard.search(&query).await {
-                            Ok(items) => {
-                                if let Err(e) = ui.show_popup(&items) {
-                                    tracing::error!("Failed to update popup: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                tracing::error!("Search failed: {}", e);
+                    UIEvent::SearchChanged(query) => match clipboard.search(&query).await {
+                        Ok(items) => {
+                            if let Err(e) = ui.show_popup(&items) {
+                                tracing::error!("Failed to update popup: {}", e);
                             }
                         }
-                    }
+                        Err(e) => {
+                            tracing::error!("Search failed: {}", e);
+                        }
+                    },
                     UIEvent::AutostartToggled(enabled) => {
                         let result = if enabled {
                             autostart.enable()

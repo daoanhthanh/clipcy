@@ -6,12 +6,12 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use chrono::Local;
 use once_cell::sync::OnceCell;
 use parking_lot::RwLock;
 use tokio::runtime::{Builder, Runtime};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
-use chrono::Local;
 
 use clipboard_core::application::ClipboardService;
 use clipboard_core::domain::{ClipboardItem, ContentType, Settings, Theme};
@@ -47,7 +47,11 @@ fn init_logging() {
         return;
     }
 
-    let default_log_level = if cfg!(debug_assertions) { "debug" } else { "warn" };
+    let default_log_level = if cfg!(debug_assertions) {
+        "debug" // actually this never happens because we must build release for uniffi
+    } else {
+        "warn"
+    };
 
     let log_file_name = format!("{}.clipcy.log", Local::now().format("%Y-%m-%d"));
     let log_file_path = log_dir.join(log_file_name);
@@ -60,7 +64,8 @@ fn init_logging() {
         Err(_) => return,
     };
     let (non_blocking, guard) = tracing_appender::non_blocking(file);
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_log_level));
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_log_level));
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(non_blocking)
@@ -521,10 +526,16 @@ impl ClipboardEngine {
                                         let items_vec: Vec<_> = items.into_iter().collect();
                                         match service_clone.import_items(items_vec).await {
                                             Ok(imported) => {
-                                                tracing::info!("Imported {} clipboard history items", imported);
+                                                tracing::info!(
+                                                    "Imported {} clipboard history items",
+                                                    imported
+                                                );
                                             }
                                             Err(e) => {
-                                                tracing::warn!("Failed to import clipboard items: {}", e);
+                                                tracing::warn!(
+                                                    "Failed to import clipboard items: {}",
+                                                    e
+                                                );
                                             }
                                         }
                                     } else {
@@ -550,9 +561,8 @@ impl ClipboardEngine {
                     // Set up clipboard change callback
                     let ui_handler_clone = ui_handler.clone();
                     monitor.on_change(Box::new(move |item| {
-                        ui_handler_clone.send_event(BridgeEvent::ClipboardChanged {
-                            item: item.into(),
-                        });
+                        ui_handler_clone
+                            .send_event(BridgeEvent::ClipboardChanged { item: item.into() });
                         ui_handler_clone.send_event(BridgeEvent::HistoryUpdated);
                     }));
 
@@ -589,10 +599,12 @@ impl ClipboardEngine {
                             }));
                         }
                         ThemeMode::Light => {
-                            ui_handler_clone.send_event(BridgeEvent::ThemeChanged { is_dark: false });
+                            ui_handler_clone
+                                .send_event(BridgeEvent::ThemeChanged { is_dark: false });
                         }
                         ThemeMode::Dark => {
-                            ui_handler_clone.send_event(BridgeEvent::ThemeChanged { is_dark: true });
+                            ui_handler_clone
+                                .send_event(BridgeEvent::ThemeChanged { is_dark: true });
                         }
                     }
 

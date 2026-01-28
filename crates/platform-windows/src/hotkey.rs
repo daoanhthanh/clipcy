@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
 use std::thread;
 
 use parking_lot::RwLock;
@@ -274,14 +274,13 @@ impl HotkeyHandler for WindowsHotkeyHandler {
                 tracing::info!("Registered hotkey {} with id {}", hotkey, id);
                 Ok(id)
             }
-            Ok(Err(e)) => {
-                Err(ClipboardError::HotkeyRegistration(
-                    format!("Failed to register hotkey '{}': {} (hotkey may already be in use by another application)", hotkey, e)
-                ))
-            }
-            Err(_) => {
-                Err(ClipboardError::HotkeyRegistration("Timeout waiting for hotkey registration".to_string()))
-            }
+            Ok(Err(e)) => Err(ClipboardError::HotkeyRegistration(format!(
+                "Failed to register hotkey '{}': {} (hotkey may already be in use by another application)",
+                hotkey, e
+            ))),
+            Err(_) => Err(ClipboardError::HotkeyRegistration(
+                "Timeout waiting for hotkey registration".to_string(),
+            )),
         }
     }
 

@@ -1,12 +1,12 @@
-use std::{env, process::Command};
 use std::os::windows::process::CommandExt;
+use std::{env, process::Command};
 
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::AutostartHandler;
 use windows::Win32::Foundation::ERROR_SUCCESS;
 use windows::Win32::System::Registry::{
-    RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
-    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SZ,
+    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SZ, RegCloseKey, RegDeleteValueW,
+    RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
 };
 
 const APP_NAME: &str = "Clipcy";
@@ -25,7 +25,9 @@ impl WindowsAutostartHandler {
 
     fn get_exe_path() -> Result<String> {
         env::current_exe()
-            .map_err(|e| ClipboardError::PlatformNotSupported(format!("Failed to get exe path: {}", e)))?
+            .map_err(|e| {
+                ClipboardError::PlatformNotSupported(format!("Failed to get exe path: {}", e))
+            })?
             .to_str()
             .map(|s| s.to_string())
             .ok_or_else(|| ClipboardError::PlatformNotSupported("Invalid exe path".to_string()))
@@ -52,7 +54,9 @@ impl WindowsAutostartHandler {
                 &format!("\"{}\"", exe_path),
             ])
             .status()
-            .map_err(|e| ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e)))?;
+            .map_err(|e| {
+                ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e))
+            })?;
 
         if status.success() {
             tracing::info!("Auto-start enabled via scheduled task: {}", exe_path);
@@ -70,7 +74,9 @@ impl WindowsAutostartHandler {
             .creation_flags(CREATE_NO_WINDOW)
             .args(["/Delete", "/F", "/TN", TASK_NAME])
             .status()
-            .map_err(|e| ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e)))?;
+            .map_err(|e| {
+                ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e))
+            })?;
         Ok(status.success())
     }
 
@@ -79,7 +85,9 @@ impl WindowsAutostartHandler {
             .creation_flags(CREATE_NO_WINDOW)
             .args(["/Query", "/TN", TASK_NAME])
             .status()
-            .map_err(|e| ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e)))?;
+            .map_err(|e| {
+                ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e))
+            })?;
         Ok(status.success())
     }
 }
@@ -100,7 +108,10 @@ impl AutostartHandler for WindowsAutostartHandler {
         // Preferred path: Scheduled Task for earlier, more reliable start
         match Self::create_scheduled_task(&exe_path) {
             Ok(_) => return Ok(()),
-            Err(err) => tracing::warn!("Scheduled task setup failed, falling back to registry: {}", err),
+            Err(err) => tracing::warn!(
+                "Scheduled task setup failed, falling back to registry: {}",
+                err
+            ),
         }
 
         // Fallback: registry Run key
@@ -126,7 +137,10 @@ impl AutostartHandler for WindowsAutostartHandler {
             let value_name: Vec<u16> = APP_NAME.encode_utf16().chain(std::iter::once(0)).collect();
             // Quote the path to handle spaces
             let value_data_str = format!("\"{}\"", exe_path);
-            let value_data: Vec<u16> = value_data_str.encode_utf16().chain(std::iter::once(0)).collect();
+            let value_data: Vec<u16> = value_data_str
+                .encode_utf16()
+                .chain(std::iter::once(0))
+                .collect();
 
             let result = RegSetValueExW(
                 hkey,
@@ -187,7 +201,10 @@ impl AutostartHandler for WindowsAutostartHandler {
             let _ = RegCloseKey(hkey);
 
             if result != ERROR_SUCCESS {
-                tracing::warn!("Auto-start entry not found or failed to delete: {:?}", result);
+                tracing::warn!(
+                    "Auto-start entry not found or failed to delete: {:?}",
+                    result
+                );
             } else {
                 tracing::info!("Auto-start disabled via registry");
             }

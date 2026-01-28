@@ -1,12 +1,12 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use parking_lot::RwLock;
 use windows::Win32::Foundation::ERROR_SUCCESS;
 use windows::Win32::System::Registry::{
-    RegCloseKey, RegNotifyChangeKeyValue, RegOpenKeyExW, RegQueryValueExW,
     HKEY, HKEY_CURRENT_USER, KEY_NOTIFY, KEY_READ, REG_NOTIFY_CHANGE_LAST_SET, REG_VALUE_TYPE,
+    RegCloseKey, RegNotifyChangeKeyValue, RegOpenKeyExW, RegQueryValueExW,
 };
 use windows::core::PCWSTR;
 
@@ -40,7 +40,7 @@ impl WindowsThemeDetector {
                 .encode_utf16()
                 .chain(std::iter::once(0))
                 .collect();
-            
+
             let mut hkey = HKEY::default();
             let result = RegOpenKeyExW(
                 HKEY_CURRENT_USER,
@@ -49,22 +49,23 @@ impl WindowsThemeDetector {
                 KEY_READ,
                 &mut hkey,
             );
-            
+
             if result != ERROR_SUCCESS {
-                return Err(ClipboardError::ThemeDetection(
-                    format!("Failed to open registry key: {:?}", result)
-                ));
+                return Err(ClipboardError::ThemeDetection(format!(
+                    "Failed to open registry key: {:?}",
+                    result
+                )));
             }
-            
+
             let value_name: Vec<u16> = APPS_USE_LIGHT_THEME
                 .encode_utf16()
                 .chain(std::iter::once(0))
                 .collect();
-            
+
             let mut data: u32 = 0;
             let mut data_size: u32 = std::mem::size_of::<u32>() as u32;
             let mut data_type: REG_VALUE_TYPE = REG_VALUE_TYPE::default();
-            
+
             let result = RegQueryValueExW(
                 hkey,
                 PCWSTR(value_name.as_ptr()),
@@ -73,15 +74,16 @@ impl WindowsThemeDetector {
                 Some(&mut data as *mut u32 as *mut u8),
                 Some(&mut data_size),
             );
-            
+
             let _ = RegCloseKey(hkey);
-            
+
             if result != ERROR_SUCCESS {
-                return Err(ClipboardError::ThemeDetection(
-                    format!("Failed to query registry value: {:?}", result)
-                ));
+                return Err(ClipboardError::ThemeDetection(format!(
+                    "Failed to query registry value: {:?}",
+                    result
+                )));
             }
-            
+
             // AppsUseLightTheme: 0 = Dark, 1 = Light
             Ok(if data == 0 { Theme::Dark } else { Theme::Light })
         }
@@ -95,9 +97,9 @@ impl WindowsThemeDetector {
                 .encode_utf16()
                 .chain(std::iter::once(0))
                 .collect();
-            
+
             let mut last_theme = Self::detect_theme_from_registry().unwrap_or(Theme::Light);
-            
+
             while running.load(Ordering::SeqCst) {
                 let mut hkey = HKEY::default();
                 let result = RegOpenKeyExW(
@@ -107,12 +109,12 @@ impl WindowsThemeDetector {
                     KEY_NOTIFY,
                     &mut hkey,
                 );
-                
+
                 if result != ERROR_SUCCESS {
                     thread::sleep(std::time::Duration::from_secs(5));
                     continue;
                 }
-                
+
                 // Wait for the registry key to change
                 let result = RegNotifyChangeKeyValue(
                     hkey,
@@ -121,24 +123,24 @@ impl WindowsThemeDetector {
                     None,
                     false, // Synchronous - blocks until change
                 );
-                
+
                 let _ = RegCloseKey(hkey);
-                
+
                 if result != ERROR_SUCCESS {
                     continue;
                 }
-                
+
                 // Check if we're still running
                 if !running.load(Ordering::SeqCst) {
                     break;
                 }
-                
+
                 // Read new theme and fire callback on a separate thread
                 // to avoid blocking the registry watcher
                 if let Ok(current) = Self::detect_theme_from_registry() {
                     if current != last_theme {
                         last_theme = current;
-                        
+
                         // Clone callback and spawn a new thread for notification
                         // This ensures the registry watcher doesn't block on C# callback
                         let cb_ref = callback.clone();

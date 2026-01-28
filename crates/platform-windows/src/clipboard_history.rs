@@ -1,17 +1,22 @@
 use clipboard_core::domain::ClipboardItem;
 use clipboard_core::error::{ClipboardError, Result};
 use std::collections::VecDeque;
-use tracing::{debug, warn};
 use tokio::runtime::Handle;
 use tokio::task;
+use tracing::{debug, warn};
 
 use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
-use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
+use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize};
 
 use chrono::{DateTime, Utc};
-use windows::ApplicationModel::DataTransfer::{Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView, HtmlFormatHelper, StandardDataFormats};
+use windows::ApplicationModel::DataTransfer::{
+    Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView,
+    HtmlFormatHelper, StandardDataFormats,
+};
 use windows::Graphics::Imaging::{BitmapDecoder, BitmapEncoder};
-use windows::Storage::Streams::{DataReader, InMemoryRandomAccessStream, RandomAccessStreamReference};
+use windows::Storage::Streams::{
+    DataReader, InMemoryRandomAccessStream, RandomAccessStreamReference,
+};
 
 const WINDOWS_TO_UNIX_EPOCH_100NS: i64 = 116_444_736_000_000_000;
 
@@ -20,7 +25,10 @@ pub async fn import_system_clipboard_history() -> Result<VecDeque<ClipboardItem>
     match task::spawn_blocking(|| import_history_sta()).await {
         Ok(Ok(items)) => {
             if !items.is_empty() {
-                tracing::info!("Successfully imported {} clipboard history items", items.len());
+                tracing::info!(
+                    "Successfully imported {} clipboard history items",
+                    items.len()
+                );
             } else {
                 tracing::debug!("No clipboard history items imported");
             }
@@ -75,8 +83,9 @@ impl Drop for ComStaGuard {
 
 async fn import_history_internal() -> Result<VecDeque<ClipboardItem>> {
     // Ensure clipboard history is enabled by the user/OS
-    let is_enabled = Clipboard::IsHistoryEnabled()
-        .map_err(|e| ClipboardError::ClipboardAccess(format!("Failed to check history support: {}", e)))?;
+    let is_enabled = Clipboard::IsHistoryEnabled().map_err(|e| {
+        ClipboardError::ClipboardAccess(format!("Failed to check history support: {}", e))
+    })?;
 
     if !is_enabled {
         debug!("Clipboard history is disabled");
@@ -84,13 +93,17 @@ async fn import_history_internal() -> Result<VecDeque<ClipboardItem>> {
     }
 
     let result = Clipboard::GetHistoryItemsAsync()
-        .map_err(|e| ClipboardError::ClipboardAccess(format!("Failed to request history items: {}", e)))?
+        .map_err(|e| {
+            ClipboardError::ClipboardAccess(format!("Failed to request history items: {}", e))
+        })?
         .await
-        .map_err(|e| ClipboardError::ClipboardAccess(format!("Failed to await history items: {}", e)))?;
+        .map_err(|e| {
+            ClipboardError::ClipboardAccess(format!("Failed to await history items: {}", e))
+        })?;
 
-    let status = result
-        .Status()
-        .map_err(|e| ClipboardError::ClipboardAccess(format!("Failed to read history status: {}", e)))?;
+    let status = result.Status().map_err(|e| {
+        ClipboardError::ClipboardAccess(format!("Failed to read history status: {}", e))
+    })?;
 
     if status != ClipboardHistoryItemsResultStatus::Success {
         return Err(ClipboardError::ClipboardAccess(format!(
@@ -99,16 +112,16 @@ async fn import_history_internal() -> Result<VecDeque<ClipboardItem>> {
         )));
     }
 
-    let items_view = result
-        .Items()
-        .map_err(|e| ClipboardError::ClipboardAccess(format!("Failed to read history items: {}", e)))?;
+    let items_view = result.Items().map_err(|e| {
+        ClipboardError::ClipboardAccess(format!("Failed to read history items: {}", e))
+    })?;
 
     let mut collected: Vec<ClipboardItem> = Vec::new();
 
     // Items are ordered newest-first; iterate backwards to insert oldest-first for stable history order
-    let count = items_view
-        .Size()
-        .map_err(|e| ClipboardError::ClipboardAccess(format!("Failed to read history size: {}", e)))?;
+    let count = items_view.Size().map_err(|e| {
+        ClipboardError::ClipboardAccess(format!("Failed to read history size: {}", e))
+    })?;
 
     for idx in (0..count).rev() {
         match items_view.GetAt(idx) {
@@ -162,19 +175,34 @@ async fn convert_history_item(history_item: ClipboardHistoryItem) -> Result<Opti
         .map_err(|e| map_win_error("Failed to read history content", e))?;
 
     let has_files = content
-        .Contains(&StandardDataFormats::StorageItems().map_err(|e| map_win_error("Failed to get StorageItems format", e))?)
+        .Contains(
+            &StandardDataFormats::StorageItems()
+                .map_err(|e| map_win_error("Failed to get StorageItems format", e))?,
+        )
         .map_err(|e| map_win_error("Failed to detect storage items", e))?;
     let has_bitmap = content
-        .Contains(&StandardDataFormats::Bitmap().map_err(|e| map_win_error("Failed to get Bitmap format", e))?)
+        .Contains(
+            &StandardDataFormats::Bitmap()
+                .map_err(|e| map_win_error("Failed to get Bitmap format", e))?,
+        )
         .map_err(|e| map_win_error("Failed to detect bitmap", e))?;
     let has_html = content
-        .Contains(&StandardDataFormats::Html().map_err(|e| map_win_error("Failed to get HTML format", e))?)
+        .Contains(
+            &StandardDataFormats::Html()
+                .map_err(|e| map_win_error("Failed to get HTML format", e))?,
+        )
         .map_err(|e| map_win_error("Failed to detect HTML", e))?;
     let has_rtf = content
-        .Contains(&StandardDataFormats::Rtf().map_err(|e| map_win_error("Failed to get RTF format", e))?)
+        .Contains(
+            &StandardDataFormats::Rtf()
+                .map_err(|e| map_win_error("Failed to get RTF format", e))?,
+        )
         .map_err(|e| map_win_error("Failed to detect RTF", e))?;
     let has_text = content
-        .Contains(&StandardDataFormats::Text().map_err(|e| map_win_error("Failed to get Text format", e))?)
+        .Contains(
+            &StandardDataFormats::Text()
+                .map_err(|e| map_win_error("Failed to get Text format", e))?,
+        )
         .map_err(|e| map_win_error("Failed to detect text", e))?;
 
     if has_files {
@@ -308,7 +336,8 @@ async fn read_stream_as_png(reference: RandomAccessStreamReference) -> Result<Ve
         .map_err(|e| map_win_error("Failed to allocate memory stream", e))?;
 
     let encoder = BitmapEncoder::CreateAsync(
-        BitmapEncoder::PngEncoderId().map_err(|e| map_win_error("Failed to get PNG encoder id", e))?,
+        BitmapEncoder::PngEncoderId()
+            .map_err(|e| map_win_error("Failed to get PNG encoder id", e))?,
         &out_stream,
     )
     .map_err(|e| map_win_error("Failed to create PNG encoder", e))?
@@ -404,8 +433,8 @@ async fn get_text(view: &DataPackageView) -> Result<Option<String>> {
 }
 
 fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Option<Vec<u8>> {
-    use image::io::Reader as ImageReader;
     use image::ImageEncoder;
+    use image::io::Reader as ImageReader;
     use std::io::Cursor;
 
     let img = ImageReader::new(Cursor::new(png_data))

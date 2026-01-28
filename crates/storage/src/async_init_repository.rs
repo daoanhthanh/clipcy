@@ -167,4 +167,3 @@ impl ClipboardRepository for AsyncInitRepository {
         repo.set_pinned(id, pinned).await
     }
 }
-

@@ -23,9 +23,15 @@ async fn test_search() {
     let db_path = dir.path().join("test.db");
     let repo = SqliteClipboardRepository::new(db_path).await.unwrap();
 
-    repo.save(&ClipboardItem::new_text("Hello World")).await.unwrap();
-    repo.save(&ClipboardItem::new_text("Hello Rust")).await.unwrap();
-    repo.save(&ClipboardItem::new_text("Goodbye")).await.unwrap();
+    repo.save(&ClipboardItem::new_text("Hello World"))
+        .await
+        .unwrap();
+    repo.save(&ClipboardItem::new_text("Hello Rust"))
+        .await
+        .unwrap();
+    repo.save(&ClipboardItem::new_text("Goodbye"))
+        .await
+        .unwrap();
 
     let results = repo.search("Hello", 10).await.unwrap();
     assert_eq!(results.len(), 2);
@@ -38,7 +44,9 @@ async fn test_prune() {
     let repo = SqliteClipboardRepository::new(db_path).await.unwrap();
 
     for i in 0..10 {
-        repo.save(&ClipboardItem::new_text(format!("Item {}", i))).await.unwrap();
+        repo.save(&ClipboardItem::new_text(format!("Item {}", i)))
+            .await
+            .unwrap();
     }
 
     let deleted = repo.prune(5).await.unwrap();
@@ -92,7 +100,9 @@ async fn test_pinned_items_preserved_on_clear() {
     item.pinned = true;
     repo.save(&item).await.unwrap();
 
-    repo.save(&ClipboardItem::new_text("Not pinned")).await.unwrap();
+    repo.save(&ClipboardItem::new_text("Not pinned"))
+        .await
+        .unwrap();
 
     repo.clear().await.unwrap();
 
