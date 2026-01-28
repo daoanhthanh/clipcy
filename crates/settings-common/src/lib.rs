@@ -53,6 +53,9 @@ pub struct Settings {
     /// Excluded applications (won't capture from these)
     #[serde(default)]
     pub excluded_apps: Vec<String>,
+    /// Whether this is the first run (used for initial clipboard import)
+    #[serde(default = "default_true")]
+    pub first_run: bool,
 }
 
 fn default_max_history() -> usize {
@@ -77,6 +80,7 @@ impl Default for Settings {
             show_notifications: false,
             show_preview_panel: true,
             excluded_apps: Vec::new(),
+            first_run: true,
         }
     }
 }

@@ -41,6 +41,7 @@ dictionary SettingsDto {
     boolean show_notifications;
     boolean show_preview_panel;
     sequence<string> excluded_apps;
+    boolean first_run;
 };
 
 // Bridge events sent to UI

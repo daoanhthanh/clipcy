@@ -14,6 +14,8 @@ mod autostart;
 #[cfg(target_os = "windows")]
 mod clipboard;
 #[cfg(target_os = "windows")]
+mod clipboard_history;
+#[cfg(target_os = "windows")]
 mod hotkey;
 #[cfg(target_os = "windows")]
 mod paste;
@@ -24,6 +26,8 @@ mod theme;
 pub use autostart::WindowsAutostartHandler;
 #[cfg(target_os = "windows")]
 pub use clipboard::WindowsClipboardMonitor;
+#[cfg(target_os = "windows")]
+pub use clipboard_history::import_system_clipboard_history;
 #[cfg(target_os = "windows")]
 pub use hotkey::WindowsHotkeyHandler;
 #[cfg(target_os = "windows")]

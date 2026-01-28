@@ -145,4 +145,24 @@ impl ClipboardService {
     pub fn update_settings(&self, settings: Settings) {
         *self.settings.write() = settings;
     }
+
+    pub async fn import_items(&self, items: Vec<ClipboardItem>) -> Result<usize> {
+        let max_items = self.settings.read().max_history_items;
+        let mut count = 0;
+
+        for item in items {
+            if let Err(e) = self.repository.save(&item).await {
+                tracing::warn!("Failed to save imported clipboard item: {}", e);
+            } else {
+                count += 1;
+            }
+        }
+
+        // Prune to maintain max items limit
+        if let Err(e) = self.repository.prune(max_items).await {
+            tracing::warn!("Failed to prune history after import: {}", e);
+        }
+
+        Ok(count)
+    }
 }

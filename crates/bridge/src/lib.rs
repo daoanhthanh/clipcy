@@ -165,6 +165,7 @@ pub struct SettingsDto {
     pub show_notifications: bool,
     pub show_preview_panel: bool,
     pub excluded_apps: Vec<String>,
+    pub first_run: bool,
 }
 
 impl From<clipcy_settings_common::Settings> for SettingsDto {
@@ -177,6 +178,7 @@ impl From<clipcy_settings_common::Settings> for SettingsDto {
             show_notifications: s.show_notifications,
             show_preview_panel: s.show_preview_panel,
             excluded_apps: s.excluded_apps,
+            first_run: s.first_run,
         }
     }
 }
@@ -191,6 +193,7 @@ impl From<SettingsDto> for clipcy_settings_common::Settings {
             show_notifications: s.show_notifications,
             show_preview_panel: s.show_preview_panel,
             excluded_apps: s.excluded_apps,
+            first_run: s.first_run,
         }
     }
 }
@@ -476,6 +479,7 @@ impl ClipboardEngine {
             // Step 4: Get settings (defaults or loaded)
             let settings = settings_manager.get();
             let core_settings = settings.clone();
+            let is_first_run = settings.first_run;
 
             // Step 5: Create and start clipboard service
             #[cfg(target_os = "windows")]
@@ -490,6 +494,44 @@ impl ClipboardEngine {
                     ));
 
                     *clipboard_service.write() = Some(service.clone());
+
+                    // Import clipboard history on first run
+                    if is_first_run {
+                        let service_clone = service.clone();
+                        let settings_manager_clone = settings_manager.clone();
+
+                        runtime_handle.spawn(async move {
+                            tracing::info!("First-run detected, importing clipboard history");
+                            match clipcy_platform_windows::import_system_clipboard_history().await {
+                                Ok(items) => {
+                                    let count = items.len();
+                                    if count > 0 {
+                                        let items_vec: Vec<_> = items.into_iter().collect();
+                                        match service_clone.import_items(items_vec).await {
+                                            Ok(imported) => {
+                                                tracing::info!("Imported {} clipboard history items", imported);
+                                            }
+                                            Err(e) => {
+                                                tracing::warn!("Failed to import clipboard items: {}", e);
+                                            }
+                                        }
+                                    } else {
+                                        tracing::info!("No clipboard history items to import");
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Failed to retrieve clipboard history: {}", e);
+                                }
+                            }
+
+                            // Mark first run as complete
+                            let mut updated_settings = settings_manager_clone.get();
+                            updated_settings.first_run = false;
+                            if let Err(e) = settings_manager_clone.save(&updated_settings) {
+                                tracing::warn!("Failed to save first_run flag: {}", e);
+                            }
+                        });
+                    }
 
                     // Set up clipboard change callback
                     let ui_handler_clone = ui_handler.clone();
@@ -512,7 +554,7 @@ impl ClipboardEngine {
                     // Set up hotkey
                     let ui_handler_clone = ui_handler.clone();
                     let _ = hotkey_handler.register(
-                        &settings.hotkey,
+                        &settings_manager.get().hotkey,
                         Box::new(move || {
                             ui_handler_clone.send_event(BridgeEvent::HotkeyTriggered);
                         }),
@@ -520,7 +562,7 @@ impl ClipboardEngine {
 
                     // Set up theme detection
                     let ui_handler_clone = ui_handler.clone();
-                    match settings.theme {
+                    match settings_manager.get().theme {
                         ThemeMode::System => {
                             if let Ok(theme) = theme_detector.get_current() {
                                 let is_dark = matches!(theme, Theme::Dark);
