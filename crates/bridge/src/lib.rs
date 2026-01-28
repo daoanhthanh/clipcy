@@ -11,6 +11,7 @@ use parking_lot::RwLock;
 use tokio::runtime::{Builder, Runtime};
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
+use chrono::Local;
 
 use clipboard_core::application::ClipboardService;
 use clipboard_core::domain::{ClipboardItem, ContentType, Settings, Theme};
@@ -48,8 +49,17 @@ fn init_logging() {
 
     let default_log_level = if cfg!(debug_assertions) { "debug" } else { "warn" };
 
-    let file_appender = tracing_appender::rolling::daily(&log_dir, "clipcy.log");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    let log_file_name = format!("{}.clipcy.log", Local::now().format("%Y-%m-%d"));
+    let log_file_path = log_dir.join(log_file_name);
+    let file = match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_file_path)
+    {
+        Ok(f) => f,
+        Err(_) => return,
+    };
+    let (non_blocking, guard) = tracing_appender::non_blocking(file);
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_log_level));
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter(filter)
