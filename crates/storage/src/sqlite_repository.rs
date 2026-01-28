@@ -242,9 +242,26 @@ impl ClipboardRepository for SqliteClipboardRepository {
     async fn save(&self, item: &ClipboardItem) -> Result<()> {
         let content_type = serde_json::to_string(&item.content_type)?;
         let content_hash = calculate_content_hash(&item.data);
+        let mut pinned_to_save = item.pinned;
 
         // Only deduplicate text content - images should always be kept as separate entries
         if item.content_type == ContentType::Text {
+            if let Some(row) = sqlx::query(
+                "SELECT pinned FROM clipboard_items WHERE content_hash = $1 ORDER BY pinned DESC LIMIT 1",
+            )
+            .bind(&content_hash)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?
+            {
+                let existing_pinned: i32 = row
+                    .try_get("pinned")
+                    .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+                if existing_pinned != 0 {
+                    pinned_to_save = true;
+                }
+            }
+
             // Delete any existing item with the same content hash (deduplication)
             // This removes the old entry so the new one will be at the top when sorted by created_at
             sqlx::query("DELETE FROM clipboard_items WHERE content_hash = $1 AND id != $2")
@@ -269,7 +286,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             .bind(&item.thumbnail)
             .bind(&item.source_app)
             .bind(item.created_at.to_rfc3339())
-            .bind(item.pinned as i32)
+            .bind(pinned_to_save as i32)
             .bind(&content_hash)
             .execute(&self.pool)
             .await

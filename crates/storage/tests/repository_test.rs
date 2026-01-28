@@ -112,3 +112,22 @@ async fn test_pinned_items_preserved_on_clear() {
     let retrieved = repo.get_by_id(item.id).await.unwrap();
     assert!(retrieved.is_some());
 }
+
+#[tokio::test]
+async fn test_pinned_status_preserved_on_dedup() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+    let repo = SqliteClipboardRepository::new(db_path).await.unwrap();
+
+    let mut pinned_item = ClipboardItem::new_text("Duplicate");
+    pinned_item.pinned = true;
+    repo.save(&pinned_item).await.unwrap();
+
+    let duplicate = ClipboardItem::new_text("Duplicate");
+    repo.save(&duplicate).await.unwrap();
+
+    let items = repo.get_all(10).await.unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].as_text(), Some("Duplicate"));
+    assert!(items[0].pinned);
+}
