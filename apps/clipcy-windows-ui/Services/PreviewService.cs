@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text;
 using Clipcy.Controls;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
@@ -227,10 +228,10 @@ public class PreviewService : IPreviewService
             // Push data to the control
             _previewControl.PreviewData = data;
 
-            // Handle Async image loading
-            if (data.PreviewType == "Image" && data.LoadFullData != null)
+            // Handle Async full-data loading
+            if (data.LoadFullData != null)
             {
-                _ = LoadFullImageAsync(data);
+                _ = LoadFullDataAsync(data);
             }
 
             // --- Positioning Logic ---
@@ -307,7 +308,7 @@ public class PreviewService : IPreviewService
         }
     }
 
-    private async Task LoadFullImageAsync(PreviewData data)
+    private async Task LoadFullDataAsync(PreviewData data)
     {
         try
         {
@@ -319,8 +320,23 @@ public class PreviewService : IPreviewService
 
                 if (fullData != null && fullData.Length > 0)
                 {
-                    data.ImageBytes = fullData;
-                    // Trigger refresh since we updated the object in place
+                    switch (data.PreviewType)
+                    {
+                        case "Image":
+                            data.ImageBytes = fullData;
+                            break;
+                        case "RichText":
+                            var rtf = Encoding.UTF8.GetString(fullData);
+                            data.RtfContent = rtf;
+                            data.TextContent = rtf;
+                            break;
+                        case "Text":
+                        case "Html":
+                        case "Files":
+                            data.TextContent = Encoding.UTF8.GetString(fullData);
+                            break;
+                    }
+
                     if (_previewControl != null)
                         _previewControl.Refresh();
                 }

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -357,8 +358,12 @@ internal class RustBridgeService : IDisposable, UiCallback
 /// <summary>
 /// ViewModel for clipboard items - used by UI layer
 /// </summary>
-public class ClipboardItemViewModel
+public class ClipboardItemViewModel : INotifyPropertyChanged
 {
+    private static readonly LruCache<string, BitmapImage> ThumbnailCache = new(200);
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public string Id { get; init; } = string.Empty;
     public string ContentType { get; init; } = "Text";
     public string Preview { get; init; } = string.Empty;
@@ -372,29 +377,85 @@ public class ClipboardItemViewModel
     public string PinUnpinText => Pinned ? "Unpin" : "Pin";
 
     private BitmapImage? _thumbnailImage;
+    private Task? _thumbnailLoadTask;
     public BitmapImage? ThumbnailImage
     {
         get
         {
-            if (_thumbnailImage == null && ContentType == "Image" && Thumbnail != null && Thumbnail.Length > 0)
-            {
-                try
-                {
-                    _thumbnailImage = new BitmapImage();
-                    _thumbnailImage.DecodePixelHeight = 64; // Optimized for list view (32px height * 2 for high DPI)
-
-                    using (var stream = new MemoryStream(Thumbnail))
-                    {
-                        _thumbnailImage.SetSource(stream.AsRandomAccessStream());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error creating thumbnail: {ex.Message}");
-                }
-            }
             return _thumbnailImage;
         }
+    }
+
+    public void EnsureThumbnailLoaded(DispatcherQueue dispatcher)
+    {
+        if (_thumbnailImage != null)
+            return;
+        if (!IsImage || Thumbnail == null || Thumbnail.Length == 0)
+            return;
+        if (_thumbnailLoadTask != null)
+            return;
+
+        if (ThumbnailCache.TryGet(Id, out var cached))
+        {
+            _thumbnailImage = cached;
+            RaisePropertyChanged(nameof(ThumbnailImage));
+            return;
+        }
+
+        _thumbnailLoadTask = LoadThumbnailAsync(dispatcher);
+    }
+
+    private async Task LoadThumbnailAsync(DispatcherQueue dispatcher)
+    {
+        try
+        {
+            await RunOnDispatcherAsync(dispatcher, async () =>
+            {
+                if (_thumbnailImage != null || Thumbnail == null || Thumbnail.Length == 0)
+                    return;
+
+                var bitmap = new BitmapImage { DecodePixelHeight = 64 };
+                using var stream = new MemoryStream(Thumbnail);
+                await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+
+                _thumbnailImage = bitmap;
+                ThumbnailCache.Add(Id, bitmap);
+                RaisePropertyChanged(nameof(ThumbnailImage));
+            });
+        }
+        catch
+        {
+        }
+        finally
+        {
+            _thumbnailLoadTask = null;
+        }
+    }
+
+    private static Task RunOnDispatcherAsync(DispatcherQueue dispatcher, Func<Task> action)
+    {
+        var tcs = new TaskCompletionSource<bool>();
+        if (!dispatcher.TryEnqueue(async () =>
+        {
+            try
+            {
+                await action();
+                tcs.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+        }))
+        {
+            tcs.TrySetResult(true);
+        }
+        return tcs.Task;
+    }
+
+    private void RaisePropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     /// <summary>

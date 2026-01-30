@@ -1,5 +1,6 @@
 using Clipcy.Services;
 using Clipcy.ViewModels;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -210,6 +211,11 @@ public sealed partial class MainWindow : Window
             item.GotFocus += ListViewItem_GotFocus;
             item.LostFocus += ListViewItem_LostFocus;
         }
+
+        if (args.Item is ClipboardItemViewModel vm)
+        {
+            vm.EnsureThumbnailLoaded(this.DispatcherQueue);
+        }
     }
 
     private void ListViewItem_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -274,41 +280,6 @@ public sealed partial class MainWindow : Window
                 return null;
             },
         };
-
-        // Load full content for preview panel (not just the truncated preview)
-        if (App.Bridge != null && !string.IsNullOrEmpty(vm.Id))
-        {
-            try
-            {
-                var fullDataBytes = App.Bridge.GetItemData(vm.Id);
-                if (fullDataBytes != null && fullDataBytes.Length > 0)
-                {
-                    switch (vm.ContentType)
-                    {
-                        case "Text":
-                        case "Html":
-                            // Load full text content with newlines preserved
-                            data.TextContent = System.Text.Encoding.UTF8.GetString(fullDataBytes);
-                            break;
-
-                        case "RichText":
-                            // Load RTF and extract plain text for fallback
-                            data.RtfContent = System.Text.Encoding.UTF8.GetString(fullDataBytes);
-                            data.TextContent = ExtractPlainTextFromRtf(data.RtfContent);
-                            break;
-
-                        case "Files":
-                            // Load file paths
-                            data.TextContent = System.Text.Encoding.UTF8.GetString(fullDataBytes);
-                            break;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error loading full data: {ex.Message}");
-            }
-        }
 
         return data;
     }
