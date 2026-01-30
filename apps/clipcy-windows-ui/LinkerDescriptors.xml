@@ -1,0 +1,9 @@
+<linker>
+  <assembly fullname="Clipcy">
+    <namespace fullname="Clipcy" preserve="all" />
+    <namespace fullname="Clipcy.Controls" preserve="all" />
+    <namespace fullname="Clipcy.Converters" preserve="all" />
+    <namespace fullname="Clipcy.Services" preserve="all" />
+    <namespace fullname="Clipcy.ViewModels" preserve="all" />
+  </assembly>
+</linker>

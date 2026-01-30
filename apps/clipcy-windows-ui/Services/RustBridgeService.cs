@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.IO;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media.Imaging;
 using uniffi.clipcy_core;
 using Windows.Storage.Streams;
@@ -374,7 +375,11 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
 
     public bool IsImage => ContentType == "Image";
 
+    public Visibility ImageVisibility => IsImage ? Visibility.Visible : Visibility.Collapsed;
+
     public string PinUnpinText => Pinned ? "Unpin" : "Pin";
+
+    public Visibility PinnedVisibility => Pinned ? Visibility.Visible : Visibility.Collapsed;
 
     private BitmapImage? _thumbnailImage;
     private Task? _thumbnailLoadTask;

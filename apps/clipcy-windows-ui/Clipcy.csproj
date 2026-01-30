@@ -40,6 +40,10 @@
     <PackageReference Include="System.Management" Version="10.0.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <TrimmerRootDescriptor Include="LinkerDescriptors.xml" />
+  </ItemGroup>
+
   <!-- Copy Rust DLL to output directory -->
   <ItemGroup>
     <Content

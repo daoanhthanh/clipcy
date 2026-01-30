@@ -164,7 +164,7 @@ if (-not (Test-Path $PublishDir)) {
 
 Push-Location $CSharpProject
 try {
-    dotnet publish -c $Configuration -r $Runtime -o $PublishDir -p:Platform=$Platform -p:PublishTrimmed=false -p:PublishSingleFile=false
+    dotnet publish -c $Configuration -r $Runtime -o $PublishDir -p:Platform=$Platform -p:PublishTrimmed=true -p:PublishSingleFile=false
 }
 finally {
     Pop-Location
