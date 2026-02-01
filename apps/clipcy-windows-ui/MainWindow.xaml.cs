@@ -1,6 +1,7 @@
 using Clipcy.Services;
 using Clipcy.ViewModels;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -64,7 +65,7 @@ public sealed partial class MainWindow : Window
         _previewService.Dispose();
     }
 
-    private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)
+    private void MainWindow_Activated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
     {
         if (args.WindowActivationState == WindowActivationState.Deactivated)
         {
@@ -128,6 +129,42 @@ public sealed partial class MainWindow : Window
         {
             e.Handled = true;
             this.HidePopup();
+            return;
+        }
+
+        if (IsKeyDown(Windows.System.VirtualKey.Control) && e.Key == Windows.System.VirtualKey.P)
+        {
+            if (HistoryListView.SelectedItem is ClipboardItemViewModel item)
+            {
+                e.Handled = true;
+                try
+                {
+                    App.Bridge?.SetPinned(item.Id, !item.Pinned);
+                    ViewModel.RefreshHistory();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error toggling pin: {ex.Message}");
+                }
+            }
+            return;
+        }
+
+        if (e.Key == Windows.System.VirtualKey.Delete)
+        {
+            if (HistoryListView.SelectedItem is ClipboardItemViewModel item)
+            {
+                e.Handled = true;
+                try
+                {
+                    App.Bridge?.DeleteItem(item.Id);
+                    ViewModel.RefreshHistory();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error deleting item: {ex.Message}");
+                }
+            }
             return;
         }
 
@@ -282,6 +319,10 @@ public sealed partial class MainWindow : Window
 
         item.Focus(FocusState.Pointer);
     }
+
+    private static bool IsKeyDown(Windows.System.VirtualKey key) =>
+        (InputKeyboardSource.GetKeyStateForCurrentThread(key) & Windows.UI.Core.CoreVirtualKeyStates.Down)
+        == Windows.UI.Core.CoreVirtualKeyStates.Down;
 
     private PreviewData MapToPreviewData(ClipboardItemViewModel vm)
     {
