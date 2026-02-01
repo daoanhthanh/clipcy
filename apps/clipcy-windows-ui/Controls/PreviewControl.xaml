@@ -87,13 +87,40 @@
           Background="{ThemeResource SurfaceStrokeColorDefaultBrush}"
         />
 
-        <TextBlock
-          x:Name="MetadataText"
-          FontSize="11"
-          TextWrapping="Wrap"
-          LineHeight="16"
-          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-        />
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+
+          <TextBlock
+            x:Name="MetadataText"
+            Grid.Column="0"
+            FontSize="11"
+            TextWrapping="Wrap"
+            LineHeight="16"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+          />
+
+          <StackPanel
+            Grid.Column="1"
+            Spacing="2"
+            HorizontalAlignment="Right"
+          >
+            <TextBlock
+              FontSize="11"
+              LineHeight="16"
+              Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+              Text="Ctrl+P to pin"
+            />
+            <TextBlock
+              FontSize="11"
+              LineHeight="16"
+              Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+              Text="Del to delete"
+            />
+          </StackPanel>
+        </Grid>
       </StackPanel>
     </Grid>
   </Border>
