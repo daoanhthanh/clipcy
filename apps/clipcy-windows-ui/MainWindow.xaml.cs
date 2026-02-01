@@ -13,6 +13,7 @@ public sealed partial class MainWindow : Window
 
     private readonly IWindowService _windowService;
     private readonly IPreviewService _previewService;
+    private bool _keyboardNavigationActive;
 
     public MainWindow()
     {
@@ -142,6 +143,8 @@ public sealed partial class MainWindow : Window
 
         if (e.Key == Windows.System.VirtualKey.Down)
         {
+            _keyboardNavigationActive = true;
+
             if (SearchBox.FocusState != FocusState.Unfocused)
             {
                 e.Handled = true;
@@ -170,6 +173,7 @@ public sealed partial class MainWindow : Window
         }
         else if (e.Key == Windows.System.VirtualKey.Up)
         {
+            _keyboardNavigationActive = true;
             e.Handled = true;
 
             if (HistoryListView.SelectedIndex > 0)
@@ -202,11 +206,13 @@ public sealed partial class MainWindow : Window
         if (args.ItemContainer is ListViewItem item)
         {
             item.PointerEntered -= ListViewItem_PointerEntered;
+            item.PointerMoved -= ListViewItem_PointerMoved;
             item.PointerExited -= ListViewItem_PointerExited;
             item.GotFocus -= ListViewItem_GotFocus;
             item.LostFocus -= ListViewItem_LostFocus;
 
             item.PointerEntered += ListViewItem_PointerEntered;
+            item.PointerMoved += ListViewItem_PointerMoved;
             item.PointerExited += ListViewItem_PointerExited;
             item.GotFocus += ListViewItem_GotFocus;
             item.LostFocus += ListViewItem_LostFocus;
@@ -220,18 +226,25 @@ public sealed partial class MainWindow : Window
 
     private void ListViewItem_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (SearchBox != null && SearchBox.FocusState != FocusState.Unfocused)
+        if (sender is ListViewItem item)
         {
-            if (sender is ListViewItem item)
-            {
-                item.Focus(FocusState.Pointer);
-            }
+            _keyboardNavigationActive = false;
+            ApplyPointerSelection(item);
         }
 
         if (sender is ListViewItem li && li.Content is ClipboardItemViewModel viewModel)
         {
             var data = MapToPreviewData(viewModel);
             _previewService.ScheduleShow(data, li);
+        }
+    }
+
+    private void ListViewItem_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (_keyboardNavigationActive && sender is ListViewItem item)
+        {
+            _keyboardNavigationActive = false;
+            ApplyPointerSelection(item);
         }
     }
 
@@ -257,6 +270,17 @@ public sealed partial class MainWindow : Window
     private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
     {
         _previewService.Hide();
+    }
+
+    private void ApplyPointerSelection(ListViewItem item)
+    {
+        var index = HistoryListView.IndexFromContainer(item);
+        if (index >= 0 && HistoryListView.SelectedIndex != index)
+        {
+            HistoryListView.SelectedIndex = index;
+        }
+
+        item.Focus(FocusState.Pointer);
     }
 
     private PreviewData MapToPreviewData(ClipboardItemViewModel vm)
