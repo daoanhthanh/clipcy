@@ -134,7 +134,10 @@ public sealed partial class PreviewControl : UserControl
 
         // Created time
         if (!string.IsNullOrEmpty(data.RelativeTime))
-            metadata.AppendLine($"Copied: {data.RelativeTime}");
+        {
+            var displayTime = GetDisplayTime(data.RelativeTime, data.CreatedAtTimestamp);
+            metadata.AppendLine($"Copied: {displayTime}");
+        }
 
         // Content-specific metadata
         switch (data.PreviewType)
@@ -175,5 +178,32 @@ public sealed partial class PreviewControl : UserControl
         }
 
         MetadataText.Text = metadata.ToString().TrimEnd();
+    }
+
+    private string GetDisplayTime(string relativeTime, ulong timestamp)
+    {
+        var dateTime = DateTimeOffset.FromUnixTimeSeconds((long)timestamp).ToLocalTime();
+        var timeFormat = dateTime.ToString("HH:mm");
+
+        // Show relative time with time for up to 3 days
+        if (relativeTime == "just now" || 
+            relativeTime.Contains("m ago") || 
+            relativeTime.Contains("h ago"))
+        {
+            return $"{relativeTime}, {timeFormat}";
+        }
+        
+        // Check if it's within 3 days (1d ago, 2d ago, 3d ago)
+        if (relativeTime.Contains("d ago"))
+        {
+            var daysPart = relativeTime.Replace("d ago", "").Trim();
+            if (int.TryParse(daysPart, out int days) && days <= 3)
+            {
+                return $"{relativeTime}, {timeFormat}";
+            }
+        }
+
+        // Beyond 3 days, show full timestamp as YYYY-MM-DD HH:mm
+        return dateTime.ToString("yyyy-MM-dd HH:mm");
     }
 }

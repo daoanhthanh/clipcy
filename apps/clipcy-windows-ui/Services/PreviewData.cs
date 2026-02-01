@@ -15,6 +15,7 @@ public class PreviewData
 
     // Metadata for display
     public string RelativeTime { get; set; } = string.Empty;
+    public ulong CreatedAtTimestamp { get; set; }
     public string? SourceApp { get; set; }
     public bool IsPinned { get; set; }
 

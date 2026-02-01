@@ -269,6 +269,7 @@ public sealed partial class MainWindow : Window
             ImageBytes = null, // Will be populated by LoadFullData if available
             Thumbnail = vm.Thumbnail,
             RelativeTime = vm.RelativeTime,
+            CreatedAtTimestamp = vm.CreatedAtTimestamp,
             SourceApp = vm.SourceApp,
             IsPinned = vm.Pinned,
             LoadFullData = async () =>
