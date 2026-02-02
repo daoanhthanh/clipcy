@@ -118,6 +118,13 @@ pub fn html_to_text(html: &str) -> String {
     strip_html_tags(html)
 }
 
+fn html_to_search_text(html_format: &str) -> (String, bool) {
+    let fragment =
+        extract_html_fragment_from_format(html_format).unwrap_or_else(|| html_format.to_string());
+    let is_table = looks_like_table_html(&fragment);
+    (strip_html_tags(&fragment), is_table)
+}
+
 fn parse_html_format_offset(html_format: &str, key: &str) -> Option<usize> {
     html_format
         .split(key)
@@ -297,6 +304,86 @@ fn extract_rtf_text(rtf: &str) -> String {
     let text = result.split_whitespace().collect::<Vec<_>>().join(" ");
 
     text.trim().to_string()
+}
+
+fn split_words(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .map(|word| word.to_ascii_lowercase())
+        .collect()
+}
+
+fn build_initials_aliases(words: &[String]) -> Vec<String> {
+    if words.len() < 2 {
+        return Vec::new();
+    }
+
+    let mut aliases = Vec::new();
+
+    let initials: String = words
+        .iter()
+        .filter_map(|word| word.chars().next())
+        .collect();
+    if initials.len() >= 2 {
+        aliases.push(initials);
+    }
+
+    let prefix: String = words
+        .iter()
+        .take(words.len().saturating_sub(1))
+        .filter_map(|word| word.chars().next())
+        .collect();
+    let last = match words.last() {
+        Some(word) => word,
+        None => return aliases,
+    };
+
+    if !prefix.is_empty() {
+        aliases.push(format!("{} {}", prefix, last));
+        aliases.push(format!("{}{}", prefix, last));
+    }
+
+    aliases
+}
+
+fn build_source_app_aliases(app: &str) -> Vec<String> {
+    let words = split_words(app);
+    if words.is_empty() {
+        return Vec::new();
+    }
+
+    let mut aliases = build_initials_aliases(&words);
+    let compact = words.join("");
+    if compact.len() >= 3 {
+        aliases.push(compact);
+    }
+
+    aliases
+}
+
+fn build_content_aliases(text: &str) -> Vec<String> {
+    let mut aliases = Vec::new();
+
+    let first_line = text
+        .lines()
+        .map(|line| line.trim())
+        .find(|line| !line.is_empty());
+    let first_line = match first_line {
+        Some(line) => line,
+        None => return aliases,
+    };
+
+    if first_line.len() > 80 {
+        return aliases;
+    }
+
+    let words = split_words(first_line);
+    if words.len() < 2 || words.len() > 6 {
+        return aliases;
+    }
+
+    aliases.extend(build_initials_aliases(&words));
+    aliases
 }
 
 /// Represents a single clipboard history item
@@ -484,6 +571,80 @@ impl ClipboardItem {
         } else {
             None
         }
+    }
+
+    /// Build a searchable plain-text representation of the item
+    pub fn searchable_text(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+
+        let (mut content_text, is_table) = match self.content_type {
+            ContentType::Text | ContentType::Files => {
+                (String::from_utf8_lossy(&self.data).to_string(), false)
+            }
+            ContentType::Html => {
+                let html = String::from_utf8_lossy(&self.data);
+                html_to_search_text(&html)
+            }
+            ContentType::RichText => {
+                let rtf = String::from_utf8_lossy(&self.data);
+                (extract_rtf_text(&rtf), false)
+            }
+            ContentType::Image => (String::new(), false),
+        };
+
+        if content_text.trim().is_empty() && !self.preview.trim().is_empty() {
+            content_text = self.preview.clone();
+        }
+
+        if !content_text.trim().is_empty() {
+            let content_aliases = build_content_aliases(&content_text);
+            parts.push(content_text);
+            if !content_aliases.is_empty() {
+                parts.push(content_aliases.join(" "));
+            }
+        }
+
+        let mut keywords: Vec<&str> = Vec::new();
+        match self.content_type {
+            ContentType::Text => keywords.push("text"),
+            ContentType::Html => {
+                keywords.push("html");
+                if is_table {
+                    keywords.push("table");
+                }
+            }
+            ContentType::RichText => {
+                keywords.push("richtext");
+                keywords.push("rtf");
+                keywords.push("formatted");
+            }
+            ContentType::Image => {
+                keywords.push("image");
+                keywords.push("picture");
+            }
+            ContentType::Files => {
+                keywords.push("files");
+                keywords.push("file");
+                keywords.push("path");
+            }
+        }
+
+        if !keywords.is_empty() {
+            parts.push(keywords.join(" "));
+        }
+
+        if let Some(app) = &self.source_app {
+            if !app.trim().is_empty() {
+                parts.push(app.clone());
+            }
+
+            let aliases = build_source_app_aliases(app);
+            if !aliases.is_empty() {
+                parts.push(aliases.join(" "));
+            }
+        }
+
+        parts.join(" ")
     }
 }
 

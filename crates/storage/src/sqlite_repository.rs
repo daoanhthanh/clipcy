@@ -20,6 +20,75 @@ fn calculate_content_hash(data: &[u8]) -> String {
     format!("{:016x}", hasher.finish())
 }
 
+fn tokenize_query(query: &str) -> Vec<String> {
+    query
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|part| !part.is_empty())
+        .map(|part| part.to_ascii_lowercase())
+        .collect()
+}
+
+fn build_match_terms(tokens: &[String]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter_map(|token| {
+            let trimmed = token.trim();
+            if trimmed.is_empty() {
+                return None;
+            }
+
+            if trimmed.len() >= 2 {
+                Some(format!("{}*", trimmed))
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
+        .collect()
+}
+
+fn compact_query(query: &str) -> String {
+    query
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect::<String>()
+        .to_ascii_lowercase()
+}
+
+fn build_fts_queries(query: &str) -> Vec<String> {
+    let tokens = tokenize_query(query);
+    if tokens.is_empty() {
+        return Vec::new();
+    }
+
+    let strict_terms = build_match_terms(&tokens);
+    let mut queries = Vec::new();
+    if !strict_terms.is_empty() {
+        queries.push(strict_terms.join(" AND "));
+    }
+
+    let relaxed_tokens: Vec<String> = tokens.iter().filter(|token| token.len() >= 3).cloned().collect();
+    let base_tokens = if relaxed_tokens.is_empty() {
+        tokens.clone()
+    } else {
+        relaxed_tokens
+    };
+    let mut relaxed_terms = build_match_terms(&base_tokens);
+
+    let compact = compact_query(query);
+    if compact.len() >= 3 && !base_tokens.iter().any(|token| token == &compact) {
+        relaxed_terms.push(format!("{}*", compact));
+    }
+
+    if !relaxed_terms.is_empty() {
+        let relaxed = relaxed_terms.join(" OR ");
+        if queries.last().map(|q| q != &relaxed).unwrap_or(true) {
+            queries.push(relaxed);
+        }
+    }
+
+    queries
+}
+
 /// SQLite-based clipboard repository using sqlx for truly async operations
 pub struct SqliteClipboardRepository {
     pool: SqlitePool,
@@ -66,6 +135,7 @@ impl SqliteClipboardRepository {
                 content_type TEXT NOT NULL,
                 data BLOB NOT NULL,
                 preview TEXT NOT NULL,
+                search_text TEXT,
                 thumbnail BLOB,
                 source_app TEXT,
                 source_app_icon BLOB,
@@ -105,6 +175,105 @@ impl SqliteClipboardRepository {
         let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN source_app_icon BLOB")
             .execute(&self.pool)
             .await;
+
+        let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN search_text TEXT")
+            .execute(&self.pool)
+            .await;
+
+        self.init_fts().await?;
+        self.backfill_search_text().await?;
+        self.rebuild_fts().await?;
+
+        Ok(())
+    }
+
+    async fn init_fts(&self) -> Result<()> {
+        sqlx::query(
+            r#"
+            CREATE VIRTUAL TABLE IF NOT EXISTS clipboard_items_fts
+            USING fts5(
+                search_text,
+                content='clipboard_items',
+                content_rowid='rowid',
+                tokenize='unicode61'
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS clipboard_items_ai
+            AFTER INSERT ON clipboard_items BEGIN
+                INSERT INTO clipboard_items_fts(rowid, search_text)
+                VALUES (new.rowid, new.search_text);
+            END;
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS clipboard_items_ad
+            AFTER DELETE ON clipboard_items BEGIN
+                INSERT INTO clipboard_items_fts(clipboard_items_fts, rowid, search_text)
+                VALUES ('delete', old.rowid, old.search_text);
+            END;
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS clipboard_items_au
+            AFTER UPDATE ON clipboard_items BEGIN
+                INSERT INTO clipboard_items_fts(clipboard_items_fts, rowid, search_text)
+                VALUES ('delete', old.rowid, old.search_text);
+                INSERT INTO clipboard_items_fts(rowid, search_text)
+                VALUES (new.rowid, new.search_text);
+            END;
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn rebuild_fts(&self) -> Result<()> {
+        sqlx::query("INSERT INTO clipboard_items_fts(clipboard_items_fts) VALUES ('rebuild')")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn backfill_search_text(&self) -> Result<()> {
+        let rows = sqlx::query(
+            "SELECT * FROM clipboard_items WHERE search_text IS NULL OR search_text = ''",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        for row in rows {
+            let item = Self::row_to_item(&row)?;
+            let search_text = item.searchable_text();
+            sqlx::query("UPDATE clipboard_items SET search_text = $1 WHERE id = $2")
+                .bind(search_text)
+                .bind(item.id.to_string())
+                .execute(&self.pool)
+                .await
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        }
 
         Ok(())
     }
@@ -222,31 +391,82 @@ impl SqliteClipboardRepository {
     }
 
     pub async fn search_metadata(&self, query: &str, limit: usize) -> Result<Vec<ClipboardItem>> {
-        let pattern = format!("%{}%", query);
+        if query.trim().is_empty() {
+            return self.get_all_metadata(limit).await;
+        }
 
-        let rows = sqlx::query(
-            r#"
-            SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, pinned
-            FROM clipboard_items
-            WHERE preview LIKE $1
-            ORDER BY pinned DESC, created_at DESC
-            LIMIT $2
-            "#,
-        )
-        .bind(pattern)
-        .bind(limit as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        self.search_with_fts(query, limit, true).await
+    }
 
-        let mut items = Vec::with_capacity(rows.len());
-        for row in rows {
-            if let Ok(item) = Self::row_to_item_summary(&row) {
-                items.push(item);
+    async fn search_with_fts(
+        &self,
+        query: &str,
+        limit: usize,
+        metadata_only: bool,
+    ) -> Result<Vec<ClipboardItem>> {
+        let queries = build_fts_queries(query);
+        if queries.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        for fts_query in queries {
+            let rows = if metadata_only {
+                sqlx::query(
+                    r#"
+                    SELECT ci.id, ci.content_type, ci.preview, ci.thumbnail, ci.source_app, ci.source_app_icon, ci.created_at, ci.pinned
+                    FROM clipboard_items ci
+                    JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
+                    WHERE clipboard_items_fts MATCH $1
+                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.created_at DESC
+                    LIMIT $2
+                    "#,
+                )
+                .bind(&fts_query)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?
+            } else {
+                sqlx::query(
+                    r#"
+                    SELECT ci.*
+                    FROM clipboard_items ci
+                    JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
+                    WHERE clipboard_items_fts MATCH $1
+                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.created_at DESC
+                    LIMIT $2
+                    "#,
+                )
+                .bind(&fts_query)
+                .bind(limit as i64)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?
+            };
+
+            if rows.is_empty() {
+                continue;
+            }
+
+            let mut items = Vec::with_capacity(rows.len());
+            for row in rows {
+                let item = if metadata_only {
+                    Self::row_to_item_summary(&row)
+                } else {
+                    Self::row_to_item(&row)
+                };
+
+                if let Ok(item) = item {
+                    items.push(item);
+                }
+            }
+
+            if !items.is_empty() {
+                return Ok(items);
             }
         }
 
-        Ok(items)
+        Ok(Vec::new())
     }
 }
 
@@ -255,6 +475,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
     async fn save(&self, item: &ClipboardItem) -> Result<()> {
         let content_type = serde_json::to_string(&item.content_type)?;
         let content_hash = calculate_content_hash(&item.data);
+        let search_text = item.searchable_text();
         let mut pinned_to_save = item.pinned;
 
         // Only deduplicate text content - images should always be kept as separate entries
@@ -288,14 +509,15 @@ impl ClipboardRepository for SqliteClipboardRepository {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO clipboard_items
-            (id, content_type, data, preview, thumbnail, source_app, source_app_icon, created_at, pinned, content_hash)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            (id, content_type, data, preview, search_text, thumbnail, source_app, source_app_icon, created_at, pinned, content_hash)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
         )
             .bind(item.id.to_string())
             .bind(content_type)
             .bind(&item.data)
             .bind(&item.preview)
+            .bind(&search_text)
             .bind(&item.thumbnail)
             .bind(&item.source_app)
             .bind(&item.source_app_icon)
@@ -359,30 +581,11 @@ impl ClipboardRepository for SqliteClipboardRepository {
     }
 
     async fn search(&self, query: &str, limit: usize) -> Result<Vec<ClipboardItem>> {
-        let pattern = format!("%{}%", query);
-
-        let rows = sqlx::query(
-            r#"
-            SELECT * FROM clipboard_items
-            WHERE preview LIKE $1
-            ORDER BY created_at DESC
-            LIMIT $2
-            "#,
-        )
-        .bind(pattern)
-        .bind(limit as i64)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
-
-        let mut items = Vec::with_capacity(rows.len());
-        for row in rows {
-            if let Ok(item) = Self::row_to_item(&row) {
-                items.push(item);
-            }
+        if query.trim().is_empty() {
+            return self.get_all(limit).await;
         }
 
-        Ok(items)
+        self.search_with_fts(query, limit, false).await
     }
 
     async fn count(&self) -> Result<usize> {

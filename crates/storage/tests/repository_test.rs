@@ -38,6 +38,26 @@ async fn test_search() {
 }
 
 #[tokio::test]
+async fn test_search_matches_source_app_and_aliases() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+    let repo = SqliteClipboardRepository::new(db_path).await.unwrap();
+
+    let content_item = ClipboardItem::new_text("Visual Studio Code");
+    repo.save(&content_item).await.unwrap();
+
+    let mut app_item = ClipboardItem::new_text("Other content");
+    app_item.source_app = Some("Visual Studio Code".to_string());
+    repo.save(&app_item).await.unwrap();
+
+    let results = repo.search("vs code", 10).await.unwrap();
+
+    let ids: Vec<_> = results.iter().map(|item| item.id).collect();
+    assert!(ids.contains(&content_item.id));
+    assert!(ids.contains(&app_item.id));
+}
+
+#[tokio::test]
 async fn test_prune() {
     let dir = tempdir().unwrap();
     let db_path = dir.path().join("test.db");
