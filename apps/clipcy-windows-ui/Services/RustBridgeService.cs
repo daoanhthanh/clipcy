@@ -405,7 +405,8 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     }
 
     public bool IsTablePreview =>
-        (ContentType == "Html" && (Preview == "Table" || Preview.Contains('\t')))
+        (ContentType == "Html"
+        && (Preview == "Table" || Preview.Contains('\t') || Preview.Contains('\n')))
         || (ContentType == "Text" && Preview.Contains('\t'));
 
     private static string GetFirstLine(string text)

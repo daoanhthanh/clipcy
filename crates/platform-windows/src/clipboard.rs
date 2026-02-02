@@ -1,23 +1,28 @@
 use std::borrow::Cow;
 use std::mem::size_of;
-use std::sync::Arc;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::Arc;
 use std::thread;
 
 use parking_lot::RwLock;
 use std::ffi::c_void;
-use windows::Win32::Foundation::{HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
+use windows::core::PWSTR;
+use windows::Win32::Foundation::{CloseHandle, HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, GetDC, GetDIBits, GetObjectW,
-    HBITMAP, ReleaseDC,
+    GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+    DIB_RGB_COLORS, HBITMAP,
 };
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
 use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_HDROP, CF_UNICODETEXT};
+use windows::Win32::System::Threading::{
+    OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 use windows::Win32::UI::Shell::DragQueryFileW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use clipboard_core::domain::{ClipboardItem, ContentType, html_to_text};
+use clipboard_core::domain::{html_to_text, ClipboardItem, ContentType};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
 
@@ -467,6 +472,8 @@ impl WindowsClipboardMonitor {
     /// Get current clipboard item, with prioritized format detection
     /// Priority order: Files (unless single image file with image data available) > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format (as text fallback) > Rich Text Format > CF_UNICODETEXT
     pub fn get_current_item() -> Option<ClipboardItem> {
+        let source_app = get_foreground_process_name();
+
         // Check available formats
         let has_files = Self::has_files_format();
         let has_image = Self::has_image_format();
@@ -515,7 +522,9 @@ impl WindowsClipboardMonitor {
                     // Fall through to image handling below
                 } else {
                     tracing::info!("Captured {} files", files.len());
-                    return Some(ClipboardItem::new_files(files));
+                    let mut item = ClipboardItem::new_files(files);
+                    item.source_app = source_app.clone();
+                    return Some(item);
                 }
             } else {
                 tracing::warn!("has_files_format() returned true but get_clipboard_files() failed");
@@ -533,7 +542,9 @@ impl WindowsClipboardMonitor {
             let table_source = fragment.as_deref().unwrap_or(html);
             if looks_like_table_html(table_source) {
                 tracing::info!("Captured HTML table: {} chars", html.len());
-                return Some(ClipboardItem::new_html(html.clone()));
+                let mut item = ClipboardItem::new_html(html.clone());
+                item.source_app = source_app.clone();
+                return Some(item);
             }
         }
 
@@ -546,7 +557,9 @@ impl WindowsClipboardMonitor {
         if let Some(ref text) = text_content {
             if looks_like_tabular_text(text) {
                 tracing::info!("Captured tabular text: {} chars", text.len());
-                return Some(ClipboardItem::new_text(text.clone()));
+                let mut item = ClipboardItem::new_text(text.clone());
+                item.source_app = source_app.clone();
+                return Some(item);
             }
         }
 
@@ -556,7 +569,9 @@ impl WindowsClipboardMonitor {
             if Self::has_png_format() {
                 if let Some((png_data, thumbnail)) = Self::get_clipboard_png() {
                     tracing::info!("Captured PNG image: {} bytes", png_data.len());
-                    return Some(ClipboardItem::new_image(png_data, thumbnail));
+                    let mut item = ClipboardItem::new_image(png_data, thumbnail);
+                    item.source_app = source_app.clone();
+                    return Some(item);
                 }
             }
 
@@ -567,7 +582,9 @@ impl WindowsClipboardMonitor {
                     png_data.len(),
                     thumbnail.as_ref().map(|t| t.len())
                 );
-                return Some(ClipboardItem::new_image(png_data, thumbnail));
+                let mut item = ClipboardItem::new_image(png_data, thumbnail);
+                item.source_app = source_app.clone();
+                return Some(item);
             } else {
                 tracing::warn!("has_image_format() returned true but get_clipboard_image() failed");
             }
@@ -580,7 +597,9 @@ impl WindowsClipboardMonitor {
                 let plain_text = html_to_text(fragment.as_deref().unwrap_or(&html));
                 if !plain_text.trim().is_empty() {
                     tracing::debug!("Captured HTML as text: {} chars", plain_text.len());
-                    return Some(ClipboardItem::new_text(plain_text));
+                    let mut item = ClipboardItem::new_text(plain_text);
+                    item.source_app = source_app.clone();
+                    return Some(item);
                 }
             }
         }
@@ -590,7 +609,9 @@ impl WindowsClipboardMonitor {
             if let Some(rtf) = Self::get_clipboard_rtf() {
                 if !rtf.trim().is_empty() {
                     tracing::debug!("Captured RTF: {} chars", rtf.len());
-                    return Some(ClipboardItem::new_rtf(rtf));
+                    let mut item = ClipboardItem::new_rtf(rtf);
+                    item.source_app = source_app.clone();
+                    return Some(item);
                 }
             }
         }
@@ -604,7 +625,9 @@ impl WindowsClipboardMonitor {
                     return None;
                 }
                 tracing::debug!("Captured text: {} chars", text.len());
-                return Some(ClipboardItem::new_text(text));
+                let mut item = ClipboardItem::new_text(text);
+                item.source_app = source_app.clone();
+                return Some(item);
             }
         }
 
@@ -663,7 +686,7 @@ fn is_html_format(html: &str) -> bool {
 
 fn looks_like_table_html(html: &str) -> bool {
     let lower = html.to_ascii_lowercase();
-    lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
+    lower.contains("<table") || lower.contains("<td") || lower.contains("<th")
 }
 
 fn looks_like_tabular_text(text: &str) -> bool {
@@ -678,73 +701,87 @@ fn looks_like_tabular_text(text: &str) -> bool {
     text.matches('\t').count() >= 2
 }
 
+fn get_foreground_process_name() -> Option<String> {
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() {
+            return None;
+        }
+
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        if pid == 0 {
+            return None;
+        }
+
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut size: u32 = 260;
+        let mut buffer = vec![0u16; size as usize];
+        let success = QueryFullProcessImageNameW(
+            handle,
+            windows::Win32::System::Threading::PROCESS_NAME_FORMAT(0),
+            PWSTR(buffer.as_mut_ptr()),
+            &mut size,
+        )
+        .is_ok();
+        let _ = CloseHandle(handle);
+
+        if !success || size == 0 {
+            return None;
+        }
+
+        buffer.truncate(size as usize);
+        let path = String::from_utf16_lossy(&buffer);
+        Path::new(&path)
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+    }
+}
+
 fn html_table_to_tsv(html: &str) -> Option<String> {
     let lower = html.to_ascii_lowercase();
     let has_rows = lower.contains("<tr");
     let has_cells = lower.contains("<td") || lower.contains("<th");
-    if !has_rows || !has_cells {
+    if !has_cells {
         return None;
     }
 
     let mut rows = Vec::new();
     let mut idx = 0;
 
-    loop {
-        let tr_pos = match lower[idx..].find("<tr") {
-            Some(pos) => pos + idx,
-            None => break,
-        };
-
-        let tr_open_end = match lower[tr_pos..].find('>') {
-            Some(pos) => tr_pos + pos + 1,
-            None => break,
-        };
-
-        let tr_close = match lower[tr_open_end..].find("</tr") {
-            Some(pos) => tr_open_end + pos,
-            None => break,
-        };
-
-        let row_html = &html[tr_open_end..tr_close];
-        let row_lower = row_html.to_ascii_lowercase();
-        let mut cells = Vec::new();
-        let mut cell_idx = 0;
-
+    if has_rows {
         loop {
-            let td_pos = row_lower[cell_idx..].find("<td").map(|p| p + cell_idx);
-            let th_pos = row_lower[cell_idx..].find("<th").map(|p| p + cell_idx);
-            let cell_start = match (td_pos, th_pos) {
-                (Some(td), Some(th)) => td.min(th),
-                (Some(td), None) => td,
-                (None, Some(th)) => th,
-                (None, None) => break,
-            };
-
-            let cell_open_end = match row_lower[cell_start..].find('>') {
-                Some(pos) => cell_start + pos + 1,
+            let tr_pos = match lower[idx..].find("<tr") {
+                Some(pos) => pos + idx,
                 None => break,
             };
 
-            let is_header = row_lower[cell_start..].starts_with("<th");
-            let closing_tag = if is_header { "</th" } else { "</td" };
-
-            let cell_close = match row_lower[cell_open_end..].find(closing_tag) {
-                Some(pos) => cell_open_end + pos,
+            let tr_open_end = match lower[tr_pos..].find('>') {
+                Some(pos) => tr_pos + pos + 1,
                 None => break,
             };
 
-            let cell_html = &row_html[cell_open_end..cell_close];
-            let cell_text = html_to_text(cell_html).trim().to_string();
-            cells.push(cell_text);
+            let tr_close = match lower[tr_open_end..].find("</tr") {
+                Some(pos) => tr_open_end + pos,
+                None => break,
+            };
 
-            cell_idx = cell_close + closing_tag.len();
+            let row_html = &html[tr_open_end..tr_close];
+            let cells = extract_html_cells(row_html);
+
+            if !cells.is_empty() {
+                rows.push(cells);
+            }
+
+            idx = tr_close + 5;
         }
+    }
 
+    if rows.is_empty() && has_cells {
+        let cells = extract_html_cells(html);
         if !cells.is_empty() {
             rows.push(cells);
         }
-
-        idx = tr_close + 5;
     }
 
     if rows.is_empty() {
@@ -757,6 +794,44 @@ fn html_table_to_tsv(html: &str) -> Option<String> {
     }
 
     Some(lines.join("\r\n"))
+}
+
+fn extract_html_cells(html: &str) -> Vec<String> {
+    let lower = html.to_ascii_lowercase();
+    let mut cells = Vec::new();
+    let mut cell_idx = 0;
+
+    loop {
+        let td_pos = lower[cell_idx..].find("<td").map(|p| p + cell_idx);
+        let th_pos = lower[cell_idx..].find("<th").map(|p| p + cell_idx);
+        let cell_start = match (td_pos, th_pos) {
+            (Some(td), Some(th)) => td.min(th),
+            (Some(td), None) => td,
+            (None, Some(th)) => th,
+            (None, None) => break,
+        };
+
+        let cell_open_end = match lower[cell_start..].find('>') {
+            Some(pos) => cell_start + pos + 1,
+            None => break,
+        };
+
+        let is_header = lower[cell_start..].starts_with("<th");
+        let closing_tag = if is_header { "</th" } else { "</td" };
+
+        let cell_close = match lower[cell_open_end..].find(closing_tag) {
+            Some(pos) => cell_open_end + pos,
+            None => break,
+        };
+
+        let cell_html = &html[cell_open_end..cell_close];
+        let cell_text = html_to_text(cell_html).trim().to_string();
+        cells.push(cell_text);
+
+        cell_idx = cell_close + closing_tag.len();
+    }
+
+    cells
 }
 
 /// Create HDROP data structure for file paths
@@ -1018,8 +1093,8 @@ fn encode_png(rgba_data: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
 }
 
 fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Option<Vec<u8>> {
-    use image::ImageEncoder;
     use image::io::Reader as ImageReader;
+    use image::ImageEncoder;
     use std::io::Cursor;
 
     let img = ImageReader::new(Cursor::new(png_data))

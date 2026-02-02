@@ -201,12 +201,11 @@ public sealed partial class PreviewControl : UserControl
         if (string.IsNullOrWhiteSpace(html))
             return false;
 
-        var hasRows = html.Contains("<tr", StringComparison.OrdinalIgnoreCase);
         var hasCells =
             html.Contains("<td", StringComparison.OrdinalIgnoreCase)
             || html.Contains("<th", StringComparison.OrdinalIgnoreCase);
 
-        if (!hasRows || !hasCells)
+        if (!hasCells)
             return false;
 
         var rows = ParseHtmlTable(html);
@@ -222,7 +221,29 @@ public sealed partial class PreviewControl : UserControl
         var rows = new List<List<string>>();
         var rowMatches = HtmlRowRegex.Matches(html);
         if (rowMatches.Count == 0)
+        {
+            var cellMatches = HtmlCellRegex.Matches(html);
+            if (cellMatches.Count == 0)
+                return rows;
+
+            var row = new List<string>();
+            foreach (Match cellMatch in cellMatches)
+            {
+                if (row.Count >= MaxTableColumns)
+                    break;
+
+                var cellHtml = cellMatch.Groups[1].Value;
+                var cellText = StripHtmlToText(cellHtml) ?? string.Empty;
+                row.Add(cellText);
+            }
+
+            if (row.Count > 0)
+            {
+                rows.Add(row);
+            }
+
             return rows;
+        }
 
         foreach (Match rowMatch in rowMatches)
         {

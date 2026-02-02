@@ -458,7 +458,7 @@ async fn get_text(view: &DataPackageView) -> Result<Option<String>> {
 
 fn looks_like_table_html(html: &str) -> bool {
     let lower = html.to_ascii_lowercase();
-    lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
+    lower.contains("<table") || lower.contains("<td") || lower.contains("<th")
 }
 
 fn looks_like_tabular_text(text: &str) -> bool {

@@ -28,7 +28,7 @@ fn strip_html_tags(html: &str) -> String {
 
 fn looks_like_table_html(html: &str) -> bool {
     let lower = html.to_ascii_lowercase();
-    lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
+    lower.contains("<table") || lower.contains("<td") || lower.contains("<th")
 }
 
 fn extract_table_rows(html: &str) -> Vec<Vec<String>> {
@@ -53,42 +53,7 @@ fn extract_table_rows(html: &str) -> Vec<Vec<String>> {
         };
 
         let row_html = &html[row_open_end..row_close];
-        let row_lower = row_html.to_ascii_lowercase();
-        let mut cells = Vec::new();
-        let mut cell_idx = 0;
-
-        loop {
-            let td_pos = row_lower[cell_idx..].find("<td").map(|p| p + cell_idx);
-            let th_pos = row_lower[cell_idx..].find("<th").map(|p| p + cell_idx);
-            let cell_start = match (td_pos, th_pos) {
-                (Some(td), Some(th)) => td.min(th),
-                (Some(td), None) => td,
-                (None, Some(th)) => th,
-                (None, None) => break,
-            };
-
-            let open_end = match row_lower[cell_start..].find('>') {
-                Some(pos) => cell_start + pos + 1,
-                None => break,
-            };
-
-            let closing_tag = if row_lower[cell_start..].starts_with("<th") {
-                "</th"
-            } else {
-                "</td"
-            };
-
-            let close_start = match row_lower[open_end..].find(closing_tag) {
-                Some(pos) => open_end + pos,
-                None => break,
-            };
-
-            let cell_html = &row_html[open_end..close_start];
-            let cell_text = strip_html_tags(cell_html).trim().to_string();
-            cells.push(cell_text);
-
-            cell_idx = close_start + closing_tag.len();
-        }
+        let cells = extract_table_cells(row_html);
 
         if !cells.is_empty() {
             rows.push(cells);
@@ -97,7 +62,55 @@ fn extract_table_rows(html: &str) -> Vec<Vec<String>> {
         idx = row_close + 5;
     }
 
+    if rows.is_empty() && (lower.contains("<td") || lower.contains("<th")) {
+        let cells = extract_table_cells(html);
+        if !cells.is_empty() {
+            rows.push(cells);
+        }
+    }
+
     rows
+}
+
+fn extract_table_cells(html: &str) -> Vec<String> {
+    let lower = html.to_ascii_lowercase();
+    let mut cells = Vec::new();
+    let mut cell_idx = 0;
+
+    loop {
+        let td_pos = lower[cell_idx..].find("<td").map(|p| p + cell_idx);
+        let th_pos = lower[cell_idx..].find("<th").map(|p| p + cell_idx);
+        let cell_start = match (td_pos, th_pos) {
+            (Some(td), Some(th)) => td.min(th),
+            (Some(td), None) => td,
+            (None, Some(th)) => th,
+            (None, None) => break,
+        };
+
+        let open_end = match lower[cell_start..].find('>') {
+            Some(pos) => cell_start + pos + 1,
+            None => break,
+        };
+
+        let closing_tag = if lower[cell_start..].starts_with("<th") {
+            "</th"
+        } else {
+            "</td"
+        };
+
+        let close_start = match lower[open_end..].find(closing_tag) {
+            Some(pos) => open_end + pos,
+            None => break,
+        };
+
+        let cell_html = &html[open_end..close_start];
+        let cell_text = strip_html_tags(cell_html).trim().to_string();
+        cells.push(cell_text);
+
+        cell_idx = close_start + closing_tag.len();
+    }
+
+    cells
 }
 
 /// Convert HTML content to plain text
@@ -377,13 +390,24 @@ impl ClipboardItem {
         let preview = if looks_like_table_html(&fragment) {
             let rows = extract_table_rows(&fragment);
             if rows.is_empty() {
-                "Table".to_string()
+                // Fallback to plain text if table parsing fails
+                strip_html_tags(&fragment)
+                    .lines()
+                    .map(|line| line.trim())
+                    .find(|line| !line.is_empty())
+                    .unwrap_or("Table")
+                    .to_string()
             } else {
-                let table_text = rows
-                    .into_iter()
+                let mut table_text = rows
+                    .iter()
                     .map(|row| row.join("\t"))
                     .collect::<Vec<_>>()
                     .join("\n");
+
+                if rows.len() == 1 && rows[0].len() == 1 {
+                    table_text.push('\n');
+                }
+
                 table_text.chars().take(8000).collect()
             }
         } else {
