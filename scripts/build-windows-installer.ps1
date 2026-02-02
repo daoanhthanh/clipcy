@@ -2,7 +2,8 @@ param(
     [string]$Runtime = "win-x64",
     [string]$Configuration = "Release",
     [switch]$Clean,
-    [string]$InnoSetupPath
+    [string]$InnoSetupPath,
+    [string]$Version
 )
 
 $ErrorActionPreference = "Stop"
@@ -175,7 +176,7 @@ if (-not (Test-Path $ExePath)) {
     throw "Publish failed - Clipcy.exe not found at $ExePath"
 }
 
-$AppVersion = Get-WorkspaceVersion -Path $CargoToml
+$AppVersion = if ($Version) { $Version } else { Get-WorkspaceVersion -Path $CargoToml }
 $IsccPath = Resolve-IsccPath -Hint $InnoSetupPath
 if (-not $IsccPath) {
     throw "Inno Setup compiler not found. Install Inno Setup 6 and ensure ISCC.exe is on PATH, or pass -InnoSetupPath."

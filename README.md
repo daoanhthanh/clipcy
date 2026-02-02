@@ -116,6 +116,50 @@ Outputs:
 - Published app: `dist\windows\win-x64`
 - Installer: `dist\installer`
 
+### MSIX Auto-Update (WinUI)
+
+Clipcy supports Windows auto-update via MSIX + App Installer. Packages are hosted on GitHub Releases.
+
+#### Required Assets
+MSIX needs these PNGs in `apps/clipcy-windows-ui/Assets/`:
+- `StoreLogo.png`
+- `Square44x44Logo.png`
+- `Square150x150Logo.png`
+- `SplashScreen.png`
+
+Generate them from `icon.ico`:
+```powershell
+./scripts/generate-msix-assets.ps1
+```
+
+#### Build MSIX Locally
+```powershell
+./scripts/build-msix-release.ps1 -Repo ORG/REPO -CertificatePath "path\to\cert.pfx" -CertificatePassword "password"
+```
+
+Outputs:
+- `dist\msix\win-x64\Clipcy.msix`
+- `dist\msix\win-x64\Clipcy.appinstaller`
+
+Version comes from `Cargo.toml` (`[workspace.package].version`) and is converted to 4-part MSIX format (e.g. `0.1.0` → `0.1.0.0`).
+
+#### GitHub Release Workflow
+Workflow: `.github/workflows/release-msix.yml`
+
+Secrets required:
+- `MSIX_CERT_BASE64` (base64-encoded PFX)
+- `MSIX_CERT_PASSWORD`
+
+Run the workflow and optionally leave `version` empty to use `Cargo.toml`.
+
+#### Publishing Steps
+1. Ensure `Publisher` in `apps/clipcy-windows-ui/Clipcy.csproj` and `apps/clipcy-windows-ui/Package.appxmanifest` matches your cert subject.
+2. Build/sign MSIX (local or CI).
+3. Upload `Clipcy.msix` + `Clipcy.appinstaller` to GitHub Release `vX.Y.Z`.
+4. Share the `.appinstaller` URL. Windows will auto-check for updates on launch.
+
+Note: The Inno Setup installer build is separate and uses EXE publishing. The script `scripts/build-windows-installer.ps1` forces `WindowsPackageType=None` so it does not conflict with MSIX packaging.
+
 #### Manual Build
 
 1. **Build Rust Bridge (cdylib)**
