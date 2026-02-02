@@ -402,7 +402,6 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
         (ContentType == "Html" && (Preview == "Table" || Preview.Contains(" | ")))
         || (ContentType == "Text" && Preview.Contains('\t'));
 
-
     public bool IsImage => ContentType == "Image";
 
     public Visibility ImageVisibility => IsImage ? Visibility.Visible : Visibility.Collapsed;
@@ -415,10 +414,7 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     private Task? _thumbnailLoadTask;
     public BitmapImage? ThumbnailImage
     {
-        get
-        {
-            return _thumbnailImage;
-        }
+        get { return _thumbnailImage; }
     }
 
     public void EnsureThumbnailLoaded(DispatcherQueue dispatcher)
@@ -444,23 +440,24 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     {
         try
         {
-            await RunOnDispatcherAsync(dispatcher, async () =>
-            {
-                if (_thumbnailImage != null || Thumbnail == null || Thumbnail.Length == 0)
-                    return;
+            await RunOnDispatcherAsync(
+                dispatcher,
+                async () =>
+                {
+                    if (_thumbnailImage != null || Thumbnail == null || Thumbnail.Length == 0)
+                        return;
 
-                var bitmap = new BitmapImage { DecodePixelHeight = 64 };
-                using var stream = new MemoryStream(Thumbnail);
-                await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
+                    var bitmap = new BitmapImage { DecodePixelHeight = 64 };
+                    using var stream = new MemoryStream(Thumbnail);
+                    await bitmap.SetSourceAsync(stream.AsRandomAccessStream());
 
-                _thumbnailImage = bitmap;
-                ThumbnailCache.Add(Id, bitmap);
-                RaisePropertyChanged(nameof(ThumbnailImage));
-            });
+                    _thumbnailImage = bitmap;
+                    ThumbnailCache.Add(Id, bitmap);
+                    RaisePropertyChanged(nameof(ThumbnailImage));
+                }
+            );
         }
-        catch
-        {
-        }
+        catch { }
         finally
         {
             _thumbnailLoadTask = null;
@@ -470,18 +467,20 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     private static Task RunOnDispatcherAsync(DispatcherQueue dispatcher, Func<Task> action)
     {
         var tcs = new TaskCompletionSource<bool>();
-        if (!dispatcher.TryEnqueue(async () =>
-        {
-            try
+        if (
+            !dispatcher.TryEnqueue(async () =>
             {
-                await action();
-                tcs.TrySetResult(true);
-            }
-            catch (Exception ex)
-            {
-                tcs.TrySetException(ex);
-            }
-        }))
+                try
+                {
+                    await action();
+                    tcs.TrySetResult(true);
+                }
+                catch (Exception ex)
+                {
+                    tcs.TrySetException(ex);
+                }
+            })
+        )
         {
             tcs.TrySetResult(true);
         }

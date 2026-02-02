@@ -65,7 +65,10 @@
 
             <Grid.ContextFlyout>
               <MenuFlyout>
-                <MenuFlyoutItem Text="{x:Bind PinUnpinText, Mode=OneWay}" Click="PinUnpinMenuItem_Click" />
+                <MenuFlyoutItem
+                  Text="{x:Bind PinUnpinText, Mode=OneWay}"
+                  Click="PinUnpinMenuItem_Click"
+                />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Delete" Click="DeleteMenuItem_Click" />
               </MenuFlyout>

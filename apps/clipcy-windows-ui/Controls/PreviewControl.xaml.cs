@@ -202,7 +202,8 @@ public sealed partial class PreviewControl : UserControl
             return false;
 
         var hasRows = html.Contains("<tr", StringComparison.OrdinalIgnoreCase);
-        var hasCells = html.Contains("<td", StringComparison.OrdinalIgnoreCase)
+        var hasCells =
+            html.Contains("<td", StringComparison.OrdinalIgnoreCase)
             || html.Contains("<th", StringComparison.OrdinalIgnoreCase);
 
         if (!hasRows || !hasCells)
@@ -286,7 +287,7 @@ public sealed partial class PreviewControl : UserControl
                 {
                     BorderBrush = borderBrush,
                     BorderThickness = new Thickness(0, 0, rightBorder, bottomBorder),
-                    Padding = new Thickness(6, 4, 6, 4)
+                    Padding = new Thickness(6, 4, 6, 4),
                 };
 
                 var textBlock = new TextBlock
@@ -297,7 +298,7 @@ public sealed partial class PreviewControl : UserControl
                     TextWrapping = TextWrapping.Wrap,
                     MaxLines = 2,
                     TextTrimming = TextTrimming.CharacterEllipsis,
-                    Foreground = textBrush
+                    Foreground = textBrush,
                 };
 
                 cell.Child = textBlock;
@@ -400,13 +401,11 @@ public sealed partial class PreviewControl : UserControl
         var timeFormat = dateTime.ToString("HH:mm");
 
         // Show relative time with time for up to 3 days
-        if (relativeTime == "just now" || 
-            relativeTime.Contains("m ago") || 
-            relativeTime.Contains("h ago"))
+        if (relativeTime == "just now" || relativeTime.Contains("m ago") || relativeTime.Contains("h ago"))
         {
             return $"{relativeTime}, {timeFormat}";
         }
-        
+
         // Check if it's within 3 days (1d ago, 2d ago, 3d ago)
         if (relativeTime.Contains("d ago"))
         {

@@ -114,11 +114,7 @@
             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
           />
 
-          <StackPanel
-            Grid.Column="1"
-            Spacing="2"
-            HorizontalAlignment="Right"
-          >
+          <StackPanel Grid.Column="1" Spacing="2" HorizontalAlignment="Right">
             <TextBlock
               FontSize="11"
               LineHeight="16"
