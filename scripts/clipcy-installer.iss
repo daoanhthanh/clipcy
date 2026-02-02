@@ -1,13 +1,42 @@
+#ifndef AppName
 #define AppName "Clipcy"
+#endif
+
+#ifndef AppVersion
 #define AppVersion "0.1.0"
+#endif
+
+#ifndef AppPublisher
 #define AppPublisher "Dao Anh Thanh (Đào Anh Thành)"
+#endif
+
+#ifndef AppExeName
 #define AppExeName "Clipcy.exe"
+#endif
+
+#ifndef PublishDir
 #define PublishDir "..\dist\windows\win-x64"
+#endif
+
+#ifndef OutputDir
 #define OutputDir "..\dist\installer"
+#endif
+
+#ifndef IconPath
 #define IconPath "..\apps\clipcy-windows-ui\Assets\icon.ico"
+#endif
+
+#ifndef AppArch
 #define AppArch "x64compatible"
+#endif
+
+#ifndef ArchAllowed
 #define ArchAllowed "x64compatible"
+#endif
+
+#ifndef ArchInstallIn64BitMode
 #define ArchInstallIn64BitMode "x64compatible"
+#endif
 
 [Setup]
 AppId={{5C3623B7-30B0-4C61-8B08-7C0D9DE3B7D9}}

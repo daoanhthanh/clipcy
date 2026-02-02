@@ -26,9 +26,9 @@ $RustTarget = $null
 switch ($Runtime) {
     "win-x64" {
         $Platform = "x64"
-        $AppArch = "x64"
-        $ArchAllowed = "x64"
-        $ArchInstallIn64BitMode = "x64"
+        $AppArch = "x64compatible"
+        $ArchAllowed = "x64compatible"
+        $ArchInstallIn64BitMode = "x64compatible"
         $RustTarget = "x86_64-pc-windows-msvc"
     }
     "win-arm64" {
