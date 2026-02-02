@@ -7,11 +7,14 @@ use std::thread;
 
 use parking_lot::RwLock;
 use std::ffi::c_void;
-use windows::core::PWSTR;
+use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
     GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
     DIB_RGB_COLORS, HBITMAP,
+};
+use windows::Win32::Storage::FileSystem::{
+    GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
 };
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
@@ -732,9 +735,131 @@ fn get_foreground_process_name() -> Option<String> {
 
         buffer.truncate(size as usize);
         let path = String::from_utf16_lossy(&buffer);
+        if let Some(name) = get_file_description(&path) {
+            return Some(name);
+        }
+
         Path::new(&path)
-            .file_name()
+            .file_stem()
+            .or_else(|| Path::new(&path).file_name())
             .map(|name| name.to_string_lossy().to_string())
+    }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct LangAndCodePage {
+    language: u16,
+    code_page: u16,
+}
+
+fn get_file_description(path: &str) -> Option<String> {
+    let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+    let mut handle: u32 = 0;
+    let size = unsafe { GetFileVersionInfoSizeW(PCWSTR(wide.as_ptr()), Some(&mut handle)) };
+    if size == 0 {
+        return None;
+    }
+
+    let mut data = vec![0u8; size as usize];
+    let ok = unsafe {
+        GetFileVersionInfoW(
+            PCWSTR(wide.as_ptr()),
+            Some(0),
+            size,
+            data.as_mut_ptr() as *mut c_void,
+        )
+    };
+    if ok.is_err() {
+        return None;
+    }
+
+    let translations = get_version_translations(&data);
+    let mut candidates = Vec::new();
+    if !translations.is_empty() {
+        candidates.extend(translations);
+    } else {
+        candidates.push(LangAndCodePage {
+            language: 0x0409,
+            code_page: 0x04B0,
+        });
+    }
+
+    for entry in candidates {
+        let file_desc = format!(
+            "\\StringFileInfo\\{:04x}{:04x}\\FileDescription",
+            entry.language, entry.code_page
+        );
+        if let Some(value) = query_version_string(&data, &file_desc) {
+            return Some(value);
+        }
+
+        let product_name = format!(
+            "\\StringFileInfo\\{:04x}{:04x}\\ProductName",
+            entry.language, entry.code_page
+        );
+        if let Some(value) = query_version_string(&data, &product_name) {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+fn get_version_translations(data: &[u8]) -> Vec<LangAndCodePage> {
+    let mut translations = Vec::new();
+    let mut buffer: *mut c_void = std::ptr::null_mut();
+    let mut length: u32 = 0;
+    let ok = unsafe {
+        VerQueryValueW(
+            data.as_ptr() as *const c_void,
+            windows::core::w!("\\VarFileInfo\\Translation"),
+            &mut buffer,
+            &mut length,
+        )
+        .as_bool()
+    };
+
+    if !ok || buffer.is_null() || length == 0 {
+        return translations;
+    }
+
+    let count = (length as usize) / size_of::<LangAndCodePage>();
+    if count == 0 {
+        return translations;
+    }
+
+    let entries = unsafe { std::slice::from_raw_parts(buffer as *const LangAndCodePage, count) };
+    translations.extend_from_slice(entries);
+    translations
+}
+
+fn query_version_string(data: &[u8], sub_block: &str) -> Option<String> {
+    let wide: Vec<u16> = sub_block.encode_utf16().chain(std::iter::once(0)).collect();
+    let mut buffer: *mut c_void = std::ptr::null_mut();
+    let mut length: u32 = 0;
+    let ok = unsafe {
+        VerQueryValueW(
+            data.as_ptr() as *const c_void,
+            PCWSTR(wide.as_ptr()),
+            &mut buffer,
+            &mut length,
+        )
+        .as_bool()
+    };
+
+    if !ok || buffer.is_null() || length == 0 {
+        return None;
+    }
+
+    let slice = unsafe { std::slice::from_raw_parts(buffer as *const u16, length as usize) };
+    let len = slice.iter().position(|&c| c == 0).unwrap_or(slice.len());
+    let value = String::from_utf16_lossy(&slice[..len]);
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
     }
 }
 
