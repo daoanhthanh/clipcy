@@ -516,8 +516,9 @@ impl ClipboardEngine {
                     // Import clipboard history on first run
                     if is_first_run {
                         ui_handler.send_event(BridgeEvent::Notification {
-                            message: "Clipcy is importing your clipboard history for the first run ..."
-                                .to_string(),
+                            message:
+                                "Clipcy is importing your clipboard history for the first run ..."
+                                    .to_string(),
                         });
                         let service_clone = service.clone();
                         let settings_manager_clone = settings_manager.clone();

@@ -75,11 +75,7 @@ fn extract_first_table_row(html: &str) -> Option<Vec<String>> {
         idx = close_start + closing_tag.len();
     }
 
-    if cells.is_empty() {
-        None
-    } else {
-        Some(cells)
-    }
+    if cells.is_empty() { None } else { Some(cells) }
 }
 
 /// Convert HTML content to plain text

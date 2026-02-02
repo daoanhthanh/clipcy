@@ -10,7 +10,8 @@ use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUn
 
 use chrono::{DateTime, Utc};
 use windows::ApplicationModel::DataTransfer::{
-    Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView, StandardDataFormats
+    Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView,
+    StandardDataFormats,
 };
 use windows::Graphics::Imaging::{BitmapDecoder, BitmapEncoder};
 use windows::Storage::Streams::{
