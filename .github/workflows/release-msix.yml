@@ -1,0 +1,68 @@
+name: Release MSIX
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (1.2.3 or 1.2.3.0)"
+        required: false
+        default: ""
+      runtime:
+        description: "Runtime identifier"
+        required: true
+        default: "win-x64"
+      publish:
+        description: "Create GitHub Release and upload assets"
+        required: true
+        default: "true"
+
+jobs:
+  build-msix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          include-prerelease: true
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Decode signing certificate
+        shell: pwsh
+        run: |
+          $bytes = [Convert]::FromBase64String($env:MSIX_CERT_BASE64)
+          [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE\msix.pfx", $bytes)
+        env:
+          MSIX_CERT_BASE64: ${{ secrets.MSIX_CERT_BASE64 }}
+
+      - name: Build MSIX
+        shell: pwsh
+        run: |
+          $publish = '${{ inputs.publish }}'
+          $runtime = '${{ inputs.runtime }}'
+          $version = '${{ inputs.version }}'
+          $repo = '${{ github.repository }}'
+          .\scripts\build-msix-release.ps1 -Runtime $runtime -Version $version -Repo $repo -CertificatePath "$env:GITHUB_WORKSPACE\msix.pfx" -CertificatePassword "${{ secrets.MSIX_CERT_PASSWORD }}"
+
+      - name: Upload MSIX artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clipcy-msix-${{ inputs.runtime }}
+          path: dist/msix/${{ inputs.runtime }}/
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Clipcy v${{ inputs.version }}
+          files: |
+            dist/msix/${{ inputs.runtime }}/Clipcy.msix
+            dist/msix/${{ inputs.runtime }}/Clipcy.appinstaller

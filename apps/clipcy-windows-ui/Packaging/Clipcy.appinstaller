@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppInstaller Uri="https://github.com/ORG/REPO/releases/download/v1.0.0/Clipcy.appinstaller"
+              Version="1.0.0.0"
+              xmlns="http://schemas.microsoft.com/appx/appinstaller/2017/2">
+  <MainPackage
+    Name="Clipcy"
+    Publisher="CN=Clipcy"
+    Version="1.0.0.0"
+    Uri="https://github.com/ORG/REPO/releases/download/v1.0.0/Clipcy.msix" />
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdateChecks="6" />
+  </UpdateSettings>
+</AppInstaller>

@@ -6,6 +6,7 @@
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>Clipcy</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AppxManifest>Package.appxmanifest</AppxManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <Company>Clipcy</Company>
     <Authors>Dao Anh Thanh (Đào Anh Thành)</Authors>
@@ -19,7 +20,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
+    <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
+    <GenerateAppInstallerFile>true</GenerateAppInstallerFile>
+    <AppInstallerCheckForUpdate>OnLaunch</AppInstallerCheckForUpdate>
+    <AppInstallerUpdateFrequency>6</AppInstallerUpdateFrequency>
+    <AppInstallerUri>https://github.com/ORG/REPO/releases/latest/download/Clipcy.appinstaller</AppInstallerUri>
+    <PackageId>Clipcy</PackageId>
+    <Publisher>CN=Clipcy</Publisher>
+    <PublisherDisplayName>Clipcy</PublisherDisplayName>
+    <ApplicationDisplayName>Clipcy</ApplicationDisplayName>
+    <PackageVersion>1.0.0.0</PackageVersion>
     <SelfContained>false</SelfContained>
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
   </PropertyGroup>
