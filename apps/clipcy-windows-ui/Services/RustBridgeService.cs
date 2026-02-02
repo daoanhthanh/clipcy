@@ -331,6 +331,7 @@ internal class RustBridgeService : IDisposable, UiCallback
             Preview = dto.preview,
             Thumbnail = dto.thumbnail,
             SourceApp = dto.sourceApp,
+            SourceAppIcon = dto.sourceAppIcon,
             CreatedAtTimestamp = dto.createdAtTimestamp,
             Pinned = dto.pinned,
         };
@@ -370,6 +371,7 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     public string Preview { get; init; } = string.Empty;
     public byte[]? Thumbnail { get; init; }
     public string? SourceApp { get; init; }
+    public byte[]? SourceAppIcon { get; init; }
     public ulong CreatedAtTimestamp { get; init; }
     public bool Pinned { get; set; }
 

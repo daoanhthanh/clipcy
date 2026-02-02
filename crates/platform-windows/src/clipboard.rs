@@ -10,8 +10,8 @@ use std::ffi::c_void;
 use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
-    DIB_RGB_COLORS, HBITMAP,
+    DeleteObject, GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
+    BI_RGB, DIB_RGB_COLORS, HBITMAP,
 };
 use windows::Win32::Storage::FileSystem::{
     GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
@@ -22,7 +22,7 @@ use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_HDROP, CF_UNIC
 use windows::Win32::System::Threading::{
     OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
 };
-use windows::Win32::UI::Shell::DragQueryFileW;
+use windows::Win32::UI::Shell::{DragQueryFileW, ExtractIconExW};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 use clipboard_core::domain::{html_to_text, ClipboardItem, ContentType};
@@ -53,6 +53,11 @@ pub struct WindowsClipboardMonitor {
     callback: Arc<RwLock<Option<ClipboardCallback>>>,
     // Store HWND as isize to avoid Send/Sync issues with raw pointers
     hwnd: Arc<AtomicIsize>,
+}
+
+struct SourceAppInfo {
+    name: String,
+    icon: Option<Vec<u8>>,
 }
 
 impl WindowsClipboardMonitor {
@@ -475,7 +480,7 @@ impl WindowsClipboardMonitor {
     /// Get current clipboard item, with prioritized format detection
     /// Priority order: Files (unless single image file with image data available) > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format (as text fallback) > Rich Text Format > CF_UNICODETEXT
     pub fn get_current_item() -> Option<ClipboardItem> {
-        let source_app = get_foreground_process_name();
+        let source_app = get_foreground_process_info();
 
         // Check available formats
         let has_files = Self::has_files_format();
@@ -526,7 +531,7 @@ impl WindowsClipboardMonitor {
                 } else {
                     tracing::info!("Captured {} files", files.len());
                     let mut item = ClipboardItem::new_files(files);
-                    item.source_app = source_app.clone();
+                    apply_source_app(&mut item, &source_app);
                     return Some(item);
                 }
             } else {
@@ -546,7 +551,7 @@ impl WindowsClipboardMonitor {
             if looks_like_table_html(table_source) {
                 tracing::info!("Captured HTML table: {} chars", html.len());
                 let mut item = ClipboardItem::new_html(html.clone());
-                item.source_app = source_app.clone();
+                apply_source_app(&mut item, &source_app);
                 return Some(item);
             }
         }
@@ -561,7 +566,7 @@ impl WindowsClipboardMonitor {
             if looks_like_tabular_text(text) {
                 tracing::info!("Captured tabular text: {} chars", text.len());
                 let mut item = ClipboardItem::new_text(text.clone());
-                item.source_app = source_app.clone();
+                apply_source_app(&mut item, &source_app);
                 return Some(item);
             }
         }
@@ -573,7 +578,7 @@ impl WindowsClipboardMonitor {
                 if let Some((png_data, thumbnail)) = Self::get_clipboard_png() {
                     tracing::info!("Captured PNG image: {} bytes", png_data.len());
                     let mut item = ClipboardItem::new_image(png_data, thumbnail);
-                    item.source_app = source_app.clone();
+                    apply_source_app(&mut item, &source_app);
                     return Some(item);
                 }
             }
@@ -586,7 +591,7 @@ impl WindowsClipboardMonitor {
                     thumbnail.as_ref().map(|t| t.len())
                 );
                 let mut item = ClipboardItem::new_image(png_data, thumbnail);
-                item.source_app = source_app.clone();
+                apply_source_app(&mut item, &source_app);
                 return Some(item);
             } else {
                 tracing::warn!("has_image_format() returned true but get_clipboard_image() failed");
@@ -601,7 +606,7 @@ impl WindowsClipboardMonitor {
                 if !plain_text.trim().is_empty() {
                     tracing::debug!("Captured HTML as text: {} chars", plain_text.len());
                     let mut item = ClipboardItem::new_text(plain_text);
-                    item.source_app = source_app.clone();
+                    apply_source_app(&mut item, &source_app);
                     return Some(item);
                 }
             }
@@ -613,7 +618,7 @@ impl WindowsClipboardMonitor {
                 if !rtf.trim().is_empty() {
                     tracing::debug!("Captured RTF: {} chars", rtf.len());
                     let mut item = ClipboardItem::new_rtf(rtf);
-                    item.source_app = source_app.clone();
+                    apply_source_app(&mut item, &source_app);
                     return Some(item);
                 }
             }
@@ -629,7 +634,7 @@ impl WindowsClipboardMonitor {
                 }
                 tracing::debug!("Captured text: {} chars", text.len());
                 let mut item = ClipboardItem::new_text(text);
-                item.source_app = source_app.clone();
+                apply_source_app(&mut item, &source_app);
                 return Some(item);
             }
         }
@@ -704,7 +709,14 @@ fn looks_like_tabular_text(text: &str) -> bool {
     text.matches('\t').count() >= 2
 }
 
-fn get_foreground_process_name() -> Option<String> {
+fn apply_source_app(item: &mut ClipboardItem, source_app: &Option<SourceAppInfo>) {
+    if let Some(app) = source_app {
+        item.source_app = Some(app.name.clone());
+        item.source_app_icon = app.icon.clone();
+    }
+}
+
+fn get_foreground_process_info() -> Option<SourceAppInfo> {
     unsafe {
         let hwnd = GetForegroundWindow();
         if hwnd.0.is_null() {
@@ -735,14 +747,20 @@ fn get_foreground_process_name() -> Option<String> {
 
         buffer.truncate(size as usize);
         let path = String::from_utf16_lossy(&buffer);
-        if let Some(name) = get_file_description(&path) {
-            return Some(name);
+        let name = get_file_description(&path).unwrap_or_else(|| {
+            Path::new(&path)
+                .file_stem()
+                .or_else(|| Path::new(&path).file_name())
+                .map(|name| name.to_string_lossy().to_string())
+                .unwrap_or_default()
+        });
+
+        if name.is_empty() {
+            return None;
         }
 
-        Path::new(&path)
-            .file_stem()
-            .or_else(|| Path::new(&path).file_name())
-            .map(|name| name.to_string_lossy().to_string())
+        let icon = get_file_icon_png(&path);
+        Some(SourceAppInfo { name, icon })
     }
 }
 
@@ -804,6 +822,73 @@ fn get_file_description(path: &str) -> Option<String> {
     }
 
     None
+}
+
+fn get_file_icon_png(path: &str) -> Option<Vec<u8>> {
+    let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+    let mut large = HICON::default();
+    let mut small = HICON::default();
+    let count = unsafe {
+        ExtractIconExW(
+            PCWSTR(wide.as_ptr()),
+            0,
+            Some(&mut large),
+            Some(&mut small),
+            1,
+        )
+    };
+    if count == 0 {
+        return None;
+    }
+
+    let icon = if !small.0.is_null() { small } else { large };
+    let png = if !icon.0.is_null() {
+        icon_to_png(icon)
+    } else {
+        None
+    };
+
+    unsafe {
+        if !small.0.is_null() {
+            let _ = DestroyIcon(small);
+        }
+        if !large.0.is_null() {
+            let _ = DestroyIcon(large);
+        }
+    }
+
+    png
+}
+
+fn icon_to_png(icon: HICON) -> Option<Vec<u8>> {
+    unsafe {
+        let mut info = ICONINFO::default();
+        if GetIconInfo(icon, &mut info).is_err() {
+            return None;
+        }
+
+        let hbitmap = if !info.hbmColor.0.is_null() {
+            info.hbmColor
+        } else {
+            info.hbmMask
+        };
+
+        let png = if !hbitmap.0.is_null() {
+            get_png_from_bitmap(hbitmap).map(|(png, _)| png)
+        } else {
+            None
+        };
+
+        if !info.hbmColor.0.is_null() {
+            let _ = DeleteObject(info.hbmColor.into());
+        }
+        if !info.hbmMask.0.is_null() {
+            let _ = DeleteObject(info.hbmMask.into());
+        }
+
+        let png = png?;
+        generate_thumbnail(&png, 20, 20).or(Some(png))
+    }
 }
 
 fn get_version_translations(data: &[u8]) -> Vec<LangAndCodePage> {

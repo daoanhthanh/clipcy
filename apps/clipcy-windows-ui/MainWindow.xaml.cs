@@ -336,6 +336,7 @@ public sealed partial class MainWindow : Window
             RelativeTime = vm.RelativeTime,
             CreatedAtTimestamp = vm.CreatedAtTimestamp,
             SourceApp = vm.SourceApp,
+            SourceAppIcon = vm.SourceAppIcon,
             IsPinned = vm.Pinned,
             LoadFullData = async () =>
             {

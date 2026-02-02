@@ -366,6 +366,7 @@ public sealed partial class PreviewControl : UserControl
 
     private void UpdateMetadata(PreviewData data)
     {
+        UpdateSourceApp(data);
         var metadata = new System.Text.StringBuilder();
 
         // Created time
@@ -378,13 +379,6 @@ public sealed partial class PreviewControl : UserControl
         // Content-specific metadata
         switch (data.PreviewType)
         {
-            case "Text":
-            case "Html":
-                if (!string.IsNullOrEmpty(data.TextContent))
-                {
-                    metadata.AppendLine($"Characters: {data.TextContent.Length:N0}");
-                }
-                break;
             case "Image":
                 int sizeBytes = (data.ImageBytes?.Length ?? 0);
                 if (sizeBytes == 0)
@@ -403,17 +397,41 @@ public sealed partial class PreviewControl : UserControl
                 break;
         }
 
-        if (!string.IsNullOrEmpty(data.SourceApp))
-        {
-            metadata.AppendLine($"Source: {data.SourceApp}");
-        }
-
         if (data.IsPinned)
         {
             metadata.AppendLine("Pinned");
         }
 
         MetadataText.Text = metadata.ToString().TrimEnd();
+    }
+
+    private void UpdateSourceApp(PreviewData data)
+    {
+        if (string.IsNullOrWhiteSpace(data.SourceApp))
+        {
+            SourceAppRow.Visibility = Visibility.Collapsed;
+            SourceAppText.Text = string.Empty;
+            SourceAppIcon.Source = null;
+            SourceAppIcon.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        SourceAppRow.Visibility = Visibility.Visible;
+        SourceAppText.Text = $"Source: {data.SourceApp}";
+
+        if (data.SourceAppIcon != null && data.SourceAppIcon.Length > 0)
+        {
+            using var stream = new MemoryStream(data.SourceAppIcon);
+            var bitmap = new BitmapImage();
+            bitmap.SetSource(stream.AsRandomAccessStream());
+            SourceAppIcon.Source = bitmap;
+            SourceAppIcon.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            SourceAppIcon.Source = null;
+            SourceAppIcon.Visibility = Visibility.Collapsed;
+        }
     }
 
     private string GetDisplayTime(string relativeTime, ulong timestamp)

@@ -314,6 +314,8 @@ pub struct ClipboardItem {
     pub thumbnail: Option<Vec<u8>>,
     /// Source application name (if available)
     pub source_app: Option<String>,
+    /// Source application icon (small PNG)
+    pub source_app_icon: Option<Vec<u8>>,
     /// Timestamp when copied
     pub created_at: DateTime<Utc>,
     /// Whether item is pinned (won't be auto-deleted)
@@ -342,6 +344,7 @@ impl ClipboardItem {
             preview,
             thumbnail: None,
             source_app: None,
+            source_app_icon: None,
             created_at: Utc::now(),
             pinned: false,
         }
@@ -356,6 +359,7 @@ impl ClipboardItem {
             preview: "[Image]".to_string(),
             thumbnail,
             source_app: None,
+            source_app_icon: None,
             created_at: Utc::now(),
             pinned: false,
         }
@@ -378,6 +382,7 @@ impl ClipboardItem {
             preview,
             thumbnail: None,
             source_app: None,
+            source_app_icon: None,
             created_at: Utc::now(),
             pinned: false,
         }
@@ -432,6 +437,7 @@ impl ClipboardItem {
             preview,
             thumbnail: None,
             source_app: None,
+            source_app_icon: None,
             created_at: Utc::now(),
             pinned: false,
         }
@@ -465,6 +471,7 @@ impl ClipboardItem {
             preview,
             thumbnail: None,
             source_app: None,
+            source_app_icon: None,
             created_at: Utc::now(),
             pinned: false,
         }

@@ -68,6 +68,7 @@ impl SqliteClipboardRepository {
                 preview TEXT NOT NULL,
                 thumbnail BLOB,
                 source_app TEXT,
+                source_app_icon BLOB,
                 created_at TEXT NOT NULL,
                 pinned INTEGER NOT NULL DEFAULT 0,
                 content_hash TEXT
@@ -101,6 +102,10 @@ impl SqliteClipboardRepository {
             .execute(&self.pool)
             .await;
 
+        let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN source_app_icon BLOB")
+            .execute(&self.pool)
+            .await;
+
         Ok(())
     }
 
@@ -123,6 +128,9 @@ impl SqliteClipboardRepository {
         let source_app: Option<String> = row
             .try_get("source_app")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let source_app_icon: Option<Vec<u8>> = row
+            .try_get("source_app_icon")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
         let created_at_str: String = row
             .try_get("created_at")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
@@ -143,6 +151,7 @@ impl SqliteClipboardRepository {
             preview,
             thumbnail,
             source_app,
+            source_app_icon,
             created_at,
             pinned: pinned != 0,
         })
@@ -164,6 +173,9 @@ impl SqliteClipboardRepository {
         let source_app: Option<String> = row
             .try_get("source_app")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let source_app_icon: Option<Vec<u8>> = row
+            .try_get("source_app_icon")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
         let created_at_str: String = row
             .try_get("created_at")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
@@ -184,6 +196,7 @@ impl SqliteClipboardRepository {
             preview,
             thumbnail,
             source_app,
+            source_app_icon,
             created_at,
             pinned: pinned != 0,
         })
@@ -191,7 +204,7 @@ impl SqliteClipboardRepository {
 
     pub async fn get_all_metadata(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned FROM clipboard_items ORDER BY pinned DESC, created_at DESC LIMIT $1"
+            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, pinned FROM clipboard_items ORDER BY pinned DESC, created_at DESC LIMIT $1"
         )
             .bind(limit as i64)
             .fetch_all(&self.pool)
@@ -213,7 +226,7 @@ impl SqliteClipboardRepository {
 
         let rows = sqlx::query(
             r#"
-            SELECT id, content_type, preview, thumbnail, source_app, created_at, pinned
+            SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, pinned
             FROM clipboard_items
             WHERE preview LIKE $1
             ORDER BY pinned DESC, created_at DESC
@@ -275,8 +288,8 @@ impl ClipboardRepository for SqliteClipboardRepository {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO clipboard_items
-            (id, content_type, data, preview, thumbnail, source_app, created_at, pinned, content_hash)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (id, content_type, data, preview, thumbnail, source_app, source_app_icon, created_at, pinned, content_hash)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             "#,
         )
             .bind(item.id.to_string())
@@ -285,6 +298,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             .bind(&item.preview)
             .bind(&item.thumbnail)
             .bind(&item.source_app)
+            .bind(&item.source_app_icon)
             .bind(item.created_at.to_rfc3339())
             .bind(pinned_to_save as i32)
             .bind(&content_hash)

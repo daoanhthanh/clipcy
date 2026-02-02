@@ -154,6 +154,7 @@ pub struct ClipboardItemDto {
     pub preview: String,
     pub thumbnail: Option<Vec<u8>>,
     pub source_app: Option<String>,
+    pub source_app_icon: Option<Vec<u8>>,
     pub created_at_timestamp: u64,
     pub pinned: bool,
 }
@@ -166,6 +167,7 @@ impl From<ClipboardItem> for ClipboardItemDto {
             preview: item.preview,
             thumbnail: item.thumbnail,
             source_app: item.source_app,
+            source_app_icon: item.source_app_icon,
             created_at_timestamp: item.created_at.timestamp() as u64,
             pinned: item.pinned,
         }

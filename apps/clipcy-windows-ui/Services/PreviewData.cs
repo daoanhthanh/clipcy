@@ -17,6 +17,7 @@ public class PreviewData
     public string RelativeTime { get; set; } = string.Empty;
     public ulong CreatedAtTimestamp { get; set; }
     public string? SourceApp { get; set; }
+    public byte[]? SourceAppIcon { get; set; }
     public bool IsPinned { get; set; }
 
     // Raw thumbnail data (used if full image not loaded yet)
