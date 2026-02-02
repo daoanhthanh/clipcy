@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
@@ -27,6 +28,7 @@ public sealed partial class SettingsWindow : Window
 
     private readonly ObservableCollection<string> _hotkeyParts = new();
     public ObservableCollection<string> HotkeyParts => _hotkeyParts;
+    public string AppVersion { get; } = GetAppVersion();
 
     public SettingsWindow()
     {
@@ -609,5 +611,25 @@ public sealed partial class SettingsWindow : Window
         SaveSettings();
         // Reset theme to default (system)
         Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(_settings.Theme));
+    }
+
+    private static string GetAppVersion()
+    {
+        var infoVersion = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (!string.IsNullOrWhiteSpace(infoVersion))
+        {
+            return $"Version {infoVersion}";
+        }
+
+        var version = Assembly.GetExecutingAssembly().GetName().Version;
+        if (version == null)
+        {
+            return "Version";
+        }
+
+        return $"Version {version.Major}.{version.Minor}.{version.Build}";
     }
 }

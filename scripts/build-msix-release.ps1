@@ -49,6 +49,8 @@ if (-not $Version) {
     }
 }
 
+$DisplayVersion = $Version
+
 $versionParts = $Version.Split(".")
 if ($versionParts.Length -eq 3) {
     $Version = "$Version.0"
@@ -106,7 +108,7 @@ Copy-Item -Force $RustDll $RustDestDll
 Write-Host "[3/4] Publishing MSIX..." -ForegroundColor Yellow
 Push-Location $CSharpProject
 try {
-    dotnet publish -c $Configuration -r $Runtime -p:PackageVersion=$Version -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateKeyFile=$CertificatePath -p:PackageCertificatePassword=$CertificatePassword -p:AppInstallerUri=https://github.com/$Repo/releases/latest/download/Clipcy.appinstaller
+    dotnet publish -c $Configuration -r $Runtime -p:PackageVersion=$Version -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateKeyFile=$CertificatePath -p:PackageCertificatePassword=$CertificatePassword -p:AppInstallerUri=https://github.com/$Repo/releases/latest/download/Clipcy.appinstaller -p:InformationalVersion=$DisplayVersion
 }
 finally {
     Pop-Location

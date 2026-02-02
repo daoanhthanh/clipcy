@@ -309,7 +309,7 @@
                     />
                   </controls:SettingsCard.HeaderIcon>
                   <TextBlock
-                    Text="Version 0.1.0"
+                    Text="{x:Bind AppVersion, Mode=OneWay}"
                     Style="{StaticResource CaptionTextBlockStyle}"
                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                     VerticalAlignment="Center"
