@@ -309,6 +309,22 @@ internal class RustBridgeService : IDisposable, UiCallback
         }
     }
 
+    /// <summary>
+    /// Get app version from Rust backend
+    /// </summary>
+    public string GetAppVersion()
+    {
+        try
+        {
+            return _engine?.GetAppVersion() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"GetAppVersion error: {ex.Message}");
+            return string.Empty;
+        }
+    }
+
     // Internal method to dispatch events to UI thread
     internal void DispatchEvent(Action action)
     {

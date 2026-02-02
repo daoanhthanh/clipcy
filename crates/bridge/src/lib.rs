@@ -860,4 +860,9 @@ impl ClipboardEngine {
             false
         }
     }
+
+    /// Get app version (from Cargo metadata)
+    pub fn get_app_version(&self) -> String {
+        env!("CARGO_PKG_VERSION").to_string()
+    }
 }

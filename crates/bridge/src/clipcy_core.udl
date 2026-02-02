@@ -124,4 +124,7 @@ interface ClipboardEngine {
 
     // Theme
     boolean is_dark_theme();
+
+    // App info
+    string get_app_version();
 };

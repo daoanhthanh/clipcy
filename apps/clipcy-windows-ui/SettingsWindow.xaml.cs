@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Reflection;
 using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
@@ -28,10 +27,11 @@ public sealed partial class SettingsWindow : Window
 
     private readonly ObservableCollection<string> _hotkeyParts = new();
     public ObservableCollection<string> HotkeyParts => _hotkeyParts;
-    public string AppVersion { get; } = GetAppVersion();
+    public string AppVersion { get; private set; } = "Version";
 
     public SettingsWindow()
     {
+        AppVersion = GetBridgeAppVersion();
         InitializeComponent();
         RootGrid.DataContext = this;
 
@@ -613,23 +613,18 @@ public sealed partial class SettingsWindow : Window
         Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(_settings.Theme));
     }
 
-    private static string GetAppVersion()
+    private static string GetBridgeAppVersion()
     {
-        var infoVersion = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        if (!string.IsNullOrWhiteSpace(infoVersion))
+        try
         {
-            return $"Version {infoVersion}";
+            var version = App.Bridge?.GetAppVersion();
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                return $"Version {version}";
+            }
         }
+        catch { }
 
-        var version = Assembly.GetExecutingAssembly().GetName().Version;
-        if (version == null)
-        {
-            return "Version";
-        }
-
-        return $"Version {version.Major}.{version.Minor}.{version.Build}";
+        return "Version";
     }
 }

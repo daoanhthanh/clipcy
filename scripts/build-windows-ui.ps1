@@ -13,31 +13,6 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $RustProject = $ProjectRoot
 $CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows-ui"
 $BindingsDir = Join-Path $CSharpProject "Bindings"
-$CargoToml = Join-Path $ProjectRoot "Cargo.toml"
-
-function Get-WorkspaceVersion {
-    param([string]$Path)
-
-    $inSection = $false
-    foreach ($line in Get-Content $Path) {
-        if ($line -match '^\[workspace\.package\]') {
-            $inSection = $true
-            continue
-        }
-
-        if ($inSection -and $line -match '^\[') {
-            break
-        }
-
-        if ($inSection -and $line -match '^\s*version\s*=\s*"([^"]+)"') {
-            return $Matches[1]
-        }
-    }
-
-    return "0.0.0"
-}
-
-$AppVersion = Get-WorkspaceVersion -Path $CargoToml
 
 Write-Host "=== Clipcy Windows UI Build ===" -ForegroundColor Cyan
 Write-Host "Project Root: $ProjectRoot"
@@ -131,9 +106,9 @@ Write-Host "`n[5/5] Building C# WinUI 3 application..." -ForegroundColor Yellow
 Push-Location $CSharpProject
 try {
     if ($Release) {
-        dotnet publish -c Release -p:InformationalVersion=$AppVersion
+        dotnet publish -c Release
     } else {
-        dotnet build -c Debug -p:InformationalVersion=$AppVersion
+        dotnet build -c Debug
     }
 }
 finally {
