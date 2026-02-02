@@ -399,10 +399,9 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     }
 
     public bool IsTablePreview =>
-        (ContentType == "Html" && Preview == "Table")
+        (ContentType == "Html" && (Preview == "Table" || Preview.Contains(" | ")))
         || (ContentType == "Text" && Preview.Contains('\t'));
 
-    public Visibility TableBadgeVisibility => IsTablePreview ? Visibility.Visible : Visibility.Collapsed;
 
     public bool IsImage => ContentType == "Image";
 
@@ -498,14 +497,16 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     /// Gets the icon glyph based on content type
     /// </summary>
     public string ContentTypeIcon =>
-        ContentType switch
-        {
-            "Image" => "\uE8B9", // Picture icon
-            "Files" => "\uE8A5", // Folder icon
-            "Html" => "\uE8A1", // Globe icon (web content)
-            "RichText" => "\uE8A4", // Document icon
-            _ => "\uE8C8", // Copy icon (text)
-        };
+        IsTablePreview
+            ? "\uE80A" // Table icon
+            : ContentType switch
+            {
+                "Image" => "\uE8B9", // Picture icon
+                "Files" => "\uE8A5", // Folder icon
+                "Html" => "\uE8A1", // Globe icon (web content)
+                "RichText" => "\uE8A4", // Document icon
+                _ => "\uE8C8", // Copy icon (text)
+            };
 
     /// <summary>
     /// Gets a formatted relative time string

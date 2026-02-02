@@ -678,6 +678,87 @@ fn looks_like_tabular_text(text: &str) -> bool {
     text.matches('\t').count() >= 2
 }
 
+fn html_table_to_tsv(html: &str) -> Option<String> {
+    let lower = html.to_ascii_lowercase();
+    let has_rows = lower.contains("<tr");
+    let has_cells = lower.contains("<td") || lower.contains("<th");
+    if !has_rows || !has_cells {
+        return None;
+    }
+
+    let mut rows = Vec::new();
+    let mut idx = 0;
+
+    loop {
+        let tr_pos = match lower[idx..].find("<tr") {
+            Some(pos) => pos + idx,
+            None => break,
+        };
+
+        let tr_open_end = match lower[tr_pos..].find('>') {
+            Some(pos) => tr_pos + pos + 1,
+            None => break,
+        };
+
+        let tr_close = match lower[tr_open_end..].find("</tr") {
+            Some(pos) => tr_open_end + pos,
+            None => break,
+        };
+
+        let row_html = &html[tr_open_end..tr_close];
+        let row_lower = row_html.to_ascii_lowercase();
+        let mut cells = Vec::new();
+        let mut cell_idx = 0;
+
+        loop {
+            let td_pos = row_lower[cell_idx..].find("<td").map(|p| p + cell_idx);
+            let th_pos = row_lower[cell_idx..].find("<th").map(|p| p + cell_idx);
+            let cell_start = match (td_pos, th_pos) {
+                (Some(td), Some(th)) => td.min(th),
+                (Some(td), None) => td,
+                (None, Some(th)) => th,
+                (None, None) => break,
+            };
+
+            let cell_open_end = match row_lower[cell_start..].find('>') {
+                Some(pos) => cell_start + pos + 1,
+                None => break,
+            };
+
+            let is_header = row_lower[cell_start..].starts_with("<th");
+            let closing_tag = if is_header { "</th" } else { "</td" };
+
+            let cell_close = match row_lower[cell_open_end..].find(closing_tag) {
+                Some(pos) => cell_open_end + pos,
+                None => break,
+            };
+
+            let cell_html = &row_html[cell_open_end..cell_close];
+            let cell_text = html_to_text(cell_html).trim().to_string();
+            cells.push(cell_text);
+
+            cell_idx = cell_close + closing_tag.len();
+        }
+
+        if !cells.is_empty() {
+            rows.push(cells);
+        }
+
+        idx = tr_close + 5;
+    }
+
+    if rows.is_empty() {
+        return None;
+    }
+
+    let mut lines = Vec::with_capacity(rows.len());
+    for row in rows {
+        lines.push(row.join("\t"));
+    }
+
+    Some(lines.join("\r\n"))
+}
+
 /// Create HDROP data structure for file paths
 /// DROPFILES structure:
 /// - pFiles: DWORD - offset to file list
@@ -1244,7 +1325,8 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                         );
                     }
 
-                    let plain_text = html_to_text(&fragment);
+                    let plain_text =
+                        html_table_to_tsv(&fragment).unwrap_or_else(|| html_to_text(&fragment));
                     if !plain_text.trim().is_empty() {
                         let wide: Vec<u16> = plain_text
                             .encode_utf16()

@@ -74,14 +74,13 @@ public sealed partial class PreviewControl : UserControl
         if (data == null)
             return;
 
-        // Header
-        ContentTypeText.Text = data.PreviewType;
-
         // Reset Visibility
         PreviewText.Visibility = Visibility.Collapsed;
         PreviewRichText.Visibility = Visibility.Collapsed;
         HideTable();
         PreviewImageBorder.Visibility = Visibility.Collapsed;
+
+        var displayType = data.PreviewType;
 
         // Update Content based on type
         switch (data.PreviewType)
@@ -92,7 +91,10 @@ public sealed partial class PreviewControl : UserControl
                 if (data.PreviewType == "Text")
                 {
                     if (TryShowTableFromText(data.TextContent))
+                    {
+                        displayType = "Table";
                         break;
+                    }
 
                     PreviewText.Text = data.TextContent ?? string.Empty;
                     PreviewText.Visibility = Visibility.Visible;
@@ -102,7 +104,10 @@ public sealed partial class PreviewControl : UserControl
                 if (data.PreviewType == "Html")
                 {
                     if (TryShowTableFromHtml(data.TextContent))
+                    {
+                        displayType = "Table";
                         break;
+                    }
 
                     PreviewText.Text = StripHtmlToText(data.TextContent) ?? string.Empty;
                     PreviewText.Visibility = Visibility.Visible;
@@ -138,6 +143,9 @@ public sealed partial class PreviewControl : UserControl
                 UpdateImage(data);
                 break;
         }
+
+        // Header
+        ContentTypeText.Text = displayType;
 
         // Update Metadata
         UpdateMetadata(data);
