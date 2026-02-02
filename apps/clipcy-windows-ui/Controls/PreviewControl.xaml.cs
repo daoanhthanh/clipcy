@@ -417,7 +417,7 @@ public sealed partial class PreviewControl : UserControl
         }
 
         SourceAppRow.Visibility = Visibility.Visible;
-        SourceAppText.Text = $"Source: {data.SourceApp}";
+        SourceAppText.Text = $"Application: {data.SourceApp}";
 
         if (data.SourceAppIcon != null && data.SourceAppIcon.Length > 0)
         {
