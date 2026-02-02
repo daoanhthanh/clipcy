@@ -31,51 +31,73 @@ fn looks_like_table_html(html: &str) -> bool {
     lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
 }
 
-fn extract_first_table_row(html: &str) -> Option<Vec<String>> {
+fn extract_table_rows(html: &str) -> Vec<Vec<String>> {
     let lower = html.to_ascii_lowercase();
-    let row_start = lower.find("<tr")?;
-    let row_open_end = lower[row_start..].find('>')? + row_start + 1;
-    let row_close = lower[row_open_end..].find("</tr")? + row_open_end;
-
-    let row_html = &html[row_open_end..row_close];
-    let row_lower = row_html.to_ascii_lowercase();
-    let mut cells = Vec::new();
+    let mut rows = Vec::new();
     let mut idx = 0;
 
     loop {
-        let td_pos = row_lower[idx..].find("<td").map(|p| p + idx);
-        let th_pos = row_lower[idx..].find("<th").map(|p| p + idx);
-        let cell_start = match (td_pos, th_pos) {
-            (Some(td), Some(th)) => td.min(th),
-            (Some(td), None) => td,
-            (None, Some(th)) => th,
-            (None, None) => break,
-        };
-
-        let open_end = match row_lower[cell_start..].find('>') {
-            Some(pos) => cell_start + pos + 1,
+        let row_pos = match lower[idx..].find("<tr") {
+            Some(pos) => pos + idx,
             None => break,
         };
 
-        let closing_tag = if row_lower[cell_start..].starts_with("<th") {
-            "</th"
-        } else {
-            "</td"
-        };
-
-        let close_start = match row_lower[open_end..].find(closing_tag) {
-            Some(pos) => open_end + pos,
+        let row_open_end = match lower[row_pos..].find('>') {
+            Some(pos) => row_pos + pos + 1,
             None => break,
         };
 
-        let cell_html = &row_html[open_end..close_start];
-        let cell_text = strip_html_tags(cell_html).trim().to_string();
-        cells.push(cell_text);
+        let row_close = match lower[row_open_end..].find("</tr") {
+            Some(pos) => row_open_end + pos,
+            None => break,
+        };
 
-        idx = close_start + closing_tag.len();
+        let row_html = &html[row_open_end..row_close];
+        let row_lower = row_html.to_ascii_lowercase();
+        let mut cells = Vec::new();
+        let mut cell_idx = 0;
+
+        loop {
+            let td_pos = row_lower[cell_idx..].find("<td").map(|p| p + cell_idx);
+            let th_pos = row_lower[cell_idx..].find("<th").map(|p| p + cell_idx);
+            let cell_start = match (td_pos, th_pos) {
+                (Some(td), Some(th)) => td.min(th),
+                (Some(td), None) => td,
+                (None, Some(th)) => th,
+                (None, None) => break,
+            };
+
+            let open_end = match row_lower[cell_start..].find('>') {
+                Some(pos) => cell_start + pos + 1,
+                None => break,
+            };
+
+            let closing_tag = if row_lower[cell_start..].starts_with("<th") {
+                "</th"
+            } else {
+                "</td"
+            };
+
+            let close_start = match row_lower[open_end..].find(closing_tag) {
+                Some(pos) => open_end + pos,
+                None => break,
+            };
+
+            let cell_html = &row_html[open_end..close_start];
+            let cell_text = strip_html_tags(cell_html).trim().to_string();
+            cells.push(cell_text);
+
+            cell_idx = close_start + closing_tag.len();
+        }
+
+        if !cells.is_empty() {
+            rows.push(cells);
+        }
+
+        idx = row_close + 5;
     }
 
-    if cells.is_empty() { None } else { Some(cells) }
+    rows
 }
 
 /// Convert HTML content to plain text
@@ -353,9 +375,17 @@ impl ClipboardItem {
         let html = html.into();
         let fragment = extract_html_fragment_from_format(&html).unwrap_or_else(|| html.clone());
         let preview = if looks_like_table_html(&fragment) {
-            extract_first_table_row(&fragment)
-                .map(|cells| cells.join(" | "))
-                .unwrap_or_else(|| "Table".to_string())
+            let rows = extract_table_rows(&fragment);
+            if rows.is_empty() {
+                "Table".to_string()
+            } else {
+                let table_text = rows
+                    .into_iter()
+                    .map(|row| row.join("\t"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                table_text.chars().take(8000).collect()
+            }
         } else {
             // Extract text preview from HTML (strip tags for preview)
             let plain_text = strip_html_tags(&fragment);
@@ -506,7 +536,7 @@ mod tests {
         let html = "<table><tr><td>Qty</td><td>Price</td></tr></table>";
         let item = ClipboardItem::new_html(html);
         assert_eq!(item.content_type, ContentType::Html);
-        assert_eq!(item.preview, "Qty | Price");
+        assert_eq!(item.preview, "Qty\tPrice");
     }
 
     #[test]

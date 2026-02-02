@@ -387,20 +387,37 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
                 };
             }
 
-            if (Preview.Contains('\t'))
+            var firstLine = GetFirstLine(Preview);
+            if (string.IsNullOrWhiteSpace(firstLine))
             {
-                var parts = Preview.Split('\t').Select(p => p.Trim());
+                return ContentType == "Html" ? "Table" : string.Empty;
+            }
+
+            if (firstLine.Contains('\t'))
+            {
+                var parts = firstLine.Split('\t').Select(p => p.Trim());
                 var display = string.Join(" | ", parts);
                 return string.IsNullOrWhiteSpace(display) ? "Table" : display;
             }
 
-            return Preview;
+            return firstLine;
         }
     }
 
     public bool IsTablePreview =>
-        (ContentType == "Html" && (Preview == "Table" || Preview.Contains(" | ")))
+        (ContentType == "Html" && (Preview == "Table" || Preview.Contains('\t')))
         || (ContentType == "Text" && Preview.Contains('\t'));
+
+    private static string GetFirstLine(string text)
+    {
+        var parts = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+        foreach (var part in parts)
+        {
+            if (!string.IsNullOrWhiteSpace(part))
+                return part;
+        }
+        return text;
+    }
 
     public bool IsImage => ContentType == "Image";
 
