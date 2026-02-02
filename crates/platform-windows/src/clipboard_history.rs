@@ -10,8 +10,7 @@ use windows::Win32::System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUn
 
 use chrono::{DateTime, Utc};
 use windows::ApplicationModel::DataTransfer::{
-    Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView,
-    HtmlFormatHelper, StandardDataFormats,
+    Clipboard, ClipboardHistoryItem, ClipboardHistoryItemsResultStatus, DataPackageView, StandardDataFormats
 };
 use windows::Graphics::Imaging::{BitmapDecoder, BitmapEncoder};
 use windows::Storage::Streams::{
@@ -215,6 +214,34 @@ async fn convert_history_item(history_item: ClipboardHistoryItem) -> Result<Opti
         }
     }
 
+    let html_content = if has_html {
+        get_html(&content).await?
+    } else {
+        None
+    };
+
+    if let Some(ref html) = html_content {
+        if looks_like_table_html(html) {
+            let mut item = ClipboardItem::new_html(html.clone());
+            apply_metadata(&mut item, timestamp, source_app);
+            return Ok(Some(item));
+        }
+    }
+
+    let text_content = if has_text {
+        get_text(&content).await?
+    } else {
+        None
+    };
+
+    if let Some(ref text) = text_content {
+        if looks_like_tabular_text(text) {
+            let mut item = ClipboardItem::new_text(text.clone());
+            apply_metadata(&mut item, timestamp, source_app);
+            return Ok(Some(item));
+        }
+    }
+
     if has_bitmap {
         if let Some((png_data, thumbnail)) = get_bitmap_png(&content).await? {
             let mut item = ClipboardItem::new_image(png_data, thumbnail);
@@ -223,8 +250,8 @@ async fn convert_history_item(history_item: ClipboardHistoryItem) -> Result<Opti
         }
     }
 
-    if has_html && !has_text {
-        if let Some(html) = get_html(&content).await? {
+    if let Some(html) = html_content {
+        if text_content.is_none() {
             let mut item = ClipboardItem::new_html(html);
             apply_metadata(&mut item, timestamp, source_app);
             return Ok(Some(item));
@@ -239,12 +266,10 @@ async fn convert_history_item(history_item: ClipboardHistoryItem) -> Result<Opti
         }
     }
 
-    if has_text {
-        if let Some(text) = get_text(&content).await? {
-            let mut item = ClipboardItem::new_text(text);
-            apply_metadata(&mut item, timestamp, source_app);
-            return Ok(Some(item));
-        }
+    if let Some(text) = text_content {
+        let mut item = ClipboardItem::new_text(text);
+        apply_metadata(&mut item, timestamp, source_app);
+        return Ok(Some(item));
     }
 
     Ok(None)
@@ -399,9 +424,7 @@ async fn get_html(view: &DataPackageView) -> Result<Option<String>> {
         return Ok(None);
     }
 
-    let fragment = HtmlFormatHelper::GetStaticFragment(&raw)
-        .map_err(|e| map_win_error("Failed to extract HTML fragment", e))?;
-    Ok(Some(fragment.to_string()))
+    Ok(Some(raw.to_string()))
 }
 
 async fn get_rtf(view: &DataPackageView) -> Result<Option<String>> {
@@ -430,6 +453,23 @@ async fn get_text(view: &DataPackageView) -> Result<Option<String>> {
     } else {
         Ok(Some(text.to_string()))
     }
+}
+
+fn looks_like_table_html(html: &str) -> bool {
+    let lower = html.to_ascii_lowercase();
+    lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
+}
+
+fn looks_like_tabular_text(text: &str) -> bool {
+    if !text.contains('\t') {
+        return false;
+    }
+
+    if text.contains('\n') {
+        return true;
+    }
+
+    text.matches('\t').count() >= 2
 }
 
 fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Option<Vec<u8>> {

@@ -1,14 +1,15 @@
+use std::borrow::Cow;
 use std::mem::size_of;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::Arc;
 use std::thread;
 
 use parking_lot::RwLock;
 use std::ffi::c_void;
 use windows::Win32::Foundation::{HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, GetDC, GetDIBits, GetObjectW,
-    HBITMAP, ReleaseDC,
+    GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
+    DIB_RGB_COLORS, HBITMAP,
 };
 use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
@@ -16,7 +17,7 @@ use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_HDROP, CF_UNIC
 use windows::Win32::UI::Shell::DragQueryFileW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use clipboard_core::domain::{ClipboardItem, ContentType, html_to_text};
+use clipboard_core::domain::{html_to_text, ClipboardItem, ContentType};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
 
@@ -328,24 +329,15 @@ impl WindowsClipboardMonitor {
             let _ = GlobalUnlock(hglobal);
             let _ = CloseClipboard();
 
-            // Parse HTML Format to extract the actual HTML content
-            // The format includes headers like:
-            // Version:0.9
-            // StartHTML:xxx
-            // EndHTML:xxx
-            // StartFragment:xxx
-            // EndFragment:xxx
-            if let Some(html_content) = extract_html_fragment(&html_str) {
-                tracing::debug!("get_clipboard_html: extracted {} chars", html_content.len());
-                Some(html_content)
+            if let Some(fragment) = extract_html_fragment(&html_str) {
+                tracing::debug!("get_clipboard_html: extracted {} chars", fragment.len());
             } else {
-                // If parsing fails, return the whole content
                 tracing::debug!(
                     "get_clipboard_html: returning raw content {} chars",
                     html_str.len()
                 );
-                Some(html_str)
             }
+            Some(html_str)
         }
     }
 
@@ -530,6 +522,34 @@ impl WindowsClipboardMonitor {
             }
         }
 
+        let html_content = if has_html {
+            Self::get_clipboard_html()
+        } else {
+            None
+        };
+
+        if let Some(ref html) = html_content {
+            let fragment = extract_html_fragment(html);
+            let table_source = fragment.as_deref().unwrap_or(html);
+            if looks_like_table_html(table_source) {
+                tracing::info!("Captured HTML table: {} chars", html.len());
+                return Some(ClipboardItem::new_html(html.clone()));
+            }
+        }
+
+        let text_content = if has_text {
+            Self::get_clipboard_text()
+        } else {
+            None
+        };
+
+        if let Some(ref text) = text_content {
+            if looks_like_tabular_text(text) {
+                tracing::info!("Captured tabular text: {} chars", text.len());
+                return Some(ClipboardItem::new_text(text.clone()));
+            }
+        }
+
         // Priority 2: Images (try PNG first, then DIB/Bitmap)
         if has_image {
             // Try PNG format first (higher quality, no conversion needed)
@@ -555,8 +575,9 @@ impl WindowsClipboardMonitor {
 
         // Priority 3: HTML content (treat as plain text when no CF_UNICODETEXT is available)
         if has_html && !has_text {
-            if let Some(html) = Self::get_clipboard_html() {
-                let plain_text = html_to_text(&html);
+            if let Some(html) = html_content {
+                let fragment = extract_html_fragment(&html);
+                let plain_text = html_to_text(fragment.as_deref().unwrap_or(&html));
                 if !plain_text.trim().is_empty() {
                     tracing::debug!("Captured HTML as text: {} chars", plain_text.len());
                     return Some(ClipboardItem::new_text(plain_text));
@@ -576,7 +597,7 @@ impl WindowsClipboardMonitor {
 
         // Priority 5: Plain text (fallback)
         if has_text {
-            if let Some(text) = Self::get_clipboard_text() {
+            if let Some(text) = text_content.or_else(Self::get_clipboard_text) {
                 // Skip whitespace-only content
                 if text.trim().is_empty() {
                     tracing::debug!("Skipping whitespace-only clipboard content");
@@ -614,8 +635,10 @@ fn extract_html_fragment(html_format: &str) -> Option<String> {
     let end_frag = parse_html_format_offset(html_format, "EndFragment:");
 
     if let (Some(start), Some(end)) = (start_frag, end_frag) {
-        if start < end && end <= html_format.len() {
-            return Some(html_format[start..end].to_string());
+        if start < end {
+            if let Some(slice) = html_format.as_bytes().get(start..end) {
+                return Some(String::from_utf8_lossy(slice).to_string());
+            }
         }
     }
 
@@ -624,12 +647,35 @@ fn extract_html_fragment(html_format: &str) -> Option<String> {
     let end_html = parse_html_format_offset(html_format, "EndHTML:");
 
     if let (Some(start), Some(end)) = (start_html, end_html) {
-        if start < end && end <= html_format.len() {
-            return Some(html_format[start..end].to_string());
+        if start < end {
+            if let Some(slice) = html_format.as_bytes().get(start..end) {
+                return Some(String::from_utf8_lossy(slice).to_string());
+            }
         }
     }
 
     None
+}
+
+fn is_html_format(html: &str) -> bool {
+    html.starts_with("Version:") && html.contains("StartHTML:") && html.contains("EndHTML:")
+}
+
+fn looks_like_table_html(html: &str) -> bool {
+    let lower = html.to_ascii_lowercase();
+    lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
+}
+
+fn looks_like_tabular_text(text: &str) -> bool {
+    if !text.contains('\t') {
+        return false;
+    }
+
+    if text.contains('\n') {
+        return true;
+    }
+
+    text.matches('\t').count() >= 2
 }
 
 /// Create HDROP data structure for file paths
@@ -891,8 +937,8 @@ fn encode_png(rgba_data: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
 }
 
 fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Option<Vec<u8>> {
-    use image::ImageEncoder;
     use image::io::Reader as ImageReader;
+    use image::ImageEncoder;
     use std::io::Cursor;
 
     let img = ImageReader::new(Cursor::new(png_data))
@@ -1173,7 +1219,16 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                     let _ = EmptyClipboard();
 
                     let html_str = String::from_utf8_lossy(&item.data);
-                    let html_format = create_html_format(&html_str);
+                    let (html_format, fragment) = if is_html_format(&html_str) {
+                        let fragment = extract_html_fragment(&html_str)
+                            .unwrap_or_else(|| html_str.to_string());
+                        (Cow::Borrowed(html_str.as_ref()), Cow::Owned(fragment))
+                    } else {
+                        (
+                            Cow::Owned(create_html_format(&html_str)),
+                            Cow::Borrowed(html_str.as_ref()),
+                        )
+                    };
                     let data = html_format.as_bytes();
 
                     let handle = GlobalAlloc(GMEM_MOVEABLE, data.len() + 1);
@@ -1187,6 +1242,30 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                             *CF_HTML,
                             Some(windows::Win32::Foundation::HANDLE(handle.0)),
                         );
+                    }
+
+                    let plain_text = html_to_text(&fragment);
+                    if !plain_text.trim().is_empty() {
+                        let wide: Vec<u16> = plain_text
+                            .encode_utf16()
+                            .chain(std::iter::once(0))
+                            .collect();
+                        let size = wide.len() * 2;
+
+                        let handle = GlobalAlloc(GMEM_MOVEABLE, size);
+                        if let Ok(handle) = handle {
+                            let ptr = GlobalLock(handle);
+                            std::ptr::copy_nonoverlapping(
+                                wide.as_ptr(),
+                                ptr as *mut u16,
+                                wide.len(),
+                            );
+                            let _ = GlobalUnlock(handle);
+                            let _ = SetClipboardData(
+                                CF_UNICODETEXT.0 as u32,
+                                Some(windows::Win32::Foundation::HANDLE(handle.0)),
+                            );
+                        }
                     }
 
                     let _ = CloseClipboard();

@@ -331,7 +331,12 @@ public class PreviewService : IPreviewService
                             data.TextContent = rtf;
                             break;
                         case "Text":
+                            data.TextContent = Encoding.UTF8.GetString(fullData);
+                            break;
                         case "Html":
+                            var html = Encoding.UTF8.GetString(fullData);
+                            data.TextContent = ExtractHtmlFragment(fullData) ?? html;
+                            break;
                         case "Files":
                             data.TextContent = Encoding.UTF8.GetString(fullData);
                             break;
@@ -344,4 +349,56 @@ public class PreviewService : IPreviewService
         }
         catch { }
     }
+
+    private static string? ExtractHtmlFragment(byte[] data)
+    {
+        if (data.Length == 0)
+            return null;
+
+        var text = Encoding.UTF8.GetString(data);
+        if (!IsHtmlClipboardFormat(text))
+            return null;
+
+        var fragment = TryExtractHtmlSpan(text, data, "StartFragment:", "EndFragment:");
+        if (fragment != null)
+            return fragment;
+
+        return TryExtractHtmlSpan(text, data, "StartHTML:", "EndHTML:");
+    }
+
+    private static string? TryExtractHtmlSpan(string text, byte[] data, string startKey, string endKey)
+    {
+        var start = ParseHtmlOffset(text, startKey);
+        var end = ParseHtmlOffset(text, endKey);
+        if (start == null || end == null)
+            return null;
+        if (start >= end || end > data.Length)
+            return null;
+
+        return Encoding.UTF8.GetString(data, start.Value, end.Value - start.Value);
+    }
+
+    private static int? ParseHtmlOffset(string text, string key)
+    {
+        var index = text.IndexOf(key, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return null;
+
+        index += key.Length;
+        var end = index;
+        while (end < text.Length && char.IsDigit(text[end]))
+        {
+            end++;
+        }
+
+        if (end == index)
+            return null;
+
+        return int.TryParse(text.Substring(index, end - index), out var value) ? value : null;
+    }
+
+    private static bool IsHtmlClipboardFormat(string text) =>
+        text.StartsWith("Version:", StringComparison.OrdinalIgnoreCase)
+        && text.Contains("StartHTML:", StringComparison.OrdinalIgnoreCase)
+        && text.Contains("EndHTML:", StringComparison.OrdinalIgnoreCase);
 }

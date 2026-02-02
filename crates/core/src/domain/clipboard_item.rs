@@ -26,9 +26,99 @@ fn strip_html_tags(html: &str) -> String {
     result.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+fn looks_like_table_html(html: &str) -> bool {
+    let lower = html.to_ascii_lowercase();
+    lower.contains("<table") || (lower.contains("<tr") && lower.contains("<td"))
+}
+
+fn extract_first_table_row(html: &str) -> Option<Vec<String>> {
+    let lower = html.to_ascii_lowercase();
+    let row_start = lower.find("<tr")?;
+    let row_open_end = lower[row_start..].find('>')? + row_start + 1;
+    let row_close = lower[row_open_end..].find("</tr")? + row_open_end;
+
+    let row_html = &html[row_open_end..row_close];
+    let row_lower = row_html.to_ascii_lowercase();
+    let mut cells = Vec::new();
+    let mut idx = 0;
+
+    loop {
+        let td_pos = row_lower[idx..].find("<td").map(|p| p + idx);
+        let th_pos = row_lower[idx..].find("<th").map(|p| p + idx);
+        let cell_start = match (td_pos, th_pos) {
+            (Some(td), Some(th)) => td.min(th),
+            (Some(td), None) => td,
+            (None, Some(th)) => th,
+            (None, None) => break,
+        };
+
+        let open_end = match row_lower[cell_start..].find('>') {
+            Some(pos) => cell_start + pos + 1,
+            None => break,
+        };
+
+        let closing_tag = if row_lower[cell_start..].starts_with("<th") {
+            "</th"
+        } else {
+            "</td"
+        };
+
+        let close_start = match row_lower[open_end..].find(closing_tag) {
+            Some(pos) => open_end + pos,
+            None => break,
+        };
+
+        let cell_html = &row_html[open_end..close_start];
+        let cell_text = strip_html_tags(cell_html).trim().to_string();
+        cells.push(cell_text);
+
+        idx = close_start + closing_tag.len();
+    }
+
+    if cells.is_empty() {
+        None
+    } else {
+        Some(cells)
+    }
+}
+
 /// Convert HTML content to plain text
 pub fn html_to_text(html: &str) -> String {
     strip_html_tags(html)
+}
+
+fn parse_html_format_offset(html_format: &str, key: &str) -> Option<usize> {
+    html_format
+        .split(key)
+        .nth(1)
+        .and_then(|s| s.lines().next())
+        .and_then(|s| s.trim().parse::<usize>().ok())
+}
+
+fn extract_html_fragment_from_format(html_format: &str) -> Option<String> {
+    let start_frag = parse_html_format_offset(html_format, "StartFragment:");
+    let end_frag = parse_html_format_offset(html_format, "EndFragment:");
+
+    if let (Some(start), Some(end)) = (start_frag, end_frag) {
+        if start < end {
+            if let Some(slice) = html_format.as_bytes().get(start..end) {
+                return Some(String::from_utf8_lossy(slice).to_string());
+            }
+        }
+    }
+
+    let start_html = parse_html_format_offset(html_format, "StartHTML:");
+    let end_html = parse_html_format_offset(html_format, "EndHTML:");
+
+    if let (Some(start), Some(end)) = (start_html, end_html) {
+        if start < end {
+            if let Some(slice) = html_format.as_bytes().get(start..end) {
+                return Some(String::from_utf8_lossy(slice).to_string());
+            }
+        }
+    }
+
+    None
 }
 
 /// Decode common HTML entities to their character equivalents
@@ -265,18 +355,25 @@ impl ClipboardItem {
     /// Create new HTML clipboard item
     pub fn new_html(html: impl Into<String>) -> Self {
         let html = html.into();
-        // Extract text preview from HTML (strip tags for preview)
-        let plain_text = strip_html_tags(&html);
+        let fragment = extract_html_fragment_from_format(&html).unwrap_or_else(|| html.clone());
+        let preview = if looks_like_table_html(&fragment) {
+            extract_first_table_row(&fragment)
+                .map(|cells| cells.join(" | "))
+                .unwrap_or_else(|| "Table".to_string())
+        } else {
+            // Extract text preview from HTML (strip tags for preview)
+            let plain_text = strip_html_tags(&fragment);
 
-        // For preview: show only the first non-empty line (trimmed), max 100 chars
-        let preview = plain_text
-            .lines()
-            .map(|line| line.trim())
-            .find(|line| !line.is_empty())
-            .unwrap_or("")
-            .chars()
-            .take(100)
-            .collect();
+            // For preview: show only the first non-empty line (trimmed), max 100 chars
+            plain_text
+                .lines()
+                .map(|line| line.trim())
+                .find(|line| !line.is_empty())
+                .unwrap_or("")
+                .chars()
+                .take(100)
+                .collect()
+        };
 
         Self {
             id: Uuid::new_v4(),
@@ -406,6 +503,14 @@ mod tests {
         let item = ClipboardItem::new_html(html);
         assert_eq!(item.content_type, ContentType::Html);
         assert_eq!(item.preview, "Some formatted text");
+    }
+
+    #[test]
+    fn test_new_html_table() {
+        let html = "<table><tr><td>Qty</td><td>Price</td></tr></table>";
+        let item = ClipboardItem::new_html(html);
+        assert_eq!(item.content_type, ContentType::Html);
+        assert_eq!(item.preview, "Qty | Price");
     }
 
     #[test]

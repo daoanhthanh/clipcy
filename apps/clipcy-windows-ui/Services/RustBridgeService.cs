@@ -373,6 +373,37 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     public ulong CreatedAtTimestamp { get; init; }
     public bool Pinned { get; set; }
 
+    public string DisplayPreview
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Preview))
+            {
+                return ContentType switch
+                {
+                    "Html" => "Table",
+                    "RichText" => "Formatted content",
+                    _ => string.Empty,
+                };
+            }
+
+            if (Preview.Contains('\t'))
+            {
+                var parts = Preview.Split('\t').Select(p => p.Trim());
+                var display = string.Join(" | ", parts);
+                return string.IsNullOrWhiteSpace(display) ? "Table" : display;
+            }
+
+            return Preview;
+        }
+    }
+
+    public bool IsTablePreview =>
+        (ContentType == "Html" && Preview == "Table")
+        || (ContentType == "Text" && Preview.Contains('\t'));
+
+    public Visibility TableBadgeVisibility => IsTablePreview ? Visibility.Visible : Visibility.Collapsed;
+
     public bool IsImage => ContentType == "Image";
 
     public Visibility ImageVisibility => IsImage ? Visibility.Visible : Visibility.Collapsed;

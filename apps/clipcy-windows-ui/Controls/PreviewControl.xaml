@@ -72,6 +72,18 @@
             Visibility="Collapsed"
           />
 
+          <!-- Table Content -->
+          <Border
+            x:Name="PreviewTableBorder"
+            CornerRadius="4"
+            BorderThickness="1"
+            BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            Visibility="Collapsed"
+          >
+            <Grid x:Name="PreviewTable" />
+          </Border>
+
           <!-- Image Content -->
           <Border x:Name="PreviewImageBorder" CornerRadius="4" Visibility="Collapsed">
             <Image x:Name="PreviewImage" Stretch="Uniform" MaxWidth="336" MaxHeight="260" />

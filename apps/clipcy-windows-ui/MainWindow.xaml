@@ -85,6 +85,7 @@
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
 
               <Border
@@ -105,12 +106,29 @@
 
               <TextBlock
                 Grid.Column="1"
-                Text="{x:Bind Preview, Mode=OneWay}"
+                Text="{x:Bind DisplayPreview, Mode=OneWay}"
                 TextTrimming="CharacterEllipsis"
                 MaxLines="1"
                 VerticalAlignment="Center"
                 FontSize="13"
               />
+
+              <Border
+                Grid.Column="2"
+                Padding="6,1"
+                CornerRadius="3"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                Visibility="{x:Bind TableBadgeVisibility, Mode=OneWay}"
+                VerticalAlignment="Center"
+              >
+                <TextBlock
+                  Text="Table"
+                  FontSize="10"
+                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                />
+              </Border>
             </Grid>
 
             <!-- Pin Icon -->
