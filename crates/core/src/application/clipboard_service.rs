@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use parking_lot::RwLock;
 use tokio::runtime::Handle;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
 use crate::domain::{ClipboardItem, Settings};
@@ -13,12 +13,30 @@ use crate::ports::{ClipboardMonitor, ClipboardRepository, PasteHandler};
 const DEBOUNCE_DURATION_MS: u64 = 300;
 const PASTE_SUPPRESS_DURATION_MS: u64 = 1000;
 
+enum DebounceMessage {
+    Item(ClipboardItem),
+    Flush(oneshot::Sender<Result<()>>),
+}
+
+async fn save_pending_item(
+    pending_item: &mut Option<ClipboardItem>,
+    repository: &Arc<dyn ClipboardRepository>,
+    settings: &Arc<RwLock<Settings>>,
+) -> Result<()> {
+    if let Some(item) = pending_item.take() {
+        let max_items = settings.read().max_history_items;
+        repository.save(&item).await?;
+        repository.prune(max_items).await?;
+    }
+    Ok(())
+}
+
 pub struct ClipboardService {
     monitor: Arc<dyn ClipboardMonitor>,
     repository: Arc<dyn ClipboardRepository>,
     paste_handler: Arc<dyn PasteHandler>,
     settings: Arc<RwLock<Settings>>,
-    debounce_tx: Arc<RwLock<Option<mpsc::UnboundedSender<ClipboardItem>>>>,
+    debounce_tx: Arc<RwLock<Option<mpsc::UnboundedSender<DebounceMessage>>>>,
     suppress_until: Arc<RwLock<Option<Instant>>>,
     runtime_handle: Handle,
 }
@@ -43,7 +61,7 @@ impl ClipboardService {
     }
 
     pub fn start_monitoring(&self) -> Result<()> {
-        let (tx, rx) = mpsc::unbounded_channel::<ClipboardItem>();
+        let (tx, rx) = mpsc::unbounded_channel::<DebounceMessage>();
         *self.debounce_tx.write() = Some(tx.clone());
 
         let repository = Arc::clone(&self.repository);
@@ -55,7 +73,7 @@ impl ClipboardService {
         let debounce_tx = Arc::clone(&self.debounce_tx);
         self.monitor.on_change(Box::new(move |item| {
             if let Some(tx) = debounce_tx.read().as_ref() {
-                let _ = tx.send(item);
+                let _ = tx.send(DebounceMessage::Item(item));
             }
         }));
 
@@ -64,7 +82,7 @@ impl ClipboardService {
 
     fn spawn_debounce_task(
         &self,
-        mut rx: mpsc::UnboundedReceiver<ClipboardItem>,
+        mut rx: mpsc::UnboundedReceiver<DebounceMessage>,
         repository: Arc<dyn ClipboardRepository>,
         settings: Arc<RwLock<Settings>>,
         suppress_until: Arc<RwLock<Option<Instant>>>,
@@ -81,31 +99,32 @@ impl ClipboardService {
                 };
 
                 match timeout.await {
-                    Ok(Some(item)) => {
-                        let suppress_deadline = *suppress_until.read();
-                        if let Some(deadline) = suppress_deadline {
-                            if Instant::now() <= deadline {
-                                continue;
+                    Ok(Some(message)) => match message {
+                        DebounceMessage::Item(item) => {
+                            let suppress_deadline = *suppress_until.read();
+                            if let Some(deadline) = suppress_deadline {
+                                if Instant::now() <= deadline {
+                                    continue;
+                                }
+                                *suppress_until.write() = None;
                             }
-                            *suppress_until.write() = None;
-                        }
 
-                        pending_item = Some(item);
-                    }
+                            pending_item = Some(item);
+                        }
+                        DebounceMessage::Flush(response) => {
+                            let result =
+                                save_pending_item(&mut pending_item, &repository, &settings).await;
+                            let _ = response.send(result);
+                        }
+                    },
                     Ok(None) => {
                         break;
                     }
                     Err(_) => {
-                        if let Some(item) = pending_item.take() {
-                            let max_items = settings.read().max_history_items;
-
-                            if let Err(e) = repository.save(&item).await {
-                                tracing::error!("Failed to save clipboard item: {}", e);
-                            }
-
-                            if let Err(e) = repository.prune(max_items).await {
-                                tracing::error!("Failed to prune history: {}", e);
-                            }
+                        if let Err(e) =
+                            save_pending_item(&mut pending_item, &repository, &settings).await
+                        {
+                            tracing::error!("Failed to save clipboard item: {}", e);
                         }
                     }
                 }
@@ -116,6 +135,23 @@ impl ClipboardService {
     pub fn stop_monitoring(&self) -> Result<()> {
         *self.debounce_tx.write() = None;
         self.monitor.stop()
+    }
+
+    pub async fn flush_pending(&self) -> Result<()> {
+        let sender = self.debounce_tx.read().clone();
+        let Some(sender) = sender else {
+            return Ok(());
+        };
+
+        let (response_tx, response_rx) = oneshot::channel();
+        if sender.send(DebounceMessage::Flush(response_tx)).is_err() {
+            return Ok(());
+        }
+
+        match response_rx.await {
+            Ok(result) => result,
+            Err(_) => Ok(()),
+        }
     }
 
     pub async fn get_history(&self, limit: Option<usize>) -> Result<Vec<ClipboardItem>> {

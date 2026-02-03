@@ -689,6 +689,12 @@ impl ClipboardEngine {
             return Vec::new();
         }
 
+        if let Some(service) = self.clipboard_service.read().as_ref() {
+            if let Err(e) = self.runtime.block_on(service.flush_pending()) {
+                tracing::warn!("Failed to flush pending clipboard item: {}", e);
+            }
+        }
+
         // Get repository if initialized
         let repo = match self.repository.read().as_ref() {
             Some(r) => r.clone(),
@@ -708,6 +714,12 @@ impl ClipboardEngine {
     pub fn search(&self, query: String) -> Vec<ClipboardItemDto> {
         if !*self.is_running.read() {
             return Vec::new();
+        }
+
+        if let Some(service) = self.clipboard_service.read().as_ref() {
+            if let Err(e) = self.runtime.block_on(service.flush_pending()) {
+                tracing::warn!("Failed to flush pending clipboard item: {}", e);
+            }
         }
 
         // Get repository if initialized
