@@ -1314,15 +1314,16 @@ fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Optio
         .ok()?;
 
     let thumbnail = img.thumbnail(max_width, max_height);
+    let rgba = thumbnail.to_rgba8();
 
     let mut png_bytes = Vec::new();
     let encoder = image::codecs::png::PngEncoder::new(&mut png_bytes);
 
     if encoder
         .write_image(
-            thumbnail.as_bytes(),
-            thumbnail.width(),
-            thumbnail.height(),
+            rgba.as_raw(),
+            rgba.width(),
+            rgba.height(),
             image::ColorType::Rgba8,
         )
         .is_ok()

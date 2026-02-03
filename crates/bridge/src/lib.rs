@@ -3,8 +3,9 @@
 //! This crate exposes the Clipcy core functionality to native UI applications
 //! via UniFFI-generated bindings (C#, Swift, Kotlin, etc.)
 
+use std::io::Write;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 
 use chrono::Local;
 use once_cell::sync::OnceCell;
@@ -32,6 +33,7 @@ use clipcy_platform_windows::{
 uniffi::include_scaffolding!("clipcy_core");
 
 static LOG_GUARD: OnceCell<tracing_appender::non_blocking::WorkerGuard> = OnceCell::new();
+static PANIC_HOOK_SET: Once = Once::new();
 
 fn init_logging() {
     if LOG_GUARD.get().is_some() {
@@ -46,6 +48,8 @@ fn init_logging() {
     if std::fs::create_dir_all(&log_dir).is_err() {
         return;
     }
+
+    init_panic_hook(&log_dir);
 
     let default_log_level = if cfg!(debug_assertions) {
         "debug" // actually this never happens because we must build release for uniffi
@@ -78,6 +82,40 @@ fn init_logging() {
         let _ = LOG_GUARD.set(guard);
         tracing::info!("File logging initialized at {:?}", log_dir);
     }
+}
+
+fn init_panic_hook(log_dir: &PathBuf) {
+    let log_path = log_dir.join("panic.log");
+
+    PANIC_HOOK_SET.call_once(|| {
+        let log_path = log_path.clone();
+        let default_hook = std::panic::take_hook();
+
+        std::panic::set_hook(Box::new(move |info| {
+            let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+            let thread = std::thread::current();
+            let thread_name = thread.name().unwrap_or("<unnamed>");
+            let backtrace = std::backtrace::Backtrace::force_capture();
+
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_path)
+            {
+                let _ = writeln!(
+                    file,
+                    "[{}] thread '{}' panicked: {}\n{:?}\n",
+                    timestamp,
+                    thread_name,
+                    info,
+                    backtrace
+                );
+                let _ = file.flush();
+            }
+
+            default_hook(info);
+        }));
+    });
 }
 
 // ============================================
