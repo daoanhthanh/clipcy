@@ -13,8 +13,11 @@ pub trait ClipboardRepository: Send + Sync {
     /// Get item by ID
     async fn get_by_id(&self, id: Uuid) -> Result<Option<ClipboardItem>>;
 
-    /// Get all items, ordered by created_at DESC
+    /// Get all items, ordered by last_used_at DESC
     async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>>;
+
+    /// Update last-used timestamp for an item
+    async fn touch_last_used_at(&self, id: Uuid) -> Result<()>;
 
     /// Delete item by ID
     async fn delete(&self, id: Uuid) -> Result<()>;

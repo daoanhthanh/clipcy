@@ -405,6 +405,8 @@ pub struct ClipboardItem {
     pub source_app_icon: Option<Vec<u8>>,
     /// Timestamp when copied
     pub created_at: DateTime<Utc>,
+    /// Timestamp when last used (pasted)
+    pub last_used_at: DateTime<Utc>,
     /// Whether item is pinned (won't be auto-deleted)
     pub pinned: bool,
 }
@@ -413,6 +415,7 @@ impl ClipboardItem {
     /// Create new text clipboard item
     pub fn new_text(text: impl Into<String>) -> Self {
         let text = text.into();
+        let now = Utc::now();
 
         // For preview: show only the first non-empty line (trimmed), max 100 chars
         let preview = text
@@ -432,13 +435,15 @@ impl ClipboardItem {
             thumbnail: None,
             source_app: None,
             source_app_icon: None,
-            created_at: Utc::now(),
+            created_at: now,
+            last_used_at: now,
             pinned: false,
         }
     }
 
     /// Create new image clipboard item
     pub fn new_image(png_data: Vec<u8>, thumbnail: Option<Vec<u8>>) -> Self {
+        let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
             content_type: ContentType::Image,
@@ -447,7 +452,8 @@ impl ClipboardItem {
             thumbnail,
             source_app: None,
             source_app_icon: None,
-            created_at: Utc::now(),
+            created_at: now,
+            last_used_at: now,
             pinned: false,
         }
     }
@@ -461,6 +467,7 @@ impl ClipboardItem {
         };
 
         let data = file_paths.join("\n").into_bytes();
+        let now = Utc::now();
 
         Self {
             id: Uuid::new_v4(),
@@ -470,7 +477,8 @@ impl ClipboardItem {
             thumbnail: None,
             source_app: None,
             source_app_icon: None,
-            created_at: Utc::now(),
+            created_at: now,
+            last_used_at: now,
             pinned: false,
         }
     }
@@ -478,6 +486,7 @@ impl ClipboardItem {
     /// Create new HTML clipboard item
     pub fn new_html(html: impl Into<String>) -> Self {
         let html = html.into();
+        let now = Utc::now();
         let fragment = extract_html_fragment_from_format(&html).unwrap_or_else(|| html.clone());
         let preview = if looks_like_table_html(&fragment) {
             let rows = extract_table_rows(&fragment);
@@ -525,7 +534,8 @@ impl ClipboardItem {
             thumbnail: None,
             source_app: None,
             source_app_icon: None,
-            created_at: Utc::now(),
+            created_at: now,
+            last_used_at: now,
             pinned: false,
         }
     }
@@ -533,6 +543,7 @@ impl ClipboardItem {
     /// Create new Rich Text (RTF) clipboard item
     pub fn new_rtf(rtf: impl Into<String>) -> Self {
         let rtf = rtf.into();
+        let now = Utc::now();
         // Extract plain text from RTF for preview
         let plain_text = extract_rtf_text(&rtf);
 
@@ -559,7 +570,8 @@ impl ClipboardItem {
             thumbnail: None,
             source_app: None,
             source_app_icon: None,
-            created_at: Utc::now(),
+            created_at: now,
+            last_used_at: now,
             pinned: false,
         }
     }

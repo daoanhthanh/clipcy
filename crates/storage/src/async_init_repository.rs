@@ -137,6 +137,11 @@ impl ClipboardRepository for AsyncInitRepository {
         repo.get_all(limit).await
     }
 
+    async fn touch_last_used_at(&self, id: Uuid) -> Result<()> {
+        let repo = self.get_repo().await?;
+        repo.touch_last_used_at(id).await
+    }
+
     async fn delete(&self, id: Uuid) -> Result<()> {
         let repo = self.get_repo().await?;
         repo.delete(id).await

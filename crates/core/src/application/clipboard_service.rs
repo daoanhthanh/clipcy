@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use parking_lot::RwLock;
 use tokio::runtime::Handle;
@@ -11,6 +11,7 @@ use crate::error::Result;
 use crate::ports::{ClipboardMonitor, ClipboardRepository, PasteHandler};
 
 const DEBOUNCE_DURATION_MS: u64 = 300;
+const PASTE_SUPPRESS_DURATION_MS: u64 = 1000;
 
 pub struct ClipboardService {
     monitor: Arc<dyn ClipboardMonitor>,
@@ -18,6 +19,7 @@ pub struct ClipboardService {
     paste_handler: Arc<dyn PasteHandler>,
     settings: Arc<RwLock<Settings>>,
     debounce_tx: Arc<RwLock<Option<mpsc::UnboundedSender<ClipboardItem>>>>,
+    suppress_until: Arc<RwLock<Option<Instant>>>,
     runtime_handle: Handle,
 }
 
@@ -35,6 +37,7 @@ impl ClipboardService {
             paste_handler,
             settings: Arc::new(RwLock::new(settings)),
             debounce_tx: Arc::new(RwLock::new(None)),
+            suppress_until: Arc::new(RwLock::new(None)),
             runtime_handle,
         }
     }
@@ -45,8 +48,9 @@ impl ClipboardService {
 
         let repository = Arc::clone(&self.repository);
         let settings = Arc::clone(&self.settings);
+        let suppress_until = Arc::clone(&self.suppress_until);
 
-        self.spawn_debounce_task(rx, repository, settings);
+        self.spawn_debounce_task(rx, repository, settings, suppress_until);
 
         let debounce_tx = Arc::clone(&self.debounce_tx);
         self.monitor.on_change(Box::new(move |item| {
@@ -63,6 +67,7 @@ impl ClipboardService {
         mut rx: mpsc::UnboundedReceiver<ClipboardItem>,
         repository: Arc<dyn ClipboardRepository>,
         settings: Arc<RwLock<Settings>>,
+        suppress_until: Arc<RwLock<Option<Instant>>>,
     ) {
         self.runtime_handle.spawn(async move {
             let debounce_duration = Duration::from_millis(DEBOUNCE_DURATION_MS);
@@ -77,6 +82,14 @@ impl ClipboardService {
 
                 match timeout.await {
                     Ok(Some(item)) => {
+                        let suppress_deadline = *suppress_until.read();
+                        if let Some(deadline) = suppress_deadline {
+                            if Instant::now() <= deadline {
+                                continue;
+                            }
+                            *suppress_until.write() = None;
+                        }
+
                         pending_item = Some(item);
                     }
                     Ok(None) => {
@@ -114,7 +127,16 @@ impl ClipboardService {
         let item = self.repository.get_by_id(id).await?;
 
         if let Some(item) = item {
-            self.monitor.set_content(&item)?;
+            if let Err(e) = self.repository.touch_last_used_at(item.id).await {
+                tracing::warn!("Failed to update last_used_at: {}", e);
+            }
+
+            *self.suppress_until.write() =
+                Some(Instant::now() + Duration::from_millis(PASTE_SUPPRESS_DURATION_MS));
+            if let Err(err) = self.monitor.set_content(&item) {
+                *self.suppress_until.write() = None;
+                return Err(err);
+            }
             tokio::time::sleep(Duration::from_millis(50)).await;
             self.paste_handler.simulate_paste()?;
         }
@@ -131,7 +153,7 @@ impl ClipboardService {
     }
 
     pub async fn search(&self, query: &str) -> Result<Vec<ClipboardItem>> {
-        self.repository.search(query, 50).await
+        self.repository.search(query, 100).await
     }
 
     pub async fn set_pinned(&self, id: Uuid, pinned: bool) -> Result<()> {

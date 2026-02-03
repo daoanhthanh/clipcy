@@ -149,6 +149,7 @@ fn map_win_error(context: &str, err: windows::core::Error) -> ClipboardError {
 
 fn apply_metadata(item: &mut ClipboardItem, timestamp: DateTime<Utc>, source_app: Option<String>) {
     item.created_at = timestamp;
+    item.last_used_at = timestamp;
     item.source_app = source_app;
     item.source_app_icon = None;
 }

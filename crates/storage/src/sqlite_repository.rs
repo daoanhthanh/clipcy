@@ -140,17 +140,11 @@ impl SqliteClipboardRepository {
                 source_app TEXT,
                 source_app_icon BLOB,
                 created_at TEXT NOT NULL,
+                last_used_at TEXT NOT NULL,
                 pinned INTEGER NOT NULL DEFAULT 0,
                 content_hash TEXT
             )
             "#,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
-
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_created_at ON clipboard_items(created_at DESC)",
         )
         .execute(&self.pool)
         .await
@@ -179,6 +173,23 @@ impl SqliteClipboardRepository {
         let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN search_text TEXT")
             .execute(&self.pool)
             .await;
+
+        let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN last_used_at TEXT")
+            .execute(&self.pool)
+            .await;
+
+        let _ = sqlx::query(
+            "UPDATE clipboard_items SET last_used_at = created_at WHERE last_used_at IS NULL OR last_used_at = ''",
+        )
+        .execute(&self.pool)
+        .await;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_last_used_at ON clipboard_items(last_used_at DESC)",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         self.init_fts().await?;
         self.backfill_search_text().await?;
@@ -303,6 +314,9 @@ impl SqliteClipboardRepository {
         let created_at_str: String = row
             .try_get("created_at")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let last_used_at_str: String = row
+            .try_get("last_used_at")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
         let pinned: i32 = row
             .try_get("pinned")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
@@ -312,6 +326,9 @@ impl SqliteClipboardRepository {
         let created_at = chrono::DateTime::parse_from_rfc3339(&created_at_str)
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .unwrap_or_default();
+        let last_used_at = chrono::DateTime::parse_from_rfc3339(&last_used_at_str)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .unwrap_or(created_at);
 
         Ok(ClipboardItem {
             id: Uuid::parse_str(&id_str).unwrap_or_default(),
@@ -322,6 +339,7 @@ impl SqliteClipboardRepository {
             source_app,
             source_app_icon,
             created_at,
+            last_used_at,
             pinned: pinned != 0,
         })
     }
@@ -348,6 +366,9 @@ impl SqliteClipboardRepository {
         let created_at_str: String = row
             .try_get("created_at")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let last_used_at_str: String = row
+            .try_get("last_used_at")
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
         let pinned: i32 = row
             .try_get("pinned")
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
@@ -357,6 +378,9 @@ impl SqliteClipboardRepository {
         let created_at = chrono::DateTime::parse_from_rfc3339(&created_at_str)
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .unwrap_or_default();
+        let last_used_at = chrono::DateTime::parse_from_rfc3339(&last_used_at_str)
+            .map(|dt| dt.with_timezone(&chrono::Utc))
+            .unwrap_or(created_at);
 
         Ok(ClipboardItem {
             id: Uuid::parse_str(&id_str).unwrap_or_default(),
@@ -367,13 +391,14 @@ impl SqliteClipboardRepository {
             source_app,
             source_app_icon,
             created_at,
+            last_used_at,
             pinned: pinned != 0,
         })
     }
 
     pub async fn get_all_metadata(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, pinned FROM clipboard_items ORDER BY pinned DESC, created_at DESC LIMIT $1"
+            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned FROM clipboard_items ORDER BY pinned DESC, last_used_at DESC LIMIT $1"
         )
             .bind(limit as i64)
             .fetch_all(&self.pool)
@@ -413,11 +438,11 @@ impl SqliteClipboardRepository {
             let rows = if metadata_only {
                 sqlx::query(
                     r#"
-                    SELECT ci.id, ci.content_type, ci.preview, ci.thumbnail, ci.source_app, ci.source_app_icon, ci.created_at, ci.pinned
+                    SELECT ci.id, ci.content_type, ci.preview, ci.thumbnail, ci.source_app, ci.source_app_icon, ci.created_at, ci.last_used_at, ci.pinned
                     FROM clipboard_items ci
                     JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
                     WHERE clipboard_items_fts MATCH $1
-                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.created_at DESC
+                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.last_used_at DESC
                     LIMIT $2
                     "#,
                 )
@@ -433,7 +458,7 @@ impl SqliteClipboardRepository {
                     FROM clipboard_items ci
                     JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
                     WHERE clipboard_items_fts MATCH $1
-                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.created_at DESC
+                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.last_used_at DESC
                     LIMIT $2
                     "#,
                 )
@@ -497,7 +522,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             }
 
             // Delete any existing item with the same content hash (deduplication)
-            // This removes the old entry so the new one will be at the top when sorted by created_at
+            // This removes the old entry so the new one will be at the top when sorted by last_used_at
             sqlx::query("DELETE FROM clipboard_items WHERE content_hash = $1 AND id != $2")
                 .bind(&content_hash)
                 .bind(item.id.to_string())
@@ -509,8 +534,8 @@ impl ClipboardRepository for SqliteClipboardRepository {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO clipboard_items
-            (id, content_type, data, preview, search_text, thumbnail, source_app, source_app_icon, created_at, pinned, content_hash)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            (id, content_type, data, preview, search_text, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned, content_hash)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             "#,
         )
             .bind(item.id.to_string())
@@ -522,6 +547,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             .bind(&item.source_app)
             .bind(&item.source_app_icon)
             .bind(item.created_at.to_rfc3339())
+            .bind(item.last_used_at.to_rfc3339())
             .bind(pinned_to_save as i32)
             .bind(&content_hash)
             .execute(&self.pool)
@@ -545,7 +571,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
     }
 
     async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
-        let rows = sqlx::query("SELECT * FROM clipboard_items ORDER BY created_at DESC LIMIT $1")
+        let rows = sqlx::query("SELECT * FROM clipboard_items ORDER BY last_used_at DESC LIMIT $1")
             .bind(limit as i64)
             .fetch_all(&self.pool)
             .await
@@ -559,6 +585,17 @@ impl ClipboardRepository for SqliteClipboardRepository {
         }
 
         Ok(items)
+    }
+
+    async fn touch_last_used_at(&self, id: Uuid) -> Result<()> {
+        sqlx::query("UPDATE clipboard_items SET last_used_at = $1 WHERE id = $2")
+            .bind(chrono::Utc::now().to_rfc3339())
+            .bind(id.to_string())
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn delete(&self, id: Uuid) -> Result<()> {
@@ -608,7 +645,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             WHERE id IN (
                 SELECT id FROM clipboard_items
                 WHERE pinned = 0
-                ORDER BY created_at DESC
+                    ORDER BY last_used_at DESC
                 LIMIT -1 OFFSET $1
             )
             "#,
