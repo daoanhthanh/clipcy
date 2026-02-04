@@ -301,78 +301,87 @@
                   Margin="0,0,0,24"
                 />
 
-                <controls:SettingsCard Header="Clipcy" Description="Clipboard Manager for Windows">
-                  <controls:SettingsCard.HeaderIcon>
-                    <FontIcon
-                      Glyph="&#xE8C8;"
-                      FontSize="24"
-                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                    />
-                  </controls:SettingsCard.HeaderIcon>
-                  <TextBlock
-                    Text="{x:Bind AppVersion, Mode=OneWay}"
-                    Style="{StaticResource CaptionTextBlockStyle}"
-                    Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                    VerticalAlignment="Center"
-                  />
-                </controls:SettingsCard>
-
-                <controls:SettingsCard
-                  Header="Updates"
-                  Description="Check GitHub releases once per day"
-                >
-                  <controls:SettingsCard.HeaderIcon>
-                    <FontIcon
-                      Glyph="&#xE895;"
-                      FontSize="20"
-                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                    />
-                  </controls:SettingsCard.HeaderIcon>
-                  <StackPanel Spacing="12" HorizontalAlignment="Right">
-                    <StackPanel Spacing="8" HorizontalAlignment="Right">
-                      <TextBlock
-                        x:Name="UpdateStatusText"
-                        Text="Update status: Not checked yet"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        HorizontalAlignment="Right"
-                      />
-                      <TextBlock
-                        x:Name="UpdateLastCheckedText"
-                        Text="Last checked: never"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                        HorizontalAlignment="Right"
-                      />
-                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button
-                          x:Name="CheckUpdatesButton"
-                          Content="Check now"
-                          Click="CheckUpdatesButton_Click"
+                <Border Style="{StaticResource SettingsCardBorderStyle}">
+                  <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                    <Expander.Header>
+                      <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon
+                          Grid.Column="0"
+                          Glyph="&#xE8C8;"
+                          FontSize="24"
+                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                          Margin="0,0,16,0"
                         />
-                        <Button
-                          x:Name="OpenReleasePageButton"
-                          Content="GitHub releases"
-                          Click="OpenReleasePageButton_Click"
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                          <TextBlock
+                            Text="Clipcy"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                          />
+                          <TextBlock
+                            x:Name="UpdateLastCheckedText"
+                            Text="Last checked: never"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          />
+                        </StackPanel>
+                        <TextBlock
+                          Grid.Column="2"
+                          Text="{x:Bind AppVersion, Mode=OneWay}"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                          VerticalAlignment="Center"
+                          Margin="16,0,0,0"
                         />
+                      </Grid>
+                    </Expander.Header>
+                    <Expander.Content>
+                      <StackPanel Spacing="12" Margin="0,12,0,0">
+                        <TextBlock
+                          Text="Check GitHub releases once per day"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        />
+                        <TextBlock
+                          x:Name="UpdateStatusText"
+                          Text="Update status: Not checked yet"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <Button
+                            x:Name="CheckUpdatesButton"
+                            Content="Check now"
+                            Click="CheckUpdatesButton_Click"
+                          />
+                          <Button
+                            x:Name="OpenReleasePageButton"
+                            Content="GitHub releases"
+                            Click="OpenReleasePageButton_Click"
+                          />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock
+                            Text="Auto update"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            VerticalAlignment="Center"
+                          />
+                          <ToggleSwitch
+                            x:Name="AutoUpdateToggle"
+                            Toggled="AutoUpdateToggle_Toggled"
+                            OnContent=""
+                            OffContent=""
+                          />
+                        </StackPanel>
                       </StackPanel>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                      <TextBlock
-                        Text="Auto update"
-                        Style="{StaticResource CaptionTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        VerticalAlignment="Center"
-                      />
-                      <ToggleSwitch
-                        x:Name="AutoUpdateToggle"
-                        Toggled="AutoUpdateToggle_Toggled"
-                        OnContent="On"
-                        OffContent="Off"
-                      />
-                    </StackPanel>
-                  </StackPanel>
-                </controls:SettingsCard>
+                    </Expander.Content>
+                  </Expander>
+                </Border>
               </StackPanel>
             </Grid>
           </ScrollViewer>
