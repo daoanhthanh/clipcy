@@ -239,7 +239,7 @@ dependencies = [
 
 [[package]]
 name = "clipboard-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -256,7 +256,7 @@ dependencies = [
 
 [[package]]
 name = "clipboard-storage"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-trait",
  "chrono",
@@ -274,7 +274,7 @@ dependencies = [
 
 [[package]]
 name = "clipcy-bridge"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chrono",
  "clipboard-core",
@@ -295,7 +295,7 @@ dependencies = [
 
 [[package]]
 name = "clipcy-linux"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clipboard-core",
  "clipboard-storage",
@@ -305,7 +305,7 @@ dependencies = [
 
 [[package]]
 name = "clipcy-macos"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clipboard-core",
  "clipboard-storage",
@@ -315,21 +315,21 @@ dependencies = [
 
 [[package]]
 name = "clipcy-platform-linux"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clipboard-core",
 ]
 
 [[package]]
 name = "clipcy-platform-macos"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clipboard-core",
 ]
 
 [[package]]
 name = "clipcy-platform-windows"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chrono",
  "clipboard-core",
@@ -344,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "clipcy-settings-common"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "dirs",
  "parking_lot",

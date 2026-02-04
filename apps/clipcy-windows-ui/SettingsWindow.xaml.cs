@@ -79,8 +79,8 @@ public sealed partial class SettingsWindow : Window
         InitializeUpdateState();
 
         // Subscribe to theme changes and apply initial theme
-        Services.ThemeManager.ThemeChanged += OnThemeChanged;
-        ApplyTheme(Services.ThemeManager.CurrentTheme);
+        ThemeManager.ThemeChanged += OnThemeChanged;
+        ApplyTheme(ThemeManager.CurrentTheme);
 
         // Update title bar colors after content is loaded
         if (Content is FrameworkElement rootElement)
@@ -119,7 +119,7 @@ public sealed partial class SettingsWindow : Window
                 return;
 
             // Use centralized ThemeManager for consistent, fast dark mode detection
-            bool isDarkMode = Services.ThemeManager.IsDarkTheme();
+            bool isDarkMode = ThemeManager.IsDarkTheme();
 
             // Set button foreground colors based on theme
             // ALWAYS white in dark mode, ALWAYS black in light mode
@@ -190,7 +190,7 @@ public sealed partial class SettingsWindow : Window
     {
         if (this.Content is FrameworkElement content)
         {
-            content.RequestedTheme = Services.ThemeManager.GetElementTheme(theme);
+            content.RequestedTheme = ThemeManager.GetElementTheme(theme);
         }
     }
 
@@ -296,7 +296,7 @@ public sealed partial class SettingsWindow : Window
     private void SettingsWindow_Closed(object sender, WindowEventArgs args)
     {
         // Unsubscribe from theme changes
-        Services.ThemeManager.ThemeChanged -= OnThemeChanged;
+        ThemeManager.ThemeChanged -= OnThemeChanged;
 
         // Unsubscribe from AppWindow.Changed
         if (AppWindow != null)
@@ -660,7 +660,7 @@ public sealed partial class SettingsWindow : Window
             SaveSettings();
 
             // Apply theme globally using ThemeManager
-            Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(themeTag));
+            ThemeManager.SetTheme(ThemeManager.ParseTheme(themeTag));
         }
     }
 
@@ -944,6 +944,7 @@ public sealed partial class SettingsWindow : Window
     private static HttpClient CreateUpdateHttpClient()
     {
         var client = new HttpClient();
+        client.Timeout = TimeSpan.FromSeconds(15);
         client.DefaultRequestHeaders.UserAgent.ParseAdd("ClipcyUpdateChecker/1.0");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return client;
@@ -996,7 +997,7 @@ public sealed partial class SettingsWindow : Window
         LoadSettingsToUI();
         SaveSettings();
         // Reset theme to default (system)
-        Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(_settings.Theme));
+        ThemeManager.SetTheme(ThemeManager.ParseTheme(_settings.Theme));
     }
 
     private sealed class UpdateState
