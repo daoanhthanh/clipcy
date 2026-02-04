@@ -1,8 +1,12 @@
 using System.Collections.ObjectModel;
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Clipcy.Services;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.System;
 
 namespace Clipcy;
 
@@ -19,6 +23,16 @@ public sealed partial class SettingsWindow : Window
     private Microsoft.UI.Windowing.AppWindowTitleBar? _titleBar;
     private bool _isRestoringSize = false;
     private static readonly System.Threading.SemaphoreSlim _saveLock = new(1, 1);
+    private static readonly System.Threading.SemaphoreSlim _updateStateLock = new(1, 1);
+
+    private const string GitHubRepo = "daoanhthanh/clipcy-public";
+    private const string GitHubReleasePageUrl = "https://github.com/" + GitHubRepo + "/releases";
+    private const string GitHubLatestReleaseApiUrl = "https://api.github.com/repos/" + GitHubRepo + "/releases/latest";
+    private static readonly HttpClient _updateHttpClient = CreateUpdateHttpClient();
+
+    private UpdateState _updateState = new();
+    private bool _isCheckingUpdates;
+    private bool _isInitializingUpdateControls;
 
     // Responsive thresholds
     private const int MinWindowWidth = 500;
@@ -62,6 +76,7 @@ public sealed partial class SettingsWindow : Window
         // Load current settings
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
         LoadSettingsToUI();
+        InitializeUpdateState();
 
         // Subscribe to theme changes and apply initial theme
         Services.ThemeManager.ThemeChanged += OnThemeChanged;
@@ -356,6 +371,71 @@ public sealed partial class SettingsWindow : Window
         ThemeComboBox.SelectedIndex = themeIndex;
     }
 
+    private void InitializeUpdateState()
+    {
+        _isInitializingUpdateControls = true;
+        LoadUpdateState();
+
+        if (AutoUpdateToggle != null)
+        {
+            AutoUpdateToggle.IsOn = _updateState.AutoUpdateEnabled;
+        }
+
+        if (UpdateStatusText != null)
+        {
+            UpdateStatusText.Text = "Update status: Not checked yet";
+        }
+
+        if (UpdateLastCheckedText != null)
+        {
+            UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
+        }
+
+        _isInitializingUpdateControls = false;
+    }
+
+    private void LoadUpdateState()
+    {
+        var path = GetUpdateStateFilePath();
+        if (!File.Exists(path))
+        {
+            _updateState = new UpdateState();
+            return;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(path);
+            _updateState = JsonSerializer.Deserialize<UpdateState>(json) ?? new UpdateState();
+        }
+        catch
+        {
+            _updateState = new UpdateState();
+        }
+    }
+
+    private async Task SaveUpdateStateAsync()
+    {
+        var path = GetUpdateStateFilePath();
+        var json = JsonSerializer.Serialize(_updateState, new JsonSerializerOptions { WriteIndented = true });
+
+        await _updateStateLock.WaitAsync();
+        try
+        {
+            File.WriteAllText(path, json);
+        }
+        catch { }
+        finally
+        {
+            _updateStateLock.Release();
+        }
+    }
+
+    private static string FormatLastCheckedLabel(DateTime? lastChecked)
+    {
+        return lastChecked.HasValue ? $"Last checked: {lastChecked.Value:MMM d, yyyy}" : "Last checked: never";
+    }
+
     private void UpdateHotkeyDisplay(string hotkey)
     {
         _hotkeyParts.Clear();
@@ -410,6 +490,7 @@ public sealed partial class SettingsWindow : Window
                     break;
                 case "About":
                     AboutPage.Visibility = Visibility.Visible;
+                    _ = CheckForUpdatesIfNeededAsync();
                     break;
             }
         }
@@ -583,6 +664,311 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
+    private async void CheckUpdatesButton_Click(object sender, RoutedEventArgs e)
+    {
+        await CheckForUpdatesAsync(force: true);
+    }
+
+    private async void OpenReleasePageButton_Click(object sender, RoutedEventArgs e)
+    {
+        await TryLaunchUriAsync(GitHubReleasePageUrl);
+    }
+
+    private async void AutoUpdateToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializingUpdateControls)
+            return;
+
+        _updateState.AutoUpdateEnabled = AutoUpdateToggle.IsOn;
+        await SaveUpdateStateAsync();
+    }
+
+    private async Task CheckForUpdatesIfNeededAsync()
+    {
+        if (_updateState.LastCheckedLocalDate?.Date == DateTime.Today)
+        {
+            if (UpdateLastCheckedText != null)
+            {
+                UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
+            }
+            return;
+        }
+
+        await CheckForUpdatesAsync(force: false);
+    }
+
+    private async Task CheckForUpdatesAsync(bool force)
+    {
+        if (_isCheckingUpdates)
+            return;
+
+        if (!force && _updateState.LastCheckedLocalDate?.Date == DateTime.Today)
+            return;
+
+        _isCheckingUpdates = true;
+        SetUpdateCheckingState(true);
+
+        _updateState.LastCheckedLocalDate = DateTime.Today;
+        await SaveUpdateStateAsync();
+        if (UpdateLastCheckedText != null)
+        {
+            UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
+        }
+
+        try
+        {
+            var release = await GetLatestReleaseAsync();
+            if (release == null)
+            {
+                if (UpdateStatusText != null)
+                {
+                    UpdateStatusText.Text = "Unable to check for updates.";
+                }
+                return;
+            }
+
+            if (release.Draft || release.Prerelease)
+            {
+                if (UpdateStatusText != null)
+                {
+                    UpdateStatusText.Text = "No stable updates available.";
+                }
+                return;
+            }
+
+            var latestVersionLabel = GetReleaseVersionLabel(release);
+            var currentVersion = TryParseVersion(GetBridgeRawAppVersion());
+            var latestVersion = TryParseVersion(latestVersionLabel);
+
+            if (currentVersion == null || latestVersion == null)
+            {
+                if (UpdateStatusText != null)
+                {
+                    UpdateStatusText.Text = $"Latest release: {latestVersionLabel}";
+                }
+                return;
+            }
+
+            if (latestVersion > currentVersion)
+            {
+                if (UpdateStatusText != null)
+                {
+                    UpdateStatusText.Text = $"Update available: {latestVersionLabel}";
+                }
+
+                if (_updateState.AutoUpdateEnabled)
+                {
+                    await StartUpdateAsync(release, latestVersionLabel);
+                }
+                else
+                {
+                    await PromptForUpdateAsync(release, latestVersionLabel);
+                }
+            }
+            else
+            {
+                if (UpdateStatusText != null)
+                {
+                    UpdateStatusText.Text = "You're up to date.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Update check failed: {ex.Message}");
+            if (UpdateStatusText != null)
+            {
+                UpdateStatusText.Text = "Unable to check for updates.";
+            }
+        }
+        finally
+        {
+            _isCheckingUpdates = false;
+            SetUpdateCheckingState(false);
+        }
+    }
+
+    private void SetUpdateCheckingState(bool isChecking)
+    {
+        if (UpdateStatusText != null && isChecking)
+        {
+            UpdateStatusText.Text = "Checking for updates...";
+        }
+
+        if (CheckUpdatesButton != null)
+        {
+            CheckUpdatesButton.IsEnabled = !isChecking;
+            CheckUpdatesButton.Content = isChecking ? "Checking..." : "Check now";
+        }
+    }
+
+    private async Task PromptForUpdateAsync(GitHubRelease release, string latestVersionLabel)
+    {
+        if (Content?.XamlRoot == null)
+            return;
+
+        var dialog = new ContentDialog
+        {
+            Title = $"Update available ({latestVersionLabel})",
+            Content = "A newer version of Clipcy is available. Would you like to download and install it?",
+            PrimaryButtonText = "Download and install",
+            SecondaryButtonText = "Auto update",
+            CloseButtonText = "Not now",
+            XamlRoot = Content.XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.Primary)
+        {
+            await StartUpdateAsync(release, latestVersionLabel);
+        }
+        else if (result == ContentDialogResult.Secondary)
+        {
+            _updateState.AutoUpdateEnabled = true;
+            if (AutoUpdateToggle != null)
+            {
+                _isInitializingUpdateControls = true;
+                AutoUpdateToggle.IsOn = true;
+                _isInitializingUpdateControls = false;
+            }
+            await SaveUpdateStateAsync();
+            await StartUpdateAsync(release, latestVersionLabel);
+        }
+    }
+
+    private async Task StartUpdateAsync(GitHubRelease release, string latestVersionLabel)
+    {
+        var installUrl = GetInstallAssetUrl(release);
+        var targetUrl = installUrl ?? release.HtmlUrl ?? GitHubReleasePageUrl;
+
+        if (UpdateStatusText != null && installUrl == null)
+        {
+            UpdateStatusText.Text = $"Update available: {latestVersionLabel}. Opening releases...";
+        }
+
+        var launched = await TryLaunchUriAsync(targetUrl);
+        if (!launched && UpdateStatusText != null)
+        {
+            UpdateStatusText.Text = "Unable to launch the installer.";
+        }
+    }
+
+    private static async Task<bool> TryLaunchUriAsync(string url)
+    {
+        try
+        {
+            return await Launcher.LaunchUriAsync(new Uri(url));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string GetReleaseVersionLabel(GitHubRelease release)
+    {
+        if (!string.IsNullOrWhiteSpace(release.TagName))
+            return release.TagName;
+
+        if (!string.IsNullOrWhiteSpace(release.Name))
+            return release.Name;
+
+        return "latest";
+    }
+
+    private static Version? TryParseVersion(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim();
+        if (trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[1..];
+        }
+
+        var splitIndex = trimmed.IndexOfAny(new[] { '-', '+' });
+        if (splitIndex >= 0)
+        {
+            trimmed = trimmed[..splitIndex];
+        }
+
+        return Version.TryParse(trimmed, out var version) ? version : null;
+    }
+
+    private static string? GetInstallAssetUrl(GitHubRelease release)
+    {
+        if (release.Assets == null || release.Assets.Count == 0)
+            return null;
+
+        string[] preferredExtensions = { ".appinstaller", ".msix", ".exe", ".msi" };
+        foreach (var extension in preferredExtensions)
+        {
+            foreach (var asset in release.Assets)
+            {
+                if (string.IsNullOrWhiteSpace(asset.Name) || string.IsNullOrWhiteSpace(asset.BrowserDownloadUrl))
+                    continue;
+
+                if (asset.Name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                    return asset.BrowserDownloadUrl;
+            }
+        }
+
+        return null;
+    }
+
+    private static async Task<GitHubRelease?> GetLatestReleaseAsync()
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, GitHubLatestReleaseApiUrl);
+            request.Headers.Accept.ParseAdd("application/vnd.github+json");
+
+            using var response = await _updateHttpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"Update check failed: {response.StatusCode}");
+                return null;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<GitHubRelease>(json);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Update check failed: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static HttpClient CreateUpdateHttpClient()
+    {
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("ClipcyUpdateChecker/1.0");
+        client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        return client;
+    }
+
+    private static string GetUpdateStateFilePath()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var clipcyDir = Path.Combine(localAppData, "clipcy");
+        Directory.CreateDirectory(clipcyDir);
+        return Path.Combine(clipcyDir, "update-state.json");
+    }
+
+    private static string GetBridgeRawAppVersion()
+    {
+        try
+        {
+            return App.Bridge?.GetAppVersion() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
     private async void SaveSettings()
     {
         var settingsToSave = _settings;
@@ -613,11 +999,47 @@ public sealed partial class SettingsWindow : Window
         Services.ThemeManager.SetTheme(Services.ThemeManager.ParseTheme(_settings.Theme));
     }
 
+    private sealed class UpdateState
+    {
+        public DateTime? LastCheckedLocalDate { get; set; }
+        public bool AutoUpdateEnabled { get; set; }
+    }
+
+    private sealed class GitHubRelease
+    {
+        [JsonPropertyName("tag_name")]
+        public string? TagName { get; set; }
+
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("html_url")]
+        public string? HtmlUrl { get; set; }
+
+        [JsonPropertyName("prerelease")]
+        public bool Prerelease { get; set; }
+
+        [JsonPropertyName("draft")]
+        public bool Draft { get; set; }
+
+        [JsonPropertyName("assets")]
+        public List<GitHubReleaseAsset> Assets { get; set; } = new();
+    }
+
+    private sealed class GitHubReleaseAsset
+    {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
+
+        [JsonPropertyName("browser_download_url")]
+        public string? BrowserDownloadUrl { get; set; }
+    }
+
     private static string GetBridgeAppVersion()
     {
         try
         {
-            var version = App.Bridge?.GetAppVersion();
+            var version = GetBridgeRawAppVersion();
             if (!string.IsNullOrWhiteSpace(version))
             {
                 return $"Version {version}";
