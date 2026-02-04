@@ -31,6 +31,7 @@ dictionary ClipboardItemDto {
     bytes? source_app_icon;
     u64 created_at_timestamp;
     boolean pinned;
+    boolean has_newline;
 };
 
 // Settings DTO

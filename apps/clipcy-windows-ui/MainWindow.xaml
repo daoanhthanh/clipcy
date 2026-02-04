@@ -84,10 +84,11 @@
             />
 
             <!-- Content Preview (Text or Image Thumbnail) -->
-            <Grid Grid.Column="1" ColumnSpacing="6">
+            <Grid Grid.Column="1" ColumnSpacing="0">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
 
               <Border
@@ -95,6 +96,7 @@
                 CornerRadius="3"
                 BorderThickness="1"
                 BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+                Margin="0,0,6,0"
                 Visibility="{x:Bind ImageVisibility, Mode=OneWay}"
                 VerticalAlignment="Center"
               >
@@ -111,8 +113,19 @@
                 Text="{x:Bind DisplayPreview, Mode=OneWay}"
                 TextTrimming="CharacterEllipsis"
                 MaxLines="1"
+                MaxWidth="280"
                 VerticalAlignment="Center"
                 FontSize="13"
+              />
+
+              <FontIcon
+                Grid.Column="2"
+                FontSize="11"
+                Glyph="&#xE751;"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Visibility="{x:Bind MultiLineIndicatorVisibility, Mode=OneWay}"
+                Margin="2,0,0,0"
+                VerticalAlignment="Center"
               />
             </Grid>
 

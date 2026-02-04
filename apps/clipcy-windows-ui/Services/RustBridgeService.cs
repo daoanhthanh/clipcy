@@ -350,6 +350,7 @@ internal class RustBridgeService : IDisposable, UiCallback
             SourceAppIcon = dto.sourceAppIcon,
             CreatedAtTimestamp = dto.createdAtTimestamp,
             Pinned = dto.pinned,
+            HasMultipleLines = dto.hasNewline,
         };
     }
 
@@ -390,6 +391,10 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     public byte[]? SourceAppIcon { get; init; }
     public ulong CreatedAtTimestamp { get; init; }
     public bool Pinned { get; set; }
+    public bool HasMultipleLines { get; init; }
+
+    public Visibility MultiLineIndicatorVisibility =>
+        HasMultipleLines ? Visibility.Visible : Visibility.Collapsed;
 
     public string DisplayPreview
     {

@@ -571,7 +571,9 @@ impl ClipboardRepository for SqliteClipboardRepository {
     }
 
     async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
-        let rows = sqlx::query("SELECT * FROM clipboard_items ORDER BY last_used_at DESC LIMIT $1")
+        let rows = sqlx::query(
+            "SELECT * FROM clipboard_items ORDER BY pinned DESC, last_used_at DESC LIMIT $1",
+        )
             .bind(limit as i64)
             .fetch_all(&self.pool)
             .await

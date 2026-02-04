@@ -195,10 +195,19 @@ pub struct ClipboardItemDto {
     pub source_app_icon: Option<Vec<u8>>,
     pub created_at_timestamp: u64,
     pub pinned: bool,
+    pub has_newline: bool,
 }
 
 impl From<ClipboardItem> for ClipboardItemDto {
     fn from(item: ClipboardItem) -> Self {
+        let has_newline = matches!(
+            item.content_type,
+            ContentType::Text | ContentType::RichText | ContentType::Html
+        ) && {
+            let text = String::from_utf8_lossy(&item.data);
+            text.contains('\n') || text.contains('\r')
+        };
+
         Self {
             id: item.id.to_string(),
             content_type: item.content_type.into(),
@@ -208,6 +217,7 @@ impl From<ClipboardItem> for ClipboardItemDto {
             source_app_icon: item.source_app_icon,
             created_at_timestamp: item.created_at.timestamp() as u64,
             pinned: item.pinned,
+            has_newline,
         }
     }
 }
@@ -705,7 +715,7 @@ impl ClipboardEngine {
         let limit = self.settings_manager.get().max_history_items;
 
         self.runtime
-            .block_on(repo.get_all_metadata(limit))
+            .block_on(repo.get_all(limit))
             .map(|items| items.into_iter().map(Into::into).collect())
             .unwrap_or_default()
     }
@@ -729,7 +739,7 @@ impl ClipboardEngine {
         };
 
         self.runtime
-            .block_on(repo.search_metadata(&query, 50))
+            .block_on(repo.search(&query, 50))
             .map(|items| items.into_iter().map(Into::into).collect())
             .unwrap_or_default()
     }
