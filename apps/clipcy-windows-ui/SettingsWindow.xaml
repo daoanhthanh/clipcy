@@ -272,6 +272,7 @@
                     MinWidth="150"
                     SelectionChanged="ThemeComboBox_SelectionChanged"
                     VerticalAlignment="Center"
+                    Margin="4 0 0 0"
                   >
                     <ComboBoxItem Content="Use system setting" Tag="System" />
                     <ComboBoxItem Content="Light" Tag="Light" />

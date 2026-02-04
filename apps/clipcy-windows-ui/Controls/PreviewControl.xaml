@@ -113,12 +113,7 @@
               Visibility="Collapsed"
               VerticalAlignment="Center"
             >
-              <Image
-                x:Name="SourceAppIcon"
-                Width="14"
-                Height="14"
-                Visibility="Collapsed"
-              />
+              <Image x:Name="SourceAppIcon" Width="14" Height="14" Visibility="Collapsed" />
               <TextBlock
                 x:Name="SourceAppText"
                 FontSize="11"
