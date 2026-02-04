@@ -301,87 +301,89 @@
                   Margin="0,0,0,24"
                 />
 
-                <Border Style="{StaticResource SettingsCardBorderStyle}">
-                  <Expander IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                    <Expander.Header>
-                      <Grid HorizontalAlignment="Stretch">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="Auto" />
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <FontIcon
-                          Grid.Column="0"
-                          Glyph="&#xE8C8;"
-                          FontSize="24"
-                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                          Margin="0,0,16,0"
-                        />
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                          <TextBlock
-                            Text="Clipcy"
-                            Style="{StaticResource BodyStrongTextBlockStyle}"
-                          />
-                          <TextBlock
-                            x:Name="UpdateLastCheckedText"
-                            Text="Last checked: never"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                          />
-                        </StackPanel>
+                <Expander
+                  IsExpanded="False"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  Margin="0,0,0,12"
+                  HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Stretch"
+                >
+                  <Expander.Header>
+                    <Grid HorizontalAlignment="Stretch" Margin="24,20">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <FontIcon
+                        Grid.Column="0"
+                        Glyph="&#xE8C8;"
+                        FontSize="24"
+                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Margin="0,0,16,0"
+                      />
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                         <TextBlock
-                          Grid.Column="2"
-                          Text="{x:Bind AppVersion, Mode=OneWay}"
-                          Style="{StaticResource CaptionTextBlockStyle}"
-                          Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-                          VerticalAlignment="Center"
-                          Margin="16,0,0,0"
+                          Text="Clipcy"
+                          Style="{StaticResource BodyStrongTextBlockStyle}"
                         />
-                      </Grid>
-                    </Expander.Header>
-                    <Expander.Content>
-                      <StackPanel Spacing="12" Margin="0,12,0,0">
                         <TextBlock
-                          Text="Check GitHub releases once per day"
+                          x:Name="UpdateLastCheckedText"
+                          Text="Last checked: never"
                           Style="{StaticResource CaptionTextBlockStyle}"
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         />
-                        <TextBlock
-                          x:Name="UpdateStatusText"
-                          Text="Update status: Not checked yet"
-                          Style="{StaticResource CaptionTextBlockStyle}"
-                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <Button
-                            x:Name="CheckUpdatesButton"
-                            Content="Check now"
-                            Click="CheckUpdatesButton_Click"
-                          />
-                          <Button
-                            x:Name="OpenReleasePageButton"
-                            Content="GitHub releases"
-                            Click="OpenReleasePageButton_Click"
-                          />
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                          <TextBlock
-                            Text="Auto update"
-                            Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                            VerticalAlignment="Center"
-                          />
-                          <ToggleSwitch
-                            x:Name="AutoUpdateToggle"
-                            Toggled="AutoUpdateToggle_Toggled"
-                            OnContent=""
-                            OffContent=""
-                          />
-                        </StackPanel>
                       </StackPanel>
-                    </Expander.Content>
-                  </Expander>
-                </Border>
+                      <TextBlock
+                        Grid.Column="2"
+                        Text="{x:Bind AppVersion, Mode=OneWay}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                        VerticalAlignment="Center"
+                        Margin="16,0,0,0"
+                      />
+                    </Grid>
+                  </Expander.Header>
+                  <Expander.Content>
+                    <StackPanel Spacing="12" Margin="24,12,24,20">
+                      <TextBlock
+                        x:Name="UpdateStatusText"
+                        Text="Update status: Not checked yet"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                      />
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button
+                          x:Name="CheckUpdatesButton"
+                          Content="Check now"
+                          Click="CheckUpdatesButton_Click"
+                        />
+                        <Button
+                          x:Name="OpenReleasePageButton"
+                          Content="GitHub releases"
+                          Click="OpenReleasePageButton_Click"
+                        />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock
+                          Text="Auto update"
+                          Style="{StaticResource CaptionTextBlockStyle}"
+                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                          VerticalAlignment="Center"
+                        />
+                        <ToggleSwitch
+                          x:Name="AutoUpdateToggle"
+                          Toggled="AutoUpdateToggle_Toggled"
+                          OnContent="Check GitHub releases once per day"
+                          OffContent=""
+                        />
+                      </StackPanel>
+                    </StackPanel>
+                  </Expander.Content>
+                </Expander>
               </StackPanel>
             </Grid>
           </ScrollViewer>
