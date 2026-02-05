@@ -51,11 +51,8 @@ fn init_logging() {
 
     init_panic_hook(&log_dir);
 
-    let default_log_level = if cfg!(debug_assertions) {
-        "debug" // actually this never happens because we must build release for uniffi
-    } else {
-        "warn"
-    };
+    let default_log_filter =
+        "warn,clipcy_core=debug,clipboard_core=debug,clipboard_storage=debug,clipcy_platform_windows=debug,clipcy_settings_common=debug";
 
     let log_file_name = format!("{}.clipcy.log", Local::now().format("%Y-%m-%d"));
     let log_file_path = log_dir.join(log_file_name);
@@ -69,7 +66,7 @@ fn init_logging() {
     };
     let (non_blocking, guard) = tracing_appender::non_blocking(file);
     let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_log_level));
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_log_filter));
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(non_blocking)
@@ -633,13 +630,20 @@ impl ClipboardEngine {
                     }
 
                     // Set up hotkey
+                    let hotkey = settings_manager.get().hotkey.clone();
+                    tracing::info!("Registering hotkey: {}", hotkey);
                     let ui_handler_clone = ui_handler.clone();
-                    let _ = hotkey_handler.register(
-                        &settings_manager.get().hotkey,
+                    let hotkey_for_cb = hotkey.clone();
+                    match hotkey_handler.register(
+                        &hotkey,
                         Box::new(move || {
+                            tracing::info!("Hotkey triggered: {}", hotkey_for_cb);
                             ui_handler_clone.send_event(BridgeEvent::HotkeyTriggered);
                         }),
-                    );
+                    ) {
+                        Ok(handle) => tracing::info!("Hotkey registered: {} (id: {})", hotkey, handle),
+                        Err(e) => tracing::warn!("Failed to register hotkey {}: {}", hotkey, e),
+                    }
 
                     // Set up theme detection
                     let ui_handler_clone = ui_handler.clone();
@@ -700,6 +704,7 @@ impl ClipboardEngine {
         }
 
         if let Some(service) = self.clipboard_service.read().as_ref() {
+            tracing::debug!("Flushing pending clipboard item before get_history");
             if let Err(e) = self.runtime.block_on(service.flush_pending()) {
                 tracing::warn!("Failed to flush pending clipboard item: {}", e);
             }
@@ -713,11 +718,15 @@ impl ClipboardEngine {
 
         // Get max_history from cached settings (no I/O)
         let limit = self.settings_manager.get().max_history_items;
+        tracing::debug!("Get history requested (limit: {})", limit);
 
-        self.runtime
+        let items: Vec<ClipboardItemDto> = self
+            .runtime
             .block_on(repo.get_all(limit))
             .map(|items| items.into_iter().map(Into::into).collect())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        tracing::debug!("Get history completed (count: {})", items.len());
+        items
     }
 
     /// Search clipboard history
@@ -727,6 +736,7 @@ impl ClipboardEngine {
         }
 
         if let Some(service) = self.clipboard_service.read().as_ref() {
+            tracing::debug!("Flushing pending clipboard item before search");
             if let Err(e) = self.runtime.block_on(service.flush_pending()) {
                 tracing::warn!("Failed to flush pending clipboard item: {}", e);
             }
@@ -738,10 +748,22 @@ impl ClipboardEngine {
             None => return Vec::new(), // Not ready yet
         };
 
-        self.runtime
+        let query_len = query.len();
+        let query_empty = query.trim().is_empty();
+        tracing::debug!(
+            "Search requested (query_len: {}, query_empty: {}, limit: {})",
+            query_len,
+            query_empty,
+            50
+        );
+
+        let items: Vec<ClipboardItemDto> = self
+            .runtime
             .block_on(repo.search(&query, 50))
             .map(|items| items.into_iter().map(Into::into).collect())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        tracing::debug!("Search completed (count: {})", items.len());
+        items
     }
 
     /// Save current foreground window for paste target
@@ -868,12 +890,21 @@ impl ClipboardEngine {
             if let Some(_service) = self.clipboard_service.read().as_ref() {
                 let _ = self.hotkey_handler.unregister_all();
                 let ui_handler = self.ui_handler.clone();
-                let _ = self.hotkey_handler.register(
-                    &settings.hotkey,
+                let hotkey = settings.hotkey.clone();
+                tracing::info!("Re-registering hotkey: {}", hotkey);
+                let hotkey_for_cb = hotkey.clone();
+                match self.hotkey_handler.register(
+                    &hotkey,
                     Box::new(move || {
+                        tracing::info!("Hotkey triggered: {}", hotkey_for_cb);
                         ui_handler.send_event(BridgeEvent::HotkeyTriggered);
                     }),
-                );
+                ) {
+                    Ok(handle) => {
+                        tracing::info!("Hotkey re-registered: {} (id: {})", hotkey, handle)
+                    }
+                    Err(e) => tracing::warn!("Failed to re-register hotkey {}: {}", hotkey, e),
+                }
             }
 
             // Apply theme change immediately

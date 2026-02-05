@@ -5,15 +5,15 @@ use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::AutostartHandler;
 use windows::Win32::Foundation::ERROR_SUCCESS;
 use windows::Win32::System::Registry::{
-    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SZ, RegCloseKey, RegDeleteValueW,
-    RegOpenKeyExW, RegQueryValueExW, RegSetValueExW,
+    RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY,
+    HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SZ,
 };
 
 const APP_NAME: &str = "Clipcy";
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 // Use a per-user scheduled task (starts before Explorer Run key entries)
-const TASK_NAME: &str = r"\\Clipcy\\Autorun";
+const TASK_NAME: &str = r"\Clipcy\Autorun";
 
 /// Windows auto-start handler using Task Scheduler (preferred) with registry fallback
 pub struct WindowsAutostartHandler;
@@ -36,7 +36,7 @@ impl WindowsAutostartHandler {
     /// Try to create/update a per-user scheduled task for fast startup
     fn create_scheduled_task(exe_path: &str) -> Result<()> {
         // Delay a couple seconds to let Explorer initialize (mirrors PowerToys)
-        let status = Command::new("schtasks")
+        let output = Command::new("schtasks")
             .creation_flags(CREATE_NO_WINDOW)
             .args([
                 "/Create",
@@ -53,18 +53,24 @@ impl WindowsAutostartHandler {
                 "/TR",
                 &format!("\"{}\"", exe_path),
             ])
-            .status()
+            .output()
             .map_err(|e| {
                 ClipboardError::PlatformNotSupported(format!("Failed to launch schtasks: {}", e))
             })?;
 
-        if status.success() {
+        if output.status.success() {
             tracing::info!("Auto-start enabled via scheduled task: {}", exe_path);
             Ok(())
         } else {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = stdout.trim();
+            let stderr = stderr.trim();
             Err(ClipboardError::PlatformNotSupported(format!(
-                "schtasks /Create failed with status: {:?}",
-                status.code()
+                "schtasks /Create failed with status: {:?} (stdout: {} stderr: {})",
+                output.status.code(),
+                if stdout.is_empty() { "<empty>" } else { stdout },
+                if stderr.is_empty() { "<empty>" } else { stderr }
             )))
         }
     }

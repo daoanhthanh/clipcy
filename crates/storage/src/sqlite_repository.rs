@@ -612,6 +612,15 @@ impl SqliteClipboardRepository {
 #[async_trait]
 impl ClipboardRepository for SqliteClipboardRepository {
     async fn save(&self, item: &ClipboardItem) -> Result<()> {
+        tracing::debug!(
+            id = %item.id,
+            content_type = ?item.content_type,
+            data_len = item.data.len(),
+            preview_len = item.preview.len(),
+            thumbnail_len = item.thumbnail.as_ref().map(|t| t.len()).unwrap_or(0),
+            source_app = item.source_app.as_deref(),
+            "Saving clipboard item to database"
+        );
         let content_type = serde_json::to_string(&item.content_type)?;
         let content_hash = calculate_content_hash(&item.data);
         let (search_text, search_text_norm) = item.searchable_texts();
@@ -668,6 +677,8 @@ impl ClipboardRepository for SqliteClipboardRepository {
             .execute(&self.pool)
             .await
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        tracing::debug!(id = %item.id, "Clipboard item saved to database");
 
         Ok(())
     }

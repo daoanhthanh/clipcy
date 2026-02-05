@@ -1830,6 +1830,7 @@ unsafe extern "system" fn window_proc(
     unsafe {
         match msg {
             WM_CLIPBOARDUPDATE => {
+                tracing::debug!("WM_CLIPBOARDUPDATE received");
                 let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
                     as *const (Arc<RwLock<Option<ClipboardCallback>>>, Arc<AtomicBool>);
 
@@ -1838,9 +1839,20 @@ unsafe extern "system" fn window_proc(
 
                     // Get current clipboard item (text or image)
                     if let Some(item) = WindowsClipboardMonitor::get_current_item() {
+                        tracing::debug!(
+                            id = %item.id,
+                            content_type = ?item.content_type,
+                            data_len = item.data.len(),
+                            preview_len = item.preview.len(),
+                            thumbnail_len = item.thumbnail.as_ref().map(|t| t.len()).unwrap_or(0),
+                            source_app = item.source_app.as_deref(),
+                            "Clipboard item captured"
+                        );
                         if let Some(cb) = callback.read().as_ref() {
                             cb(item);
                         }
+                    } else {
+                        tracing::debug!("Clipboard update received but no item captured");
                     }
                 }
 

@@ -25,8 +25,23 @@ async fn save_pending_item(
 ) -> Result<()> {
     if let Some(item) = pending_item.take() {
         let max_items = settings.read().max_history_items;
+        tracing::debug!(
+            id = %item.id,
+            content_type = ?item.content_type,
+            data_len = item.data.len(),
+            preview_len = item.preview.len(),
+            thumbnail_len = item.thumbnail.as_ref().map(|t| t.len()).unwrap_or(0),
+            source_app = item.source_app.as_deref(),
+            "Saving clipboard item"
+        );
         repository.save(&item).await?;
-        repository.prune(max_items).await?;
+        let pruned = repository.prune(max_items).await?;
+        tracing::debug!(
+            id = %item.id,
+            max_items,
+            pruned,
+            "Clipboard item saved and pruned"
+        );
     }
     Ok(())
 }
@@ -61,6 +76,7 @@ impl ClipboardService {
     }
 
     pub fn start_monitoring(&self) -> Result<()> {
+        tracing::info!("Starting clipboard monitoring");
         let (tx, rx) = mpsc::unbounded_channel::<DebounceMessage>();
         *self.debounce_tx.write() = Some(tx.clone());
 
@@ -104,14 +120,27 @@ impl ClipboardService {
                             let suppress_deadline = *suppress_until.read();
                             if let Some(deadline) = suppress_deadline {
                                 if Instant::now() <= deadline {
+                                    tracing::debug!(
+                                        "Clipboard update suppressed due to recent paste"
+                                    );
                                     continue;
                                 }
                                 *suppress_until.write() = None;
                             }
 
+                            tracing::debug!(
+                                id = %item.id,
+                                content_type = ?item.content_type,
+                                data_len = item.data.len(),
+                                preview_len = item.preview.len(),
+                                thumbnail_len = item.thumbnail.as_ref().map(|t| t.len()).unwrap_or(0),
+                                source_app = item.source_app.as_deref(),
+                                "Clipboard item queued"
+                            );
                             pending_item = Some(item);
                         }
                         DebounceMessage::Flush(response) => {
+                            tracing::debug!("Flush requested for pending clipboard item");
                             let result =
                                 save_pending_item(&mut pending_item, &repository, &settings).await;
                             let _ = response.send(result);
