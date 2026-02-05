@@ -393,8 +393,7 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     public bool Pinned { get; set; }
     public bool HasMultipleLines { get; init; }
 
-    public Visibility MultiLineIndicatorVisibility =>
-        HasMultipleLines ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility MultiLineIndicatorVisibility => HasMultipleLines ? Visibility.Visible : Visibility.Collapsed;
 
     public string DisplayPreview
     {

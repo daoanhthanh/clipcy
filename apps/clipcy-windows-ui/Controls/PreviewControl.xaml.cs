@@ -397,11 +397,6 @@ public sealed partial class PreviewControl : UserControl
                 break;
         }
 
-        if (data.IsPinned)
-        {
-            metadata.AppendLine("Pinned");
-        }
-
         MetadataText.Text = metadata.ToString().TrimEnd();
     }
 

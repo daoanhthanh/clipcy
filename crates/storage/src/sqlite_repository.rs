@@ -123,9 +123,9 @@ fn build_fts_queries(query: &str) -> Vec<String> {
 
     let compact = compact_query(query);
     let compact_normalized = compact_query(&normalize_search_text(query));
-    let has_compact = base_tokens.iter().any(|token| {
-        token.original == compact || token.normalized == compact_normalized
-    });
+    let has_compact = base_tokens
+        .iter()
+        .any(|token| token.original == compact || token.normalized == compact_normalized);
     if compact.len() >= 3 && !has_compact {
         let compact_token = QueryToken {
             original: compact,
@@ -381,13 +381,15 @@ impl SqliteClipboardRepository {
                 continue;
             }
 
-            sqlx::query("UPDATE clipboard_items SET search_text = $1, search_text_norm = $2 WHERE id = $3")
-                .bind(search_text)
-                .bind(search_text_norm)
-                .bind(item.id.to_string())
-                .execute(&self.pool)
-                .await
-                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            sqlx::query(
+                "UPDATE clipboard_items SET search_text = $1, search_text_norm = $2 WHERE id = $3",
+            )
+            .bind(search_text)
+            .bind(search_text_norm)
+            .bind(item.id.to_string())
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
         }
 
         Ok(())
@@ -700,10 +702,10 @@ impl ClipboardRepository for SqliteClipboardRepository {
         let rows = sqlx::query(
             "SELECT * FROM clipboard_items ORDER BY pinned DESC, last_used_at DESC LIMIT $1",
         )
-            .bind(limit as i64)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        .bind(limit as i64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         let mut items = Vec::with_capacity(rows.len());
         for row in rows {

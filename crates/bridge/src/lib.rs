@@ -102,10 +102,7 @@ fn init_panic_hook(log_dir: &PathBuf) {
                 let _ = writeln!(
                     file,
                     "[{}] thread '{}' panicked: {}\n{:?}\n",
-                    timestamp,
-                    thread_name,
-                    info,
-                    backtrace
+                    timestamp, thread_name, info, backtrace
                 );
                 let _ = file.flush();
             }
@@ -641,7 +638,9 @@ impl ClipboardEngine {
                             ui_handler_clone.send_event(BridgeEvent::HotkeyTriggered);
                         }),
                     ) {
-                        Ok(handle) => tracing::info!("Hotkey registered: {} (id: {})", hotkey, handle),
+                        Ok(handle) => {
+                            tracing::info!("Hotkey registered: {} (id: {})", hotkey, handle)
+                        }
                         Err(e) => tracing::warn!("Failed to register hotkey {}: {}", hotkey, e),
                     }
 

@@ -1,17 +1,16 @@
 use std::borrow::Cow;
 use std::mem::size_of;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::thread;
 
 use parking_lot::RwLock;
 use std::ffi::c_void;
-use windows::core::{PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HGLOBAL, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    DeleteObject, GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO, BITMAPINFOHEADER,
-    BI_RGB, DIB_RGB_COLORS, HBITMAP,
+    BI_RGB, BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, DeleteObject, GetDC, GetDIBits,
+    GetObjectW, HBITMAP, ReleaseDC,
 };
 use windows::Win32::Storage::FileSystem::{
     GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
@@ -20,12 +19,13 @@ use windows::Win32::System::DataExchange::*;
 use windows::Win32::System::Memory::*;
 use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5, CF_HDROP, CF_UNICODETEXT};
 use windows::Win32::System::Threading::{
-    OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+    OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
 };
 use windows::Win32::UI::Shell::{DragQueryFileW, ExtractIconExW};
 use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::core::{PCWSTR, PWSTR};
 
-use clipboard_core::domain::{html_to_text, ClipboardItem, ContentType};
+use clipboard_core::domain::{ClipboardItem, ContentType, html_to_text};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
 
@@ -1303,8 +1303,8 @@ fn encode_png(rgba_data: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
 }
 
 fn generate_thumbnail(png_data: &[u8], max_width: u32, max_height: u32) -> Option<Vec<u8>> {
-    use image::io::Reader as ImageReader;
     use image::ImageEncoder;
+    use image::io::Reader as ImageReader;
     use std::io::Cursor;
 
     let img = ImageReader::new(Cursor::new(png_data))
