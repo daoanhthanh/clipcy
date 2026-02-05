@@ -6,7 +6,7 @@ use sqlx::Row;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 use uuid::Uuid;
 
-use clipboard_core::domain::{ClipboardItem, ContentType};
+use clipboard_core::domain::{ClipboardItem, ContentType, normalize_search_text};
 use clipboard_core::error::{ClipboardError, Result};
 use clipboard_core::ports::ClipboardRepository;
 
@@ -20,6 +20,15 @@ fn calculate_content_hash(data: &[u8]) -> String {
     format!("{:016x}", hasher.finish())
 }
 
+const FTS_ORIGINAL_COLUMN: &str = "search_text";
+const FTS_NORMALIZED_COLUMN: &str = "search_text_norm";
+
+#[derive(Clone)]
+struct QueryToken {
+    original: String,
+    normalized: String,
+}
+
 fn tokenize_query(query: &str) -> Vec<String> {
     query
         .split(|c: char| !c.is_alphanumeric())
@@ -28,22 +37,48 @@ fn tokenize_query(query: &str) -> Vec<String> {
         .collect()
 }
 
-fn build_match_terms(tokens: &[String]) -> Vec<String> {
-    tokens
-        .iter()
-        .filter_map(|token| {
-            let trimmed = token.trim();
-            if trimmed.is_empty() {
-                return None;
-            }
-
-            if trimmed.len() >= 2 {
-                Some(format!("{}*", trimmed))
-            } else {
-                Some(trimmed.to_string())
+fn tokenize_query_pairs(query: &str) -> Vec<QueryToken> {
+    tokenize_query(query)
+        .into_iter()
+        .map(|token| {
+            let normalized = normalize_search_text(&token);
+            QueryToken {
+                original: token,
+                normalized,
             }
         })
         .collect()
+}
+
+fn build_column_term(token: &str, column: &str) -> Option<String> {
+    let trimmed = token.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let term = if trimmed.len() >= 2 {
+        format!("{}*", trimmed)
+    } else {
+        trimmed.to_string()
+    };
+
+    Some(format!("{}:{}", column, term))
+}
+
+fn build_match_term(token: &QueryToken) -> Option<String> {
+    let original = build_column_term(&token.original, FTS_ORIGINAL_COLUMN);
+    let normalized = build_column_term(&token.normalized, FTS_NORMALIZED_COLUMN);
+
+    match (original, normalized) {
+        (Some(original), Some(normalized)) => Some(format!("({} OR {})", original, normalized)),
+        (Some(original), None) => Some(original),
+        (None, Some(normalized)) => Some(normalized),
+        (None, None) => None,
+    }
+}
+
+fn build_match_terms(tokens: &[QueryToken]) -> Vec<String> {
+    tokens.iter().filter_map(build_match_term).collect()
 }
 
 fn compact_query(query: &str) -> String {
@@ -54,8 +89,16 @@ fn compact_query(query: &str) -> String {
         .to_ascii_lowercase()
 }
 
+fn token_len(token: &QueryToken) -> usize {
+    token.original.len().max(token.normalized.len())
+}
+
+fn query_has_diacritics(query: &str) -> bool {
+    normalize_search_text(query) != query.to_ascii_lowercase()
+}
+
 fn build_fts_queries(query: &str) -> Vec<String> {
-    let tokens = tokenize_query(query);
+    let tokens = tokenize_query_pairs(query);
     if tokens.is_empty() {
         return Vec::new();
     }
@@ -66,7 +109,11 @@ fn build_fts_queries(query: &str) -> Vec<String> {
         queries.push(strict_terms.join(" AND "));
     }
 
-    let relaxed_tokens: Vec<String> = tokens.iter().filter(|token| token.len() >= 3).cloned().collect();
+    let relaxed_tokens: Vec<QueryToken> = tokens
+        .iter()
+        .filter(|token| token_len(token) >= 3)
+        .cloned()
+        .collect();
     let base_tokens = if relaxed_tokens.is_empty() {
         tokens.clone()
     } else {
@@ -75,8 +122,18 @@ fn build_fts_queries(query: &str) -> Vec<String> {
     let mut relaxed_terms = build_match_terms(&base_tokens);
 
     let compact = compact_query(query);
-    if compact.len() >= 3 && !base_tokens.iter().any(|token| token == &compact) {
-        relaxed_terms.push(format!("{}*", compact));
+    let compact_normalized = compact_query(&normalize_search_text(query));
+    let has_compact = base_tokens.iter().any(|token| {
+        token.original == compact || token.normalized == compact_normalized
+    });
+    if compact.len() >= 3 && !has_compact {
+        let compact_token = QueryToken {
+            original: compact,
+            normalized: compact_normalized,
+        };
+        if let Some(term) = build_match_term(&compact_token) {
+            relaxed_terms.push(term);
+        }
     }
 
     if !relaxed_terms.is_empty() {
@@ -136,6 +193,7 @@ impl SqliteClipboardRepository {
                 data BLOB NOT NULL,
                 preview TEXT NOT NULL,
                 search_text TEXT,
+                search_text_norm TEXT,
                 thumbnail BLOB,
                 source_app TEXT,
                 source_app_icon BLOB,
@@ -174,6 +232,10 @@ impl SqliteClipboardRepository {
             .execute(&self.pool)
             .await;
 
+        let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN search_text_norm TEXT")
+            .execute(&self.pool)
+            .await;
+
         let _ = sqlx::query("ALTER TABLE clipboard_items ADD COLUMN last_used_at TEXT")
             .execute(&self.pool)
             .await;
@@ -199,14 +261,45 @@ impl SqliteClipboardRepository {
     }
 
     async fn init_fts(&self) -> Result<()> {
+        let fts_columns = sqlx::query("PRAGMA table_info(clipboard_items_fts)")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let has_normalized = fts_columns.iter().any(|row| {
+            row.try_get::<String, _>("name")
+                .map(|name| name == FTS_NORMALIZED_COLUMN)
+                .unwrap_or(false)
+        });
+
+        sqlx::query("DROP TRIGGER IF EXISTS clipboard_items_ai")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        sqlx::query("DROP TRIGGER IF EXISTS clipboard_items_ad")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        sqlx::query("DROP TRIGGER IF EXISTS clipboard_items_au")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        if !fts_columns.is_empty() && !has_normalized {
+            sqlx::query("DROP TABLE IF EXISTS clipboard_items_fts")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        }
+
         sqlx::query(
             r#"
             CREATE VIRTUAL TABLE IF NOT EXISTS clipboard_items_fts
             USING fts5(
                 search_text,
+                search_text_norm,
                 content='clipboard_items',
                 content_rowid='rowid',
-                tokenize='unicode61'
+                tokenize='unicode61 remove_diacritics 0'
             )
             "#,
         )
@@ -218,8 +311,8 @@ impl SqliteClipboardRepository {
             r#"
             CREATE TRIGGER IF NOT EXISTS clipboard_items_ai
             AFTER INSERT ON clipboard_items BEGIN
-                INSERT INTO clipboard_items_fts(rowid, search_text)
-                VALUES (new.rowid, new.search_text);
+                INSERT INTO clipboard_items_fts(rowid, search_text, search_text_norm)
+                VALUES (new.rowid, new.search_text, new.search_text_norm);
             END;
             "#,
         )
@@ -231,8 +324,8 @@ impl SqliteClipboardRepository {
             r#"
             CREATE TRIGGER IF NOT EXISTS clipboard_items_ad
             AFTER DELETE ON clipboard_items BEGIN
-                INSERT INTO clipboard_items_fts(clipboard_items_fts, rowid, search_text)
-                VALUES ('delete', old.rowid, old.search_text);
+                INSERT INTO clipboard_items_fts(clipboard_items_fts, rowid, search_text, search_text_norm)
+                VALUES ('delete', old.rowid, old.search_text, old.search_text_norm);
             END;
             "#,
         )
@@ -244,10 +337,10 @@ impl SqliteClipboardRepository {
             r#"
             CREATE TRIGGER IF NOT EXISTS clipboard_items_au
             AFTER UPDATE ON clipboard_items BEGIN
-                INSERT INTO clipboard_items_fts(clipboard_items_fts, rowid, search_text)
-                VALUES ('delete', old.rowid, old.search_text);
-                INSERT INTO clipboard_items_fts(rowid, search_text)
-                VALUES (new.rowid, new.search_text);
+                INSERT INTO clipboard_items_fts(clipboard_items_fts, rowid, search_text, search_text_norm)
+                VALUES ('delete', old.rowid, old.search_text, old.search_text_norm);
+                INSERT INTO clipboard_items_fts(rowid, search_text, search_text_norm)
+                VALUES (new.rowid, new.search_text, new.search_text_norm);
             END;
             "#,
         )
@@ -268,18 +361,29 @@ impl SqliteClipboardRepository {
     }
 
     async fn backfill_search_text(&self) -> Result<()> {
-        let rows = sqlx::query(
-            "SELECT * FROM clipboard_items WHERE search_text IS NULL OR search_text = ''",
-        )
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        let rows = sqlx::query("SELECT * FROM clipboard_items")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         for row in rows {
             let item = Self::row_to_item(&row)?;
-            let search_text = item.searchable_text();
-            sqlx::query("UPDATE clipboard_items SET search_text = $1 WHERE id = $2")
+            let (search_text, search_text_norm) = item.searchable_texts();
+            let current_search_text: Option<String> = row
+                .try_get("search_text")
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            let current_search_text_norm: Option<String> = row
+                .try_get("search_text_norm")
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+            if current_search_text.as_deref() == Some(&search_text)
+                && current_search_text_norm.as_deref() == Some(&search_text_norm)
+            {
+                continue;
+            }
+
+            sqlx::query("UPDATE clipboard_items SET search_text = $1, search_text_norm = $2 WHERE id = $3")
                 .bind(search_text)
+                .bind(search_text_norm)
                 .bind(item.id.to_string())
                 .execute(&self.pool)
                 .await
@@ -434,6 +538,12 @@ impl SqliteClipboardRepository {
             return Ok(Vec::new());
         }
 
+        let (weight_original, weight_normalized) = if query_has_diacritics(query) {
+            (2.0_f64, 1.0_f64)
+        } else {
+            (1.0_f64, 2.0_f64)
+        };
+
         for fts_query in queries {
             let rows = if metadata_only {
                 sqlx::query(
@@ -442,12 +552,14 @@ impl SqliteClipboardRepository {
                     FROM clipboard_items ci
                     JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
                     WHERE clipboard_items_fts MATCH $1
-                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.last_used_at DESC
+                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts, $3, $4), ci.last_used_at DESC
                     LIMIT $2
                     "#,
                 )
                 .bind(&fts_query)
                 .bind(limit as i64)
+                .bind(weight_original)
+                .bind(weight_normalized)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| ClipboardError::Storage(e.to_string()))?
@@ -458,12 +570,14 @@ impl SqliteClipboardRepository {
                     FROM clipboard_items ci
                     JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
                     WHERE clipboard_items_fts MATCH $1
-                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts), ci.last_used_at DESC
+                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts, $3, $4), ci.last_used_at DESC
                     LIMIT $2
                     "#,
                 )
                 .bind(&fts_query)
                 .bind(limit as i64)
+                .bind(weight_original)
+                .bind(weight_normalized)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| ClipboardError::Storage(e.to_string()))?
@@ -500,7 +614,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
     async fn save(&self, item: &ClipboardItem) -> Result<()> {
         let content_type = serde_json::to_string(&item.content_type)?;
         let content_hash = calculate_content_hash(&item.data);
-        let search_text = item.searchable_text();
+        let (search_text, search_text_norm) = item.searchable_texts();
         let mut pinned_to_save = item.pinned;
 
         // Only deduplicate text content - images should always be kept as separate entries
@@ -534,8 +648,8 @@ impl ClipboardRepository for SqliteClipboardRepository {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO clipboard_items
-            (id, content_type, data, preview, search_text, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned, content_hash)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            (id, content_type, data, preview, search_text, search_text_norm, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned, content_hash)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             "#,
         )
             .bind(item.id.to_string())
@@ -543,6 +657,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             .bind(&item.data)
             .bind(&item.preview)
             .bind(&search_text)
+            .bind(&search_text_norm)
             .bind(&item.thumbnail)
             .bind(&item.source_app)
             .bind(&item.source_app_icon)

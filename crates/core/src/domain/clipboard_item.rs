@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
 use uuid::Uuid;
 
 use super::content_type::ContentType;
@@ -313,6 +314,25 @@ fn split_words(text: &str) -> Vec<String> {
         .collect()
 }
 
+pub fn normalize_search_text(value: &str) -> String {
+    let mut normalized = String::with_capacity(value.len());
+    for ch in value.nfd() {
+        if is_combining_mark(ch) {
+            continue;
+        }
+
+        let mapped = match ch {
+            '\u{0111}' => 'd',
+            '\u{0110}' => 'D',
+            _ => ch,
+        };
+
+        normalized.push(mapped);
+    }
+
+    normalized.to_ascii_lowercase()
+}
+
 fn build_initials_aliases(words: &[String]) -> Vec<String> {
     if words.len() < 2 {
         return Vec::new();
@@ -325,7 +345,11 @@ fn build_initials_aliases(words: &[String]) -> Vec<String> {
         .filter_map(|word| word.chars().next())
         .collect();
     if initials.len() >= 2 {
-        aliases.push(initials);
+        let normalized = normalize_search_text(&initials);
+        aliases.push(initials.clone());
+        if normalized.len() >= 2 && normalized != initials {
+            aliases.push(normalized);
+        }
     }
 
     let prefix: String = words
@@ -657,6 +681,12 @@ impl ClipboardItem {
         }
 
         parts.join(" ")
+    }
+
+    pub fn searchable_texts(&self) -> (String, String) {
+        let search_text = self.searchable_text();
+        let normalized = normalize_search_text(&search_text);
+        (search_text, normalized)
     }
 }
 
