@@ -118,8 +118,7 @@ public sealed partial class MainWindow : Window
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = new SettingsWindow();
-        settingsWindow.Activate();
+        SettingsWindow.ShowOrActivate();
         this.HidePopup();
     }
 

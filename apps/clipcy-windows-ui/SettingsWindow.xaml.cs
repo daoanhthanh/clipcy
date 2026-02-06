@@ -15,6 +15,8 @@ namespace Clipcy;
 /// </summary>
 public sealed partial class SettingsWindow : Window
 {
+    private static SettingsWindow? _instance;
+    private bool _isShowingAlreadyOpenCue;
     private SettingsViewModel _settings;
     private double _lastValidMaxHistory;
     private SystemBackdropConfiguration? _configurationSource;
@@ -87,6 +89,47 @@ public sealed partial class SettingsWindow : Window
         {
             rootElement.Loaded += (s, e) => UpdateTitleBarColors();
         }
+    }
+
+    public static void ShowOrActivate()
+    {
+        if (_instance == null)
+        {
+            _instance = new SettingsWindow();
+            _instance.Activate();
+            return;
+        }
+
+        _instance.Activate();
+        _instance.TriggerAlreadyOpenVisualCue();
+    }
+
+    private void TriggerAlreadyOpenVisualCue()
+    {
+        if (_isShowingAlreadyOpenCue || AppTitleBar == null)
+            return;
+
+        _isShowingAlreadyOpenCue = true;
+        _ = DispatcherQueue.TryEnqueue(async () =>
+        {
+            var originalOpacity = AppTitleBar.Opacity;
+
+            try
+            {
+                for (var i = 0; i < 2; i++)
+                {
+                    AppTitleBar.Opacity = 0.55;
+                    await Task.Delay(80);
+                    AppTitleBar.Opacity = originalOpacity;
+                    await Task.Delay(80);
+                }
+            }
+            finally
+            {
+                AppTitleBar.Opacity = originalOpacity;
+                _isShowingAlreadyOpenCue = false;
+            }
+        });
     }
 
     private void SetupTitleBar()
@@ -295,6 +338,11 @@ public sealed partial class SettingsWindow : Window
 
     private void SettingsWindow_Closed(object sender, WindowEventArgs args)
     {
+        if (ReferenceEquals(_instance, this))
+        {
+            _instance = null;
+        }
+
         // Unsubscribe from theme changes
         ThemeManager.ThemeChanged -= OnThemeChanged;
 

@@ -155,8 +155,7 @@ public class TrayService : IDisposable
 
     private void OpenSettings()
     {
-        var settingsWindow = new SettingsWindow();
-        settingsWindow.Activate();
+        SettingsWindow.ShowOrActivate();
     }
 
     private void ExitApplication()
