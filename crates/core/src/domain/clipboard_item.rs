@@ -487,7 +487,7 @@ impl ClipboardItem {
         let preview = if file_paths.len() == 1 {
             file_paths[0].clone()
         } else {
-            format!("{} files", file_paths.len())
+            Self::format_files_preview(&file_paths)
         };
 
         let data = file_paths.join("\n").into_bytes();
@@ -597,6 +597,45 @@ impl ClipboardItem {
             created_at: now,
             last_used_at: now,
             pinned: false,
+        }
+    }
+
+    /// Format preview string for multiple files/folders
+    fn format_files_preview(file_paths: &[String]) -> String {
+        use std::path::Path;
+
+        let mut file_count = 0u32;
+        let mut folder_count = 0u32;
+
+        for path_str in file_paths {
+            let path = Path::new(path_str);
+            if path.is_dir() {
+                folder_count += 1;
+            } else {
+                file_count += 1;
+            }
+        }
+
+        let mut parts = Vec::new();
+        if folder_count > 0 {
+            if folder_count == 1 {
+                parts.push("1 folder".to_string());
+            } else {
+                parts.push(format!("{} folders", folder_count));
+            }
+        }
+        if file_count > 0 {
+            if file_count == 1 {
+                parts.push("1 file".to_string());
+            } else {
+                parts.push(format!("{} files", file_count));
+            }
+        }
+
+        if parts.is_empty() {
+            format!("{} items", file_paths.len())
+        } else {
+            parts.join(" | ")
         }
     }
 
@@ -729,6 +768,7 @@ mod tests {
         ];
         let item = ClipboardItem::new_files(files);
         assert_eq!(item.content_type, ContentType::Files);
+        // Non-existent paths are classified as files
         assert_eq!(item.preview, "2 files");
     }
 
