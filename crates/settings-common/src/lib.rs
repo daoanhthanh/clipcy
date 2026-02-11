@@ -59,7 +59,7 @@ pub struct Settings {
 }
 
 fn default_max_history() -> usize {
-    100
+    210
 }
 
 fn default_hotkey() -> String {
@@ -73,14 +73,14 @@ fn default_true() -> bool {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            max_history_items: 100,
-            hotkey: "Alt+V".to_string(),
+            max_history_items: default_max_history(),
+            hotkey: default_hotkey(),
             theme: ThemeMode::System,
-            start_on_boot: true,
+            start_on_boot: default_true(),
             show_notifications: false,
-            show_preview_panel: true,
+            show_preview_panel: default_true(),
             excluded_apps: Vec::new(),
-            first_run: true,
+            first_run: default_true(),
         }
     }
 }
@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_settings_default() {
         let settings = Settings::default();
-        assert_eq!(settings.max_history_items, 100);
+        assert_eq!(settings.max_history_items, 250);
         assert_eq!(settings.hotkey, "Alt+V");
         assert!(settings.start_on_boot);
         assert!(settings.show_preview_panel);
