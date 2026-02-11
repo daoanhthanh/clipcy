@@ -31,7 +31,7 @@
         </Button>
         <FontIcon Glyph="&#xE713;" FontSize="16" />
         <TextBlock
-          Text="Settings"
+          Text="Clipcy Settings"
           Style="{StaticResource BodyTextBlockStyle}"
           VerticalAlignment="Center"
         />
@@ -246,14 +246,14 @@
                   HorizontalContentAlignment="Stretch"
                 >
                   <Expander.Header>
-                    <Grid HorizontalAlignment="Stretch" Margin="24,20">
+                    <Grid HorizontalAlignment="Stretch" Margin="8,20,8,20">
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                       </Grid.ColumnDefinitions>
                       <FontIcon
                         Grid.Column="0"
-                        Glyph="&#xE892;"
+                        Glyph="&#xF71D;"
                         FontSize="20"
                         Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                         Margin="0,0,16,0"
@@ -274,14 +274,15 @@
                     </Grid>
                   </Expander.Header>
                   <Expander.Content>
-                    <StackPanel Margin="24,0,24,20" Spacing="8">
+                    <StackPanel Margin="8,0,8,20" Spacing="8">
                       <TextBox
                         x:Name="ExcludedAppsTextBox"
                         PlaceholderText="Example: outlook.exe"
                         AcceptsReturn="True"
-                        TextWrapping="Wrap"
+                        TextWrapping="NoWrap"
                         MinHeight="120"
-                        MaxHeight="180"
+                        MaxHeight="10000"
+                        TextChanged="ExcludedAppsTextBox_TextChanged"
                         LostFocus="ExcludedAppsTextBox_LostFocus"
                       />
                     </StackPanel>
@@ -366,7 +367,7 @@
                   HorizontalContentAlignment="Stretch"
                 >
                   <Expander.Header>
-                    <Grid HorizontalAlignment="Stretch" Margin="24,20">
+                    <Grid HorizontalAlignment="Stretch" Margin="8,20,8,20">
                       <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -402,7 +403,7 @@
                     </Grid>
                   </Expander.Header>
                   <Expander.Content>
-                    <StackPanel Spacing="12" Margin="24,12,24,20">
+                    <StackPanel Spacing="12" Margin="8,12,8,20">
                       <TextBlock
                         x:Name="UpdateStatusText"
                         Text="Update status: Not checked yet"

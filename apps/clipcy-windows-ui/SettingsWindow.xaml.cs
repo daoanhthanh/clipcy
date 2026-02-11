@@ -40,6 +40,9 @@ public sealed partial class SettingsWindow : Window
     private const int MinWindowWidth = 500;
     private const int MinWindowHeight = 400;
     private const int SidebarCollapseThreshold = 720;
+    private const double ExcludedAppsTextBoxMinHeight = 120;
+    private const double ExcludedAppsTextBoxLineHeight = 28;
+    private const double ExcludedAppsTextBoxVerticalPadding = 24;
 
     private readonly ObservableCollection<string> _hotkeyParts = new();
     public ObservableCollection<string> HotkeyParts => _hotkeyParts;
@@ -409,6 +412,7 @@ public sealed partial class SettingsWindow : Window
         ShowPreviewToggle.IsOn = _settings.ShowPreviewPanel;
         ShowNotificationsToggle.IsOn = _settings.ShowNotifications;
         ExcludedAppsTextBox.Text = string.Join(Environment.NewLine, _settings.ExcludedApps);
+        AdjustExcludedAppsTextBoxHeight();
 
         // Set theme combo box
         var themeIndex = _settings.Theme switch
@@ -712,6 +716,49 @@ public sealed partial class SettingsWindow : Window
         }
 
         SaveSettings();
+    }
+
+    private void ExcludedAppsTextBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        AdjustExcludedAppsTextBoxHeight();
+    }
+
+    private void AdjustExcludedAppsTextBoxHeight()
+    {
+        if (ExcludedAppsTextBox == null)
+            return;
+
+        var lineCount = CountLines(ExcludedAppsTextBox.Text);
+        var targetHeight = Math.Max(
+            ExcludedAppsTextBoxMinHeight,
+            (lineCount * ExcludedAppsTextBoxLineHeight) + ExcludedAppsTextBoxVerticalPadding
+        );
+
+        ExcludedAppsTextBox.Height = targetHeight;
+    }
+
+    private static int CountLines(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return 1;
+        }
+
+        var lineCount = 1;
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (value[i] == '\r' || value[i] == '\n')
+            {
+                lineCount++;
+
+                if (value[i] == '\r' && i + 1 < value.Length && value[i + 1] == '\n')
+                {
+                    i++;
+                }
+            }
+        }
+
+        return lineCount;
     }
 
     private static List<string> ParseExcludedApps(string? rawInput)

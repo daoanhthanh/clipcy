@@ -572,7 +572,7 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
 /// </summary>
 public class SettingsViewModel
 {
-    public uint MaxHistoryItems { get; set; } = 100;
+    public uint MaxHistoryItems { get; set; } = 210;
     public string Hotkey { get; set; } = "Alt+V";
     public string Theme { get; set; } = "System";
     public bool StartOnBoot { get; set; } = true;
