@@ -397,7 +397,7 @@ public sealed partial class SettingsWindow : Window
     private void LoadSettingsToUI()
     {
         // Skip if controls aren't loaded yet
-        if (MaxHistoryBox == null || ThemeComboBox == null)
+        if (MaxHistoryBox == null || ThemeComboBox == null || ExcludedAppsTextBox == null)
             return;
 
         MaxHistoryBox.Value = _settings.MaxHistoryItems;
@@ -408,6 +408,7 @@ public sealed partial class SettingsWindow : Window
         StartOnBootToggle.IsOn = _settings.StartOnBoot;
         ShowPreviewToggle.IsOn = _settings.ShowPreviewPanel;
         ShowNotificationsToggle.IsOn = _settings.ShowNotifications;
+        ExcludedAppsTextBox.Text = string.Join(Environment.NewLine, _settings.ExcludedApps);
 
         // Set theme combo box
         var themeIndex = _settings.Theme switch
@@ -697,6 +698,37 @@ public sealed partial class SettingsWindow : Window
     {
         _settings.ShowNotifications = ShowNotificationsToggle.IsOn;
         SaveSettings();
+    }
+
+    private void ExcludedAppsTextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var excludedApps = ParseExcludedApps(ExcludedAppsTextBox.Text);
+        _settings.ExcludedApps = excludedApps;
+
+        var normalizedText = string.Join(Environment.NewLine, excludedApps);
+        if (!string.Equals(ExcludedAppsTextBox.Text, normalizedText, StringComparison.Ordinal))
+        {
+            ExcludedAppsTextBox.Text = normalizedText;
+        }
+
+        SaveSettings();
+    }
+
+    private static List<string> ParseExcludedApps(string? rawInput)
+    {
+        if (string.IsNullOrWhiteSpace(rawInput))
+        {
+            return new List<string>();
+        }
+
+        return rawInput
+            .Split(
+                new[] { '\r', '\n', ',', ';' },
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            )
+            .Where(app => !string.IsNullOrWhiteSpace(app))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
