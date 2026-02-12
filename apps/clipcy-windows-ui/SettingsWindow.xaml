@@ -265,7 +265,7 @@
                           Style="{StaticResource BodyStrongTextBlockStyle}"
                         />
                         <TextBlock
-                          Text="Prevents module activation when an excluded application is the foreground application"
+                          Text="Disable clipboard for listed apps (one per line). Example: 'outlook.exe' or simply 'outlook'"
                           Style="{StaticResource CaptionTextBlockStyle}"
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                           TextWrapping="Wrap"
