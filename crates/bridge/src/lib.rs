@@ -609,13 +609,6 @@ impl ClipboardEngine {
                         });
                     }
 
-                    // Set up clipboard change callback
-                    let ui_handler_clone = ui_handler.clone();
-                    monitor.on_change(Box::new(move |item| {
-                        ui_handler_clone
-                            .send_event(BridgeEvent::ClipboardChanged { item: item.into() });
-                        ui_handler_clone.send_event(BridgeEvent::HistoryUpdated);
-                    }));
 
                     // Start monitoring
                     if let Err(e) = service.start_monitoring() {
@@ -625,6 +618,11 @@ impl ClipboardEngine {
                         });
                         return;
                     }
+                    // Set up clipboard change callback via service (not monitor directly)
+                    let ui_handler_clone = ui_handler.clone();
+                    service.set_on_change(move || {
+                        ui_handler_clone.send_event(BridgeEvent::HistoryUpdated);
+                    });
 
                     // Set up hotkey
                     let hotkey = settings_manager.get().hotkey.clone();

@@ -15,6 +15,7 @@ public sealed partial class MainWindow : Window
     private readonly IWindowService _windowService;
     private readonly IPreviewService _previewService;
     private bool _keyboardNavigationActive;
+    private bool _isFirstActivation = true;
 
     public MainWindow()
     {
@@ -29,6 +30,7 @@ public sealed partial class MainWindow : Window
         ViewModel = new MainViewModel();
         ((FrameworkElement)this.Content).DataContext = this;
 
+
         // Subscribe to theme changes and apply to Content
         ThemeManager.ThemeChanged += OnThemeChanged;
         ApplyTheme(ThemeManager.CurrentTheme);
@@ -36,8 +38,19 @@ public sealed partial class MainWindow : Window
         this.Activated += MainWindow_Activated;
         this.Closed += MainWindow_Closed;
 
-        ViewModel.RefreshHistory();
+        // Subscribe to Rust bridge events
+        if (App.Bridge != null)
+        {
+            // Refresh when clipboard changes
+            App.Bridge.OnHistoryUpdated += () => _ = ViewModel.RefreshHistoryAsync();
+            
+            // Load initial data when Rust engine is ready
+            App.Bridge.OnReady += () => _ = ViewModel.RefreshHistoryAsync();
+        }
+
     }
+
+    public WindowService GetWindowService() => (WindowService)_windowService;
 
     private void OnThemeChanged(AppTheme theme)
     {
@@ -79,8 +92,14 @@ public sealed partial class MainWindow : Window
             || args.WindowActivationState == WindowActivationState.PointerActivated
         )
         {
-            _ = ViewModel.RefreshHistoryAsync();
             SearchBox.Text = string.Empty;
+
+            // Load data only on first show
+            if (_isFirstActivation)
+            {
+                _ = ViewModel.RefreshHistoryAsync();
+                _isFirstActivation = false;
+            }
 
             HistoryListView.SelectedIndex = -1;
             RootGrid.Focus(FocusState.Programmatic);

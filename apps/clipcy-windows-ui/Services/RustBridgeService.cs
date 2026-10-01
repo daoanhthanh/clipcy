@@ -24,6 +24,7 @@ internal class RustBridgeService : IDisposable, UiCallback
     public event Action<bool>? OnThemeChanged;
     public event Action<ClipboardItemViewModel>? OnClipboardChanged;
     public event Action<string>? OnNotification;
+    public event Action? OnReady;
 
     public RustBridgeService()
     {
@@ -94,6 +95,10 @@ internal class RustBridgeService : IDisposable, UiCallback
 
             case BridgeEvent.Notification notificationEvent:
                 DispatchEvent(() => OnNotification?.Invoke(notificationEvent.message));
+                break;
+
+            case BridgeEvent.Ready:
+                DispatchEvent(() => OnReady?.Invoke());
                 break;
         }
     }

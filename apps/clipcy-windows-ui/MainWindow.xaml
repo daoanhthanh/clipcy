@@ -10,7 +10,7 @@
   <Grid
     x:Name="RootGrid"
     KeyDown="RootGrid_KeyDown"
-    Background="Transparent"
+    Background="{ThemeResource LayerFillColorDefaultBrush}"
     Padding="8"
     IsTabStop="True"
   >

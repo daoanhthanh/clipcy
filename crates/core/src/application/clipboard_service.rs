@@ -22,6 +22,7 @@ async fn save_pending_item(
     pending_item: &mut Option<ClipboardItem>,
     repository: &Arc<dyn ClipboardRepository>,
     settings: &Arc<RwLock<Settings>>,
+    on_change_callback: &Arc<RwLock<Option<Box<dyn Fn() + Send + Sync>>>>,
 ) -> Result<()> {
     if let Some(item) = pending_item.take() {
         let max_items = settings.read().max_history_items;
@@ -42,6 +43,11 @@ async fn save_pending_item(
             pruned,
             "Clipboard item saved and pruned"
         );
+        
+        // Notify UI that history changed
+        if let Some(callback) = on_change_callback.read().as_ref() {
+            callback();
+        }
     }
     Ok(())
 }
@@ -54,6 +60,7 @@ pub struct ClipboardService {
     debounce_tx: Arc<RwLock<Option<mpsc::UnboundedSender<DebounceMessage>>>>,
     suppress_until: Arc<RwLock<Option<Instant>>>,
     runtime_handle: Handle,
+    on_change_callback: Arc<RwLock<Option<Box<dyn Fn() + Send + Sync>>>>,
 }
 
 impl ClipboardService {
@@ -72,6 +79,7 @@ impl ClipboardService {
             debounce_tx: Arc::new(RwLock::new(None)),
             suppress_until: Arc::new(RwLock::new(None)),
             runtime_handle,
+            on_change_callback: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -83,8 +91,9 @@ impl ClipboardService {
         let repository = Arc::clone(&self.repository);
         let settings = Arc::clone(&self.settings);
         let suppress_until = Arc::clone(&self.suppress_until);
+        let on_change_callback = Arc::clone(&self.on_change_callback);
 
-        self.spawn_debounce_task(rx, repository, settings, suppress_until);
+        self.spawn_debounce_task(rx, repository, settings, suppress_until, on_change_callback);
 
         let debounce_tx = Arc::clone(&self.debounce_tx);
         self.monitor.on_change(Box::new(move |item| {
@@ -102,6 +111,7 @@ impl ClipboardService {
         repository: Arc<dyn ClipboardRepository>,
         settings: Arc<RwLock<Settings>>,
         suppress_until: Arc<RwLock<Option<Instant>>>,
+        on_change_callback: Arc<RwLock<Option<Box<dyn Fn() + Send + Sync>>>>,
     ) {
         self.runtime_handle.spawn(async move {
             let debounce_duration = Duration::from_millis(DEBOUNCE_DURATION_MS);
@@ -142,7 +152,7 @@ impl ClipboardService {
                         DebounceMessage::Flush(response) => {
                             tracing::debug!("Flush requested for pending clipboard item");
                             let result =
-                                save_pending_item(&mut pending_item, &repository, &settings).await;
+                                save_pending_item(&mut pending_item, &repository, &settings, &on_change_callback).await;
                             let _ = response.send(result);
                         }
                     },
@@ -151,7 +161,7 @@ impl ClipboardService {
                     }
                     Err(_) => {
                         if let Err(e) =
-                            save_pending_item(&mut pending_item, &repository, &settings).await
+                            save_pending_item(&mut pending_item, &repository, &settings, &on_change_callback).await
                         {
                             tracing::error!("Failed to save clipboard item: {}", e);
                         }
@@ -251,5 +261,12 @@ impl ClipboardService {
         }
 
         Ok(count)
+    }
+
+    pub fn set_on_change<F>(&self, callback: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        *self.on_change_callback.write() = Some(Box::new(callback));
     }
 }

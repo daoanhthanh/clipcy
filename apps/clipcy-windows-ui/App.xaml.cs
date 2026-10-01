@@ -42,7 +42,7 @@ public partial class App : Application
     /// <summary>
     /// Invoked when the application is launched.
     /// </summary>
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         InitializeConsole();
 
@@ -73,6 +73,10 @@ public partial class App : Application
 
         // Create the main popup window (hidden initially)
         MainPopup = new MainWindow();
+
+        // Warm up compositor before tray activation
+        await MainPopup.GetWindowService().WarmUpCompositorAsync();
+
 
         Tray = new TrayService(MainPopup);
 

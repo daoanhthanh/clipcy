@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using WinRT.Interop;
 
 namespace Clipcy.Services;
@@ -173,6 +174,17 @@ public class WindowService : IWindowService
 
                 _configurationSource = new SystemBackdropConfiguration();
                 _configurationSource.IsInputActive = true;
+
+                // Transition to transparent after backdrop composes
+                _window.DispatcherQueue.TryEnqueue(
+                    Microsoft.UI.Dispatching.DispatcherQueuePriority.High,
+                    () =>
+                    {
+                        if (_window.Content is Panel root)
+                        {
+                            root.Background = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+                        }
+                    });
             }
         }
         catch { }
@@ -191,6 +203,33 @@ public class WindowService : IWindowService
             DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(uint));
         }
         catch { }
+    }
+
+    public async Task WarmUpCompositorAsync()
+    {
+        try
+        {
+            var hwnd = WindowNative.GetWindowHandle(_window);
+
+            // Move to off-screen position (far left)
+            _window.AppWindow.Move(new Windows.Graphics.PointInt32(-10000, -10000));
+
+            // Show window to trigger compositor allocation
+            _window.AppWindow.Show();
+
+            // Wait for DWM to compose backdrop
+            await Task.Delay(100);
+
+            // Hide window (keeps compositor state alive)
+            _window.AppWindow.Hide();
+
+            Console.WriteLine("[WindowService] Compositor warm-up complete");
+        }
+        catch (Exception ex)
+        {
+            // Warm-up failure is non-fatal
+            Console.WriteLine($"[WindowService] Warm-up failed: {ex.Message}");
+        }
     }
 
     public void EnsureBackdropActive()
