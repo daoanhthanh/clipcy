@@ -227,7 +227,7 @@ Flow:
 1. Pointer enters a list item or it gains focus.
 2. `PreviewService` schedules a delayed popup and creates `PreviewData`.
 3. `PreviewData.LoadFullData` calls `ClipboardEngine.get_item_data(id)` on demand.
-4. The preview popup positions itself next to the list item and renders content.
+4. The preview popup positions itself next to the list item and renders content. Its `RequestedTheme` follows `RootGrid.ActualTheme`, including while cached, so it stays aligned with the main window. Generated table cells use `{ThemeResource}` brushes rather than copied brush snapshots.
 
 Diagram:
 

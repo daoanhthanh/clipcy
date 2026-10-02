@@ -292,8 +292,7 @@ public sealed partial class PreviewControl : UserControl
             PreviewTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         }
 
-        var borderBrush = PreviewTableBorder.BorderBrush;
-        var textBrush = PreviewText.Foreground;
+        var cellTemplate = (DataTemplate)Resources["PreviewTableCellTemplate"];
 
         for (int row = 0; row < rows.Count; row++)
         {
@@ -304,25 +303,10 @@ public sealed partial class PreviewControl : UserControl
                 var rightBorder = col == maxColumns - 1 ? 0 : 1;
                 var bottomBorder = row == rows.Count - 1 ? 0 : 1;
 
-                var cell = new Border
-                {
-                    BorderBrush = borderBrush,
-                    BorderThickness = new Thickness(0, 0, rightBorder, bottomBorder),
-                    Padding = new Thickness(6, 4, 6, 4),
-                };
+                var cell = (Border)cellTemplate.LoadContent();
+                cell.DataContext = cellText;
+                cell.BorderThickness = new Thickness(0, 0, rightBorder, bottomBorder);
 
-                var textBlock = new TextBlock
-                {
-                    Text = cellText,
-                    FontSize = 12,
-                    LineHeight = 16,
-                    TextWrapping = TextWrapping.Wrap,
-                    MaxLines = 2,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    Foreground = textBrush,
-                };
-
-                cell.Child = textBlock;
                 Grid.SetRow(cell, row);
                 Grid.SetColumn(cell, col);
                 PreviewTable.Children.Add(cell);

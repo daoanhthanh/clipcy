@@ -33,6 +33,7 @@ public class PreviewService : IPreviewService
         _rootGrid = rootGrid;
         _windowService = windowService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _rootGrid.ActualThemeChanged += OnRootActualThemeChanged;
     }
 
     public void Dispose()
@@ -42,7 +43,7 @@ public class PreviewService : IPreviewService
 
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
-
+        _rootGrid.ActualThemeChanged -= OnRootActualThemeChanged;
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
@@ -70,8 +71,8 @@ public class PreviewService : IPreviewService
             IsLightDismissEnabled = false,
             ShouldConstrainToRootBounds = false,
             XamlRoot = _rootGrid?.XamlRoot,
-            RequestedTheme = _rootGrid?.ActualTheme ?? ElementTheme.Default, // Initial theme, though XAML handles updates usually
         };
+        SynchronizePreviewTheme(popup);
 
         _previewControl = new PreviewControl();
 
@@ -218,8 +219,8 @@ public class PreviewService : IPreviewService
         {
             _previewDelayTimer?.Stop();
             _hideTimer?.Stop();
-
             var popup = PreviewPopup;
+            SynchronizePreviewTheme(popup);
             if (_previewControl == null)
                 return;
 
@@ -306,6 +307,21 @@ public class PreviewService : IPreviewService
             System.Diagnostics.Debug.WriteLine($"ShowPreview error: {ex.Message}");
             HidePreviewInternal();
         }
+    }
+
+    private void OnRootActualThemeChanged(FrameworkElement sender, object args)
+    {
+        if (_disposed || _previewPopup == null)
+            return;
+
+        SynchronizePreviewTheme(_previewPopup);
+    }
+
+    private void SynchronizePreviewTheme(Popup popup)
+    {
+        var theme = _rootGrid.ActualTheme;
+        if (popup.RequestedTheme != theme)
+            popup.RequestedTheme = theme;
     }
 
     private async Task LoadFullDataAsync(PreviewData data)

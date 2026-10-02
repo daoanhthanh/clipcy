@@ -9,6 +9,22 @@
   xmlns:media="using:Microsoft.UI.Xaml.Media"
   mc:Ignorable="d"
 >
+  <UserControl.Resources>
+    <DataTemplate x:Key="PreviewTableCellTemplate">
+      <Border Padding="6,4,6,4" BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}">
+        <TextBlock
+          Text="{Binding}"
+          FontSize="12"
+          LineHeight="16"
+          TextWrapping="Wrap"
+          MaxLines="2"
+          TextTrimming="CharacterEllipsis"
+          Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+        />
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <Border
     x:Name="RootBorder"
     Width="360"
