@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $RustProject = $ProjectRoot
-$CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows-ui"
+$CSharpProject = Join-Path (Join-Path $ProjectRoot "apps") "clipcy-windows-ui"
 $BindingsDir = Join-Path $CSharpProject "Bindings"
 
 Write-Host "=== Clipcy Windows UI Build ===" -ForegroundColor Cyan
@@ -43,10 +43,10 @@ Push-Location $RustProject
 try {
     if ($Release) {
         cargo build --release -p clipcy-bridge
-        $RustOutputDir = Join-Path $RustProject "target" "release"
+        $RustOutputDir = Join-Path $RustProject "target\release"
     } else {
         cargo build -p clipcy-bridge
-        $RustOutputDir = Join-Path $RustProject "target" "debug"
+        $RustOutputDir = Join-Path $RustProject "target\debug"
     }
 
     $DllPath = Join-Path $RustOutputDir "clipcy_core.dll"
@@ -120,21 +120,21 @@ Write-Host "`n=== Build Complete ===" -ForegroundColor Green
 $OutputDir = if ($Release) { "Release" } else { "Debug" }
 $ExePath = if ($Release) {
     # Check standard publish output locations
-    $Win10Path = Join-Path $CSharpProject "bin" "Release" "net8.0-windows10.0.17763.0" "win-x64" "publish" "Clipcy.exe"
+    $Win10Path = Join-Path $CSharpProject "bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\Clipcy.exe"
     if (Test-Path $Win10Path) { 
         $Win10Path 
     } else {
         # Check without .0 suffix
-        $Win10PathNoSuffix = Join-Path $CSharpProject "bin" "Release" "net8.0-windows10.0.17763" "win-x64" "publish" "Clipcy.exe"
+        $Win10PathNoSuffix = Join-Path $CSharpProject "bin\Release\net10.0-windows10.0.19041.0\win-x64\Clipcy.exe"
         if (Test-Path $Win10PathNoSuffix) { 
              $Win10PathNoSuffix 
         } else {
              # Fallback to standard build output if publish path structure differs
-             Join-Path $CSharpProject "bin" "Release" "net8.0-windows10.0.17763.0" "Clipcy.exe"
+             Join-Path $CSharpProject "bin\Release\net10.0-windows10.0.19041.0\win-x64\Clipcy.exe"
         }
     }
 } else {
-    Join-Path $CSharpProject "bin" "Debug" "net8.0-windows10.0.17763.0" "Clipcy.exe"
+    Join-Path $CSharpProject "bin\Debug\net10.0-windows10.0.19041.0\win-x64\Clipcy.exe"
 }
 
 if (Test-Path $ExePath) {

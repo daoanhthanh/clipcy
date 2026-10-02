@@ -17,7 +17,7 @@ use uuid::Uuid;
 use clipboard_core::application::ClipboardService;
 use clipboard_core::domain::{ClipboardItem, ContentType, Settings, Theme};
 use clipboard_core::ports::{
-    AutostartHandler, ClipboardMonitor, ClipboardRepository, HotkeyHandler, ThemeDetector, UIEvent,
+    AutostartHandler, ClipboardRepository, HotkeyHandler, ThemeDetector, UIEvent,
     UIHandler,
 };
 use clipboard_storage::AsyncInitRepository;
