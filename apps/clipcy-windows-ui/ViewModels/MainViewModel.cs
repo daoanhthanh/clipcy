@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject
     private string _searchQuery = string.Empty;
 #pragma warning restore MVVMTK0045
 
+
     public async Task RefreshHistoryAsync()
     {
         try
@@ -25,14 +26,57 @@ public partial class MainViewModel : ObservableObject
             if (bridge == null)
                 return;
 
-            // Run database call on background thread (uses max_history from settings)
+            // Run database call on background thread
             var items = await Task.Run(() => bridge.GetHistory());
 
-            Items.Clear();
-
-            foreach (var item in items)
+            // Differential update - only change what's different
+            // Remove items no longer in the new list
+            for (int i = Items.Count - 1; i >= 0; i--)
             {
-                Items.Add(item);
+                if (!items.Any(x => x.Id == Items[i].Id))
+                {
+                    Items.RemoveAt(i);
+                }
+            }
+
+            // Add or update items
+            for (int i = 0; i < items.Count; i++)
+            {
+                var newItem = items[i];
+                
+                // Check if item exists at correct position
+                if (i < Items.Count && Items[i].Id == newItem.Id)
+                {
+                    // Item is already in correct position, update properties if needed
+                    if (Items[i].Pinned != newItem.Pinned)
+                    {
+                        Items[i].Pinned = newItem.Pinned;
+                    }
+                }
+                else
+                {
+                    // Find if item exists elsewhere
+                    int existingIndex = -1;
+                    for (int j = i + 1; j < Items.Count; j++)
+                    {
+                        if (Items[j].Id == newItem.Id)
+                        {
+                            existingIndex = j;
+                            break;
+                        }
+                    }
+
+                    if (existingIndex >= 0)
+                    {
+                        // Move to correct position
+                        Items.Move(existingIndex, i);
+                    }
+                    else
+                    {
+                        // Insert new item
+                        Items.Insert(i, newItem);
+                    }
+                }
             }
 
             StatusText = $"{Items.Count} items";

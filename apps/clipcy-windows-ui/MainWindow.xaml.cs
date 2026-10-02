@@ -15,7 +15,6 @@ public sealed partial class MainWindow : Window
     private readonly IWindowService _windowService;
     private readonly IPreviewService _previewService;
     private bool _keyboardNavigationActive;
-    private bool _isFirstActivation = true;
 
     public MainWindow()
     {
@@ -94,12 +93,7 @@ public sealed partial class MainWindow : Window
         {
             SearchBox.Text = string.Empty;
 
-            // Load data only on first show
-            if (_isFirstActivation)
-            {
-                _ = ViewModel.RefreshHistoryAsync();
-                _isFirstActivation = false;
-            }
+            // List is already populated in background - do nothing
 
             HistoryListView.SelectedIndex = -1;
             RootGrid.Focus(FocusState.Programmatic);
