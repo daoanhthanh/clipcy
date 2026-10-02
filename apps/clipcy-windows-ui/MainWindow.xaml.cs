@@ -41,15 +41,17 @@ public sealed partial class MainWindow : Window
         if (App.Bridge != null)
         {
             // Refresh when clipboard changes
-            App.Bridge.OnHistoryUpdated += () => _ = ViewModel.RefreshHistoryAsync();
+            App.Bridge.OnHistoryUpdated += RefreshHistory;
             
             // Load initial data when Rust engine is ready
-            App.Bridge.OnReady += () => _ = ViewModel.RefreshHistoryAsync();
+            App.Bridge.OnReady += RefreshHistory;
         }
 
     }
 
     public WindowService GetWindowService() => (WindowService)_windowService;
+
+    private void RefreshHistory() => ViewModel.RefreshHistory();
 
     private void OnThemeChanged(AppTheme theme)
     {
@@ -74,6 +76,12 @@ public sealed partial class MainWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         ThemeManager.ThemeChanged -= OnThemeChanged;
+        if (App.Bridge != null)
+        {
+            App.Bridge.OnHistoryUpdated -= RefreshHistory;
+            App.Bridge.OnReady -= RefreshHistory;
+        }
+        ViewModel.Dispose();
         _previewService.Dispose();
     }
 

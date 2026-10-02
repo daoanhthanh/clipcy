@@ -40,6 +40,7 @@ public sealed class FilePreviewResult
     public byte[]? PreviewPngBytes { get; init; }
     public bool IsTruncated { get; init; }
     public string? StatusMessage { get; init; }
+    public object[]? StatusMessageArguments { get; init; }
 }
 
 /// <summary>
@@ -127,7 +128,7 @@ public static class FilePreviewLoader
         var originalPath = path ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(path))
-            return Result(originalPath, displayName, FilePreviewKind.Other, FilePreviewStatus.Unavailable, "Missing path");
+            return Result(originalPath, displayName, FilePreviewKind.Other, FilePreviewStatus.Unavailable, "file_preview.missing_path");
 
         token.ThrowIfCancellationRequested();
 
@@ -136,15 +137,15 @@ public static class FilePreviewLoader
         // Audio: admit path only — no content I/O.
         if (kind == FilePreviewKind.Audio)
         {
-            if (!TryAdmitLocalPath(path, out var admitStatus, out var admitMessage, out var audioHandle))
-                return Result(originalPath, displayName, kind, admitStatus, admitMessage);
+            if (!TryAdmitLocalPath(path, out var admitStatus, out var admitMessage, out var audioHandle, out var admitArgs))
+                return Result(originalPath, displayName, kind, admitStatus, admitMessage, messageArguments: admitArgs);
 
             audioHandle?.Dispose();
             return Result(originalPath, displayName, kind, FilePreviewStatus.Ready, null);
         }
 
-        if (!TryAdmitLocalPath(path, out var status, out var message, out var safeHandle))
-            return Result(originalPath, displayName, kind, status, message);
+        if (!TryAdmitLocalPath(path, out var status, out var message, out var safeHandle, out var messageArgs))
+            return Result(originalPath, displayName, kind, status, message, messageArguments: messageArgs);
 
         try
         {
@@ -155,8 +156,8 @@ public static class FilePreviewLoader
                 safeHandle?.Dispose();
                 safeHandle = null;
                 var reason = kind == FilePreviewKind.Folder
-                    ? "Folder preview is not supported"
-                    : "File type is not previewable";
+                    ? "file_preview.folder_unsupported"
+                    : "file_preview.type_unsupported";
                 return Result(originalPath, displayName, kind, FilePreviewStatus.Unsupported, reason);
             }
 
@@ -188,12 +189,12 @@ public static class FilePreviewLoader
             {
                 FilePreviewKind.Text => await LoadTextAsync(originalPath, displayName, stream, token),
                 FilePreviewKind.Image => await LoadImageAsync(originalPath, displayName, stream, token),
-                _ => Result(originalPath, displayName, kind, FilePreviewStatus.Unsupported, "File type is not previewable"),
+                _ => Result(originalPath, displayName, kind, FilePreviewStatus.Unsupported, "file_preview.type_unsupported"),
             };
         }
         catch (OperationCanceledException)
         {
-            return Result(originalPath, displayName, kind, FilePreviewStatus.Canceled, "Canceled");
+            return Result(originalPath, displayName, kind, FilePreviewStatus.Canceled, "status.canceled");
         }
         catch (Exception ex)
         {
@@ -254,7 +255,8 @@ public static class FilePreviewLoader
         string? message,
         string? text = null,
         byte[]? png = null,
-        bool truncated = false
+        bool truncated = false,
+        object[]? messageArguments = null
     ) =>
         new()
         {
@@ -263,6 +265,7 @@ public static class FilePreviewLoader
             Kind = kind,
             Status = status,
             StatusMessage = message,
+            StatusMessageArguments = messageArguments,
             TextContent = text,
             PreviewPngBytes = png,
             IsTruncated = truncated,
@@ -276,16 +279,18 @@ public static class FilePreviewLoader
         string path,
         out FilePreviewStatus status,
         out string? message,
-        out SafeFileHandle? handle
+        out SafeFileHandle? handle,
+        out object[]? messageArguments
     )
     {
         status = FilePreviewStatus.Unavailable;
         message = null;
         handle = null;
+        messageArguments = null;
 
         if (string.IsNullOrWhiteSpace(path))
         {
-            message = "Missing path";
+            message = "file_preview.missing_path";
             return false;
         }
 
@@ -293,7 +298,7 @@ public static class FilePreviewLoader
         if (path.IndexOf(':') is >= 0 and not 1)
         {
             status = FilePreviewStatus.RemoteOrCloud;
-            message = "Unsupported path namespace";
+            message = "file_preview.namespace_unsupported";
             return false;
         }
 
@@ -304,7 +309,7 @@ public static class FilePreviewLoader
             || path.StartsWith(@"\\", StringComparison.Ordinal))
         {
             status = FilePreviewStatus.RemoteOrCloud;
-            message = "Remote or UNC paths are not previewed";
+            message = "file_preview.remote_unc";
             return false;
         }
 
@@ -322,7 +327,7 @@ public static class FilePreviewLoader
         if (!Path.IsPathRooted(fullPath) || fullPath.StartsWith(@"\\", StringComparison.Ordinal))
         {
             status = FilePreviewStatus.RemoteOrCloud;
-            message = "Only local absolute paths are previewed";
+            message = "file_preview.local_absolute_only";
             return false;
         }
 
@@ -330,7 +335,7 @@ public static class FilePreviewLoader
         if (string.IsNullOrEmpty(root) || root.StartsWith(@"\\", StringComparison.Ordinal))
         {
             status = FilePreviewStatus.RemoteOrCloud;
-            message = "Only local volume roots are previewed";
+            message = "file_preview.local_volume_only";
             return false;
         }
 
@@ -342,14 +347,15 @@ public static class FilePreviewLoader
                 var drive = new DriveInfo(driveLetter);
                 if (!drive.IsReady)
                 {
-                    message = "Drive is not ready";
+                    message = "file_preview.drive_not_ready";
                     return false;
                 }
 
                 if (drive.DriveType is not (DriveType.Fixed or DriveType.Removable))
                 {
                     status = FilePreviewStatus.RemoteOrCloud;
-                    message = $"Drive type {drive.DriveType} is not previewed";
+                    message = "file_preview.drive_type";
+                    messageArguments = [drive.DriveType];
                     return false;
                 }
             }
@@ -395,7 +401,8 @@ public static class FilePreviewLoader
             );
             if (native.IsInvalid)
             {
-                message = $"Cannot open file (Win32 {err}/{Marshal.GetLastWin32Error()})";
+                message = "file_preview.open_failed";
+                messageArguments = [err, Marshal.GetLastWin32Error()];
                 return false;
             }
         }
@@ -406,7 +413,7 @@ public static class FilePreviewLoader
             if (attrs == NativeMethods.INVALID_FILE_ATTRIBUTES)
             {
                 native.Dispose();
-                message = "Cannot read attributes";
+                message = "file_preview.attrs_failed";
                 return false;
             }
 
@@ -419,7 +426,7 @@ public static class FilePreviewLoader
             {
                 native.Dispose();
                 status = FilePreviewStatus.RemoteOrCloud;
-                message = "Reparse points, junctions, and symlinks are not previewed";
+                message = "file_preview.reparse";
                 return false;
             }
 
@@ -431,7 +438,7 @@ public static class FilePreviewLoader
             {
                 native.Dispose();
                 status = FilePreviewStatus.RemoteOrCloud;
-                message = "Online-only or placeholder files are not previewed";
+                message = "file_preview.placeholder";
                 return false;
             }
 
@@ -484,12 +491,12 @@ public static class FilePreviewLoader
                     displayName,
                     FilePreviewKind.Text,
                     FilePreviewStatus.Unsupported,
-                    decodeError ?? "Unsupported text encoding or binary content"
+                    decodeError ?? "file_preview.encoding_unsupported"
                 );
             }
 
             var status = truncated ? FilePreviewStatus.Truncated : FilePreviewStatus.Ready;
-            var message = truncated ? "Showing first 64 KiB" : null;
+            var message = truncated ? "preview.text_truncated" : null;
             return Result(path, displayName, FilePreviewKind.Text, status, message, text: text, truncated: truncated);
         }
         finally
@@ -547,7 +554,7 @@ public static class FilePreviewLoader
         }
         catch (DecoderFallbackException)
         {
-            error = "Invalid encoding or binary content";
+            error = "file_preview.encoding_invalid";
             return false;
         }
 
@@ -557,7 +564,7 @@ public static class FilePreviewLoader
         {
             if (ch == '\0')
             {
-                error = "Binary content is not previewed as text";
+                error = "file_preview.binary_text";
                 return false;
             }
 
@@ -567,7 +574,7 @@ public static class FilePreviewLoader
 
         if (text.Length > 0 && control > Math.Max(8, text.Length / 20))
         {
-            error = "Binary content is not previewed as text";
+            error = "file_preview.binary_text";
             return false;
         }
 
@@ -647,7 +654,7 @@ public static class FilePreviewLoader
                 displayName,
                 FilePreviewKind.Image,
                 FilePreviewStatus.ResourceLimited,
-                "Image exceeds 32 MiB encoded limit"
+                "file_preview.image_size_limit"
             );
         }
 
@@ -657,7 +664,7 @@ public static class FilePreviewLoader
             await CodecGate.WaitAsync(token);
             acquired = true;
             if (token.IsCancellationRequested)
-                return Result(path, displayName, FilePreviewKind.Image, FilePreviewStatus.Canceled, "Canceled");
+                return Result(path, displayName, FilePreviewKind.Image, FilePreviewStatus.Canceled, "status.canceled");
 
             stream.Position = 0;
             var ras = stream.AsRandomAccessStream();
@@ -667,7 +674,7 @@ public static class FilePreviewLoader
             var height = decoder.PixelHeight;
             if (width == 0 || height == 0)
             {
-                return Result(path, displayName, FilePreviewKind.Image, FilePreviewStatus.Unsupported, "Empty image");
+                return Result(path, displayName, FilePreviewKind.Image, FilePreviewStatus.Unsupported, "file_preview.empty_image");
             }
 
             if ((long)width * height > MaxSourcePixels)
@@ -677,7 +684,7 @@ public static class FilePreviewLoader
                     displayName,
                     FilePreviewKind.Image,
                     FilePreviewStatus.ResourceLimited,
-                    "Image exceeds 16M pixel limit"
+                    "file_preview.image_pixel_limit"
                 );
             }
 
@@ -721,7 +728,7 @@ public static class FilePreviewLoader
         }
         catch (OperationCanceledException)
         {
-            return Result(path, displayName, FilePreviewKind.Image, FilePreviewStatus.Canceled, "Canceled");
+            return Result(path, displayName, FilePreviewKind.Image, FilePreviewStatus.Canceled, "status.canceled");
         }
         catch (Exception ex)
         {
@@ -749,7 +756,7 @@ public static class FilePreviewLoader
             await CodecGate.WaitAsync(token);
             gateHeld = true;
             if (token.IsCancellationRequested)
-                return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Canceled, "Canceled");
+                return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Canceled, "status.canceled");
 
             var decode = await Task.Factory.StartNew(
                 () => VideoFirstFrameDecoder.TryDecodeFirstFramePng(handle, token),
@@ -759,7 +766,7 @@ public static class FilePreviewLoader
             );
 
             if (decode.Status == FilePreviewStatus.Canceled || token.IsCancellationRequested)
-                return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Canceled, "Canceled");
+                return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Canceled, "status.canceled");
 
             if (decode.PngBytes is { Length: > 0 } && decode.Status == FilePreviewStatus.Ready)
                 return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Ready, null, png: decode.PngBytes);
@@ -770,12 +777,13 @@ public static class FilePreviewLoader
                 displayName,
                 FilePreviewKind.Video,
                 decode.Status,
-                decode.Message ?? "Video frame unavailable"
+                decode.Message ?? "Video frame unavailable",
+                messageArguments: decode.MessageArguments
             );
         }
         catch (OperationCanceledException)
         {
-            return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Canceled, "Canceled");
+            return Result(path, displayName, FilePreviewKind.Video, FilePreviewStatus.Canceled, "status.canceled");
         }
         catch (Exception ex)
         {

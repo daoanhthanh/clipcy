@@ -17,7 +17,10 @@ public sealed partial class SettingsWindow : Window
 {
     private static SettingsWindow? _instance;
     private bool _isShowingAlreadyOpenCue;
-    private SettingsViewModel _settings;
+    private SettingsViewModel _settings = new();
+    private bool _isInitializingSettings = true;
+    private bool _isInitializingLanguageControls;
+    private string? _languageErrorDetail;
     private double _lastValidMaxHistory;
     private SystemBackdropConfiguration? _configurationSource;
     private bool _isSidebarExpanded = true;
@@ -35,6 +38,9 @@ public sealed partial class SettingsWindow : Window
     private UpdateState _updateState = new();
     private bool _isCheckingUpdates;
     private bool _isInitializingUpdateControls;
+    private string _updateStatusKey = "update.status_not_checked";
+    private object[] _updateStatusArgs = Array.Empty<object>();
+    private readonly string _rawAppVersion;
 
     // Responsive thresholds
     private const int MinWindowWidth = 500;
@@ -46,11 +52,11 @@ public sealed partial class SettingsWindow : Window
 
     private readonly ObservableCollection<string> _hotkeyParts = new();
     public ObservableCollection<string> HotkeyParts => _hotkeyParts;
-    public string AppVersion { get; private set; } = "Version";
 
     public SettingsWindow()
     {
-        AppVersion = GetBridgeAppVersion();
+        LocalizationService.Initialize();
+        _rawAppVersion = GetBridgeRawAppVersion();
         InitializeComponent();
         RootGrid.DataContext = this;
 
@@ -82,6 +88,10 @@ public sealed partial class SettingsWindow : Window
         _settings = App.Bridge?.GetSettings() ?? new SettingsViewModel();
         LoadSettingsToUI();
         InitializeUpdateState();
+        InitializeLanguageControls();
+        _isInitializingSettings = false;
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+        RefreshLocalizedState();
 
         // Subscribe to theme changes and apply initial theme
         ThemeManager.ThemeChanged += OnThemeChanged;
@@ -348,6 +358,7 @@ public sealed partial class SettingsWindow : Window
 
         // Unsubscribe from theme changes
         ThemeManager.ThemeChanged -= OnThemeChanged;
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
 
         // Unsubscribe from AppWindow.Changed
         if (AppWindow != null)
@@ -400,9 +411,17 @@ public sealed partial class SettingsWindow : Window
     private void LoadSettingsToUI()
     {
         // Skip if controls aren't loaded yet
-        if (MaxHistoryBox == null || ThemeComboBox == null || ExcludedAppsTextBox == null)
+        if (
+            MaxHistoryBox == null
+            || ThemeComboBox == null
+            || ExcludedAppsTextBox == null
+            || StartOnBootToggle == null
+            || ShowPreviewToggle == null
+            || ShowNotificationsToggle == null
+        )
             return;
 
+        _isInitializingSettings = true;
         MaxHistoryBox.Value = _settings.MaxHistoryItems;
         _lastValidMaxHistory = _settings.MaxHistoryItems;
 
@@ -422,6 +441,7 @@ public sealed partial class SettingsWindow : Window
             _ => 0, // System
         };
         ThemeComboBox.SelectedIndex = themeIndex;
+        _isInitializingSettings = false;
     }
 
     private void InitializeUpdateState()
@@ -434,15 +454,7 @@ public sealed partial class SettingsWindow : Window
             AutoUpdateToggle.IsOn = _updateState.AutoUpdateEnabled;
         }
 
-        if (UpdateStatusText != null)
-        {
-            UpdateStatusText.Text = "Update status: Not checked yet";
-        }
-
-        if (UpdateLastCheckedText != null)
-        {
-            UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
-        }
+        RefreshLocalizedState();
 
         _isInitializingUpdateControls = false;
     }
@@ -486,7 +498,122 @@ public sealed partial class SettingsWindow : Window
 
     private static string FormatLastCheckedLabel(DateTime? lastChecked)
     {
-        return lastChecked.HasValue ? $"Last checked: {lastChecked.Value:MMM d, yyyy}" : "Last checked: never";
+        return lastChecked.HasValue
+            ? LocalizationService.Format("update.last_checked", lastChecked.Value.ToString("d"))
+            : LocalizationService.Get("update.last_checked_never");
+    }
+
+    private void InitializeLanguageControls()
+    {
+        if (LanguageComboBox == null)
+            return;
+
+        _isInitializingLanguageControls = true;
+        try
+        {
+            LanguageComboBox.ItemsSource ??= LocalizationService.SupportedLanguages;
+            LanguageComboBox.SelectedValue = LocalizationService.LanguageCode;
+        }
+        finally
+        {
+            _isInitializingLanguageControls = false;
+        }
+    }
+
+    private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (
+            _isInitializingLanguageControls
+            || _isInitializingSettings
+            || LanguageComboBox?.SelectedValue is not string code
+            || code == LocalizationService.LanguageCode
+        )
+            return;
+
+        TrySetLanguage(code);
+    }
+
+    private void TrySetLanguage(string code)
+    {
+        try
+        {
+            LocalizationService.SetLanguage(code);
+            _languageErrorDetail = null;
+            if (LanguageErrorInfoBar != null)
+            {
+                LanguageErrorInfoBar.IsOpen = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _languageErrorDetail = ex.Message;
+            if (LanguageErrorInfoBar != null)
+            {
+                LanguageErrorInfoBar.Message = LocalizationService.Format(
+                    "Unable to save language preference: {0}",
+                    _languageErrorDetail
+                );
+                LanguageErrorInfoBar.IsOpen = true;
+            }
+        }
+        finally
+        {
+            InitializeLanguageControls();
+        }
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            RefreshLocalizedState();
+        }
+        else
+        {
+            DispatcherQueue.TryEnqueue(RefreshLocalizedState);
+        }
+    }
+
+    private void RefreshLocalizedState()
+    {
+        Title = LocalizationService.Get("settings.title");
+        InitializeLanguageControls();
+
+        if (AppVersionText != null)
+        {
+            AppVersionText.Text = string.IsNullOrWhiteSpace(_rawAppVersion)
+                ? LocalizationService.Get("settings.version")
+                : LocalizationService.Format("settings.version_fmt", _rawAppVersion);
+        }
+        if (UpdateLastCheckedText != null)
+        {
+            UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
+        }
+        if (UpdateStatusText != null)
+        {
+            UpdateStatusText.Text = LocalizationService.Format(_updateStatusKey, _updateStatusArgs);
+        }
+        if (CheckUpdatesButton != null)
+        {
+            Localization.SetContent(CheckUpdatesButton, _isCheckingUpdates ? "update.checking_short" : "update.check_now");
+        }
+        if (_languageErrorDetail != null && LanguageErrorInfoBar != null)
+        {
+            LanguageErrorInfoBar.Message = LocalizationService.Format(
+                "Unable to save language preference: {0}",
+                _languageErrorDetail
+            );
+        }
+    }
+
+    private void SetUpdateStatus(string key, params object[] args)
+    {
+        _updateStatusKey = key;
+        _updateStatusArgs = args;
+        if (UpdateStatusText != null)
+        {
+            UpdateStatusText.Text = LocalizationService.Format(key, args);
+        }
     }
 
     private void UpdateHotkeyDisplay(string hotkey)
@@ -670,7 +797,7 @@ public sealed partial class SettingsWindow : Window
 
     private void MaxHistoryBox_ValueChanged(NumberBox sender, NumberBoxValueChangedEventArgs args)
     {
-        if (!double.IsNaN(args.NewValue))
+        if (!_isInitializingSettings && !double.IsNaN(args.NewValue))
         {
             _settings.MaxHistoryItems = (uint)args.NewValue;
             _lastValidMaxHistory = args.NewValue;
@@ -688,18 +815,27 @@ public sealed partial class SettingsWindow : Window
 
     private void StartOnBootToggle_Toggled(object sender, RoutedEventArgs e)
     {
+        if (_isInitializingSettings || StartOnBootToggle == null)
+            return;
+
         _settings.StartOnBoot = StartOnBootToggle.IsOn;
         SaveSettings();
     }
 
     private void ShowPreviewToggle_Toggled(object sender, RoutedEventArgs e)
     {
+        if (_isInitializingSettings || ShowPreviewToggle == null)
+            return;
+
         _settings.ShowPreviewPanel = ShowPreviewToggle.IsOn;
         SaveSettings();
     }
 
     private void ShowNotificationsToggle_Toggled(object sender, RoutedEventArgs e)
     {
+        if (_isInitializingSettings || ShowNotificationsToggle == null)
+            return;
+
         _settings.ShowNotifications = ShowNotificationsToggle.IsOn;
         SaveSettings();
     }
@@ -780,7 +916,7 @@ public sealed partial class SettingsWindow : Window
 
     private void ThemeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ThemeComboBox.SelectedItem is ComboBoxItem item)
+        if (!_isInitializingSettings && ThemeComboBox?.SelectedItem is ComboBoxItem item)
         {
             var themeTag = item.Tag?.ToString() ?? "System";
             _settings.Theme = themeTag;
@@ -798,12 +934,15 @@ public sealed partial class SettingsWindow : Window
 
     private async void OpenReleasePageButton_Click(object sender, RoutedEventArgs e)
     {
-        await TryLaunchUriAsync(GitHubReleasePageUrl);
+        if (!await TryLaunchUriAsync(GitHubReleasePageUrl))
+        {
+            SetUpdateStatus("update.releases_failed");
+        }
     }
 
     private async void AutoUpdateToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (_isInitializingUpdateControls)
+        if (_isInitializingSettings || _isInitializingUpdateControls || AutoUpdateToggle == null)
             return;
 
         _updateState.AutoUpdateEnabled = AutoUpdateToggle.IsOn;
@@ -835,31 +974,25 @@ public sealed partial class SettingsWindow : Window
         _isCheckingUpdates = true;
         SetUpdateCheckingState(true);
 
-        _updateState.LastCheckedLocalDate = DateTime.Today;
-        await SaveUpdateStateAsync();
-        if (UpdateLastCheckedText != null)
-        {
-            UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
-        }
-
         try
         {
+            _updateState.LastCheckedLocalDate = DateTime.Today;
+            await SaveUpdateStateAsync();
+            if (UpdateLastCheckedText != null)
+            {
+                UpdateLastCheckedText.Text = FormatLastCheckedLabel(_updateState.LastCheckedLocalDate);
+            }
+
             var release = await GetLatestReleaseAsync();
             if (release == null)
             {
-                if (UpdateStatusText != null)
-                {
-                    UpdateStatusText.Text = "Unable to check for updates.";
-                }
+                SetUpdateStatus("update.check_failed");
                 return;
             }
 
             if (release.Draft || release.Prerelease)
             {
-                if (UpdateStatusText != null)
-                {
-                    UpdateStatusText.Text = "No stable updates available.";
-                }
+                SetUpdateStatus("update.no_stable");
                 return;
             }
 
@@ -869,19 +1002,20 @@ public sealed partial class SettingsWindow : Window
 
             if (currentVersion == null || latestVersion == null)
             {
-                if (UpdateStatusText != null)
+                if (string.IsNullOrWhiteSpace(latestVersionLabel))
                 {
-                    UpdateStatusText.Text = $"Latest release: {latestVersionLabel}";
+                    SetUpdateStatus("update.latest_release_latest");
+                }
+                else
+                {
+                    SetUpdateStatus("update.latest_release", latestVersionLabel);
                 }
                 return;
             }
 
             if (latestVersion > currentVersion)
             {
-                if (UpdateStatusText != null)
-                {
-                    UpdateStatusText.Text = $"Update available: {latestVersionLabel}";
-                }
+                SetUpdateStatus("update.available", latestVersionLabel);
 
                 if (_updateState.AutoUpdateEnabled)
                 {
@@ -894,19 +1028,13 @@ public sealed partial class SettingsWindow : Window
             }
             else
             {
-                if (UpdateStatusText != null)
-                {
-                    UpdateStatusText.Text = "You're up to date.";
-                }
+                SetUpdateStatus("update.up_to_date");
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Update check failed: {ex.Message}");
-            if (UpdateStatusText != null)
-            {
-                UpdateStatusText.Text = "Unable to check for updates.";
-            }
+            SetUpdateStatus("update.check_failed");
         }
         finally
         {
@@ -917,15 +1045,15 @@ public sealed partial class SettingsWindow : Window
 
     private void SetUpdateCheckingState(bool isChecking)
     {
-        if (UpdateStatusText != null && isChecking)
+        if (isChecking)
         {
-            UpdateStatusText.Text = "Checking for updates...";
+            SetUpdateStatus("update.checking");
         }
 
         if (CheckUpdatesButton != null)
         {
             CheckUpdatesButton.IsEnabled = !isChecking;
-            CheckUpdatesButton.Content = isChecking ? "Checking..." : "Check now";
+            Localization.SetContent(CheckUpdatesButton, isChecking ? "update.checking_short" : "update.check_now");
         }
     }
 
@@ -936,15 +1064,37 @@ public sealed partial class SettingsWindow : Window
 
         var dialog = new ContentDialog
         {
-            Title = $"Update available ({latestVersionLabel})",
-            Content = "A newer version of Clipcy is available. Would you like to download and install it?",
-            PrimaryButtonText = "Download and install",
-            SecondaryButtonText = "Auto update",
-            CloseButtonText = "Not now",
+            Title = LocalizationService.Format("update.available_title", latestVersionLabel),
+            Content = LocalizationService.Get(
+                "A newer version of Clipcy is available. Would you like to download and install it?"
+            ),
+            PrimaryButtonText = LocalizationService.Get("update.download_install"),
+            SecondaryButtonText = LocalizationService.Get("update.auto_update"),
+            CloseButtonText = LocalizationService.Get("update.not_now"),
             XamlRoot = Content.XamlRoot,
         };
 
-        var result = await dialog.ShowAsync();
+        void RefreshDialog(object? sender, EventArgs e)
+        {
+            dialog.Title = LocalizationService.Format("update.available_title", latestVersionLabel);
+            dialog.Content = LocalizationService.Get(
+                "A newer version of Clipcy is available. Would you like to download and install it?"
+            );
+            dialog.PrimaryButtonText = LocalizationService.Get("update.download_install");
+            dialog.SecondaryButtonText = LocalizationService.Get("update.auto_update");
+            dialog.CloseButtonText = LocalizationService.Get("update.not_now");
+        }
+
+        LocalizationService.LanguageChanged += RefreshDialog;
+        ContentDialogResult result;
+        try
+        {
+            result = await dialog.ShowAsync();
+        }
+        finally
+        {
+            LocalizationService.LanguageChanged -= RefreshDialog;
+        }
         if (result == ContentDialogResult.Primary)
         {
             await StartUpdateAsync(release, latestVersionLabel);
@@ -968,15 +1118,15 @@ public sealed partial class SettingsWindow : Window
         var installUrl = GetInstallAssetUrl(release);
         var targetUrl = installUrl ?? release.HtmlUrl ?? GitHubReleasePageUrl;
 
-        if (UpdateStatusText != null && installUrl == null)
+        if (installUrl == null)
         {
-            UpdateStatusText.Text = $"Update available: {latestVersionLabel}. Opening releases...";
+            SetUpdateStatus("update.available_opening", latestVersionLabel);
         }
 
         var launched = await TryLaunchUriAsync(targetUrl);
-        if (!launched && UpdateStatusText != null)
+        if (!launched)
         {
-            UpdateStatusText.Text = "Unable to launch the installer.";
+            SetUpdateStatus("update.installer_failed");
         }
     }
 
@@ -1000,7 +1150,7 @@ public sealed partial class SettingsWindow : Window
         if (!string.IsNullOrWhiteSpace(release.Name))
             return release.Name;
 
-        return "latest";
+        return string.Empty;
     }
 
     private static Version? TryParseVersion(string? value)
@@ -1125,6 +1275,7 @@ public sealed partial class SettingsWindow : Window
         SaveSettings();
         // Reset theme to default (system)
         ThemeManager.SetTheme(ThemeManager.ParseTheme(_settings.Theme));
+        TrySetLanguage(LocalizationService.SystemDefaultLanguageCode);
     }
 
     private sealed class UpdateState
@@ -1163,18 +1314,4 @@ public sealed partial class SettingsWindow : Window
         public string? BrowserDownloadUrl { get; set; }
     }
 
-    private static string GetBridgeAppVersion()
-    {
-        try
-        {
-            var version = GetBridgeRawAppVersion();
-            if (!string.IsNullOrWhiteSpace(version))
-            {
-                return $"Version {version}";
-            }
-        }
-        catch { }
-
-        return "Version";
-    }
 }

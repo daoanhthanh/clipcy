@@ -5,17 +5,47 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace Clipcy.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     public ObservableCollection<ClipboardItemViewModel> Items { get; } = new();
 
 #pragma warning disable MVVMTK0045
     [ObservableProperty]
-    private string _statusText = "Ready";
+    private string _statusText = LocalizationService.Get("main.ready");
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
 #pragma warning restore MVVMTK0045
+
+    private string _statusKey = "main.ready";
+    private object[] _statusArguments = Array.Empty<object>();
+
+    public MainViewModel()
+    {
+        LocalizationService.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void SetStatus(string key, params object[] arguments)
+    {
+        _statusKey = key;
+        _statusArguments = arguments;
+        StatusText = LocalizationService.Format(key, arguments);
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        StatusText = LocalizationService.Format(_statusKey, _statusArguments);
+        foreach (var item in Items)
+        {
+            item.RefreshLocalizedText();
+        }
+    }
+
+    public void Dispose()
+    {
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
+        GC.SuppressFinalize(this);
+    }
 
 
     public async Task RefreshHistoryAsync()
@@ -79,11 +109,11 @@ public partial class MainViewModel : ObservableObject
                 }
             }
 
-            StatusText = $"{Items.Count} items";
+            SetStatus("main.n_items", Items.Count);
         }
         catch (Exception ex)
         {
-            StatusText = $"Error: {ex.Message}";
+            SetStatus("main.error", ex.Message);
         }
     }
 
@@ -117,11 +147,11 @@ public partial class MainViewModel : ObservableObject
                 Items.Add(item);
             }
 
-            StatusText = $"{Items.Count} results";
+            SetStatus("main.n_results", Items.Count);
         }
         catch (Exception ex)
         {
-            StatusText = $"Search error: {ex.Message}";
+            SetStatus("main.search_error", ex.Message);
         }
     }
 
@@ -133,7 +163,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Paste error: {ex.Message}";
+            SetStatus("main.paste_error", ex.Message);
         }
     }
 
@@ -147,7 +177,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Pin error: {ex.Message}";
+            SetStatus("main.pin_error", ex.Message);
         }
     }
 
@@ -158,11 +188,11 @@ public partial class MainViewModel : ObservableObject
         {
             App.Bridge?.DeleteItem(item.Id);
             Items.Remove(item);
-            StatusText = $"{Items.Count} items";
+            SetStatus("main.n_items", Items.Count);
         }
         catch (Exception ex)
         {
-            StatusText = $"Delete error: {ex.Message}";
+            SetStatus("main.delete_error", ex.Message);
         }
     }
 
@@ -176,7 +206,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Clear error: {ex.Message}";
+            SetStatus("main.clear_error", ex.Message);
         }
     }
 }

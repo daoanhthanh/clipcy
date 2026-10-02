@@ -5,7 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:Clipcy"
   xmlns:controls="using:Clipcy.Controls"
-  Title="Clipcy Settings"
+  xmlns:services="using:Clipcy.Services"
 >
   <Grid x:Name="RootGrid" Background="Transparent" SizeChanged="RootGrid_SizeChanged">
     <Grid.RowDefinitions>
@@ -31,7 +31,7 @@
         </Button>
         <FontIcon Glyph="&#xE713;" FontSize="16" />
         <TextBlock
-          Text="Clipcy Settings"
+          services:Localization.Text="settings.title"
           Style="{StaticResource BodyTextBlockStyle}"
           VerticalAlignment="Center"
         />
@@ -69,21 +69,42 @@
                 MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
-                  Text="General"
+                  services:Localization.Text="settings.general"
                   Style="{StaticResource TitleTextBlockStyle}"
                   Margin="0,0,0,8"
                 />
                 <TextBlock
-                  Text="Configure basic clipboard settings"
+                  services:Localization.Text="settings.general_desc"
                   Style="{StaticResource BodyTextBlockStyle}"
                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                   Margin="0,0,0,24"
                 />
 
+                <controls:SettingsCard
+                  services:Localization.Header="settings.language"
+                  services:Localization.Description="settings.language_desc"
+                >
+                  <controls:SettingsCard.HeaderIcon>
+                    <FontIcon
+                      Glyph="&#xE775;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    />
+                  </controls:SettingsCard.HeaderIcon>
+                  <ComboBox
+                    x:Name="LanguageComboBox"
+                    MinWidth="150"
+                    DisplayMemberPath="NativeName"
+                    SelectedValuePath="Code"
+                    SelectionChanged="LanguageComboBox_SelectionChanged"
+                    VerticalAlignment="Center"
+                  />
+                </controls:SettingsCard>
+
                 <!-- Max History Items -->
                 <controls:SettingsCard
-                  Header="Maximum history items"
-                  Description="Number of clipboard items to keep (10-1000)"
+                  services:Localization.Header="settings.max_history"
+                  services:Localization.Description="settings.max_history_desc"
                 >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
@@ -106,8 +127,8 @@
 
                 <!-- Hotkey -->
                 <controls:SettingsCard
-                  Header="Keyboard shortcut"
-                  Description="Global hotkey to open clipboard history"
+                  services:Localization.Header="settings.hotkey"
+                  services:Localization.Description="settings.hotkey_desc"
                 >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
@@ -163,12 +184,12 @@
                 MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
-                  Text="Behavior"
+                  services:Localization.Text="settings.behavior"
                   Style="{StaticResource TitleTextBlockStyle}"
                   Margin="0,0,0,8"
                 />
                 <TextBlock
-                  Text="Control how Clipcy behaves"
+                  services:Localization.Text="settings.behavior_desc"
                   Style="{StaticResource BodyTextBlockStyle}"
                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                   Margin="0,0,0,24"
@@ -176,8 +197,8 @@
 
                 <!-- Start on boot -->
                 <controls:SettingsCard
-                  Header="Start on boot"
-                  Description="Launch Clipcy when Windows starts"
+                  services:Localization.Header="settings.start_on_boot"
+                  services:Localization.Description="settings.start_on_boot_desc"
                 >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
@@ -189,15 +210,15 @@
                   <ToggleSwitch
                     x:Name="StartOnBootToggle"
                     Toggled="StartOnBootToggle_Toggled"
-                    OnContent="On"
-                    OffContent="Off"
+                    services:Localization.OnContent="common.on"
+                    services:Localization.OffContent="common.off"
                   />
                 </controls:SettingsCard>
 
                 <!-- Show preview panel -->
                 <controls:SettingsCard
-                  Header="Show preview panel"
-                  Description="Display content preview in the popup"
+                  services:Localization.Header="settings.show_preview"
+                  services:Localization.Description="settings.show_preview_desc"
                 >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
@@ -209,15 +230,15 @@
                   <ToggleSwitch
                     x:Name="ShowPreviewToggle"
                     Toggled="ShowPreviewToggle_Toggled"
-                    OnContent="On"
-                    OffContent="Off"
+                    services:Localization.OnContent="common.on"
+                    services:Localization.OffContent="common.off"
                   />
                 </controls:SettingsCard>
 
                 <!-- Show notifications -->
                 <controls:SettingsCard
-                  Header="Show notifications"
-                  Description="Notify when clipboard content changes"
+                  services:Localization.Header="settings.show_notifications"
+                  services:Localization.Description="settings.show_notifications_desc"
                 >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
@@ -229,8 +250,8 @@
                   <ToggleSwitch
                     x:Name="ShowNotificationsToggle"
                     Toggled="ShowNotificationsToggle_Toggled"
-                    OnContent="On"
-                    OffContent="Off"
+                    services:Localization.OnContent="common.on"
+                    services:Localization.OffContent="common.off"
                   />
                 </controls:SettingsCard>
 
@@ -261,11 +282,11 @@
                       />
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                         <TextBlock
-                          Text="Excluded apps"
+                          services:Localization.Text="settings.excluded_apps"
                           Style="{StaticResource BodyStrongTextBlockStyle}"
                         />
                         <TextBlock
-                          Text="Disable clipboard for listed apps (one per line). Example: 'outlook.exe' or simply 'outlook'"
+                          services:Localization.Text="settings.excluded_apps_desc"
                           Style="{StaticResource CaptionTextBlockStyle}"
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                           TextWrapping="Wrap"
@@ -277,7 +298,7 @@
                     <StackPanel Margin="8,0,8,20" Spacing="8">
                       <TextBox
                         x:Name="ExcludedAppsTextBox"
-                        PlaceholderText="Example: outlook.exe"
+                        services:Localization.PlaceholderText="settings.excluded_apps_placeholder"
                         AcceptsReturn="True"
                         TextWrapping="NoWrap"
                         MinHeight="120"
@@ -299,12 +320,12 @@
                 MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
-                  Text="Appearance"
+                  services:Localization.Text="settings.appearance"
                   Style="{StaticResource TitleTextBlockStyle}"
                   Margin="0,0,0,8"
                 />
                 <TextBlock
-                  Text="Customize the look and feel"
+                  services:Localization.Text="settings.appearance_desc"
                   Style="{StaticResource BodyTextBlockStyle}"
                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                   Margin="0,0,0,24"
@@ -312,8 +333,8 @@
 
                 <!-- Theme -->
                 <controls:SettingsCard
-                  Header="App theme"
-                  Description="Choose between light, dark, or system theme"
+                  services:Localization.Header="settings.theme"
+                  services:Localization.Description="settings.theme_desc"
                 >
                   <controls:SettingsCard.HeaderIcon>
                     <FontIcon
@@ -329,9 +350,9 @@
                     VerticalAlignment="Center"
                     Margin="4 0 0 0"
                   >
-                    <ComboBoxItem Content="Use system setting" Tag="System" />
-                    <ComboBoxItem Content="Light" Tag="Light" />
-                    <ComboBoxItem Content="Dark" Tag="Dark" />
+                    <ComboBoxItem services:Localization.Content="settings.theme_system" Tag="System" />
+                    <ComboBoxItem services:Localization.Content="settings.theme_light" Tag="Light" />
+                    <ComboBoxItem services:Localization.Content="settings.theme_dark" Tag="Dark" />
                   </ComboBox>
                 </controls:SettingsCard>
               </StackPanel>
@@ -345,12 +366,12 @@
                 MaxWidth="{Binding ElementName=ContentHost, Path=ActualWidth}"
               >
                 <TextBlock
-                  Text="About"
+                  services:Localization.Text="settings.about"
                   Style="{StaticResource TitleTextBlockStyle}"
                   Margin="0,0,0,8"
                 />
                 <TextBlock
-                  Text="Application information"
+                  services:Localization.Text="settings.about_desc"
                   Style="{StaticResource BodyTextBlockStyle}"
                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                   Margin="0,0,0,24"
@@ -387,14 +408,13 @@
                         />
                         <TextBlock
                           x:Name="UpdateLastCheckedText"
-                          Text="Last checked: never"
                           Style="{StaticResource CaptionTextBlockStyle}"
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         />
                       </StackPanel>
                       <TextBlock
                         Grid.Column="2"
-                        Text="{x:Bind AppVersion, Mode=OneWay}"
+                        x:Name="AppVersionText"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                         VerticalAlignment="Center"
@@ -406,25 +426,24 @@
                     <StackPanel Spacing="12" Margin="8,12,8,20">
                       <TextBlock
                         x:Name="UpdateStatusText"
-                        Text="Update status: Not checked yet"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                       />
                       <StackPanel Orientation="Horizontal" Spacing="8">
                         <Button
                           x:Name="CheckUpdatesButton"
-                          Content="Check now"
+                          services:Localization.Content="update.check_now"
                           Click="CheckUpdatesButton_Click"
                         />
                         <Button
                           x:Name="OpenReleasePageButton"
-                          Content="GitHub releases"
+                          services:Localization.Content="update.github_releases"
                           Click="OpenReleasePageButton_Click"
                         />
                       </StackPanel>
                       <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock
-                          Text="Auto update"
+                          services:Localization.Text="update.auto_update"
                           Style="{StaticResource CaptionTextBlockStyle}"
                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                           VerticalAlignment="Center"
@@ -432,7 +451,7 @@
                         <ToggleSwitch
                           x:Name="AutoUpdateToggle"
                           Toggled="AutoUpdateToggle_Toggled"
-                          OnContent="Check GitHub releases once per day"
+                          services:Localization.OnContent="update.auto_update_desc"
                           OffContent=""
                         />
                       </StackPanel>
@@ -442,6 +461,14 @@
               </StackPanel>
             </Grid>
           </ScrollViewer>
+          <InfoBar
+            x:Name="LanguageErrorInfoBar"
+            Grid.Row="1"
+            Margin="24,0,24,24"
+            IsOpen="False"
+            Severity="Error"
+            IsClosable="True"
+          />
         </Grid>
       </Grid>
 
@@ -482,35 +509,35 @@
           <ListViewItem Tag="General">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <FontIcon Glyph="&#xE115;" FontSize="16" />
-              <TextBlock Text="General" VerticalAlignment="Center" />
+              <TextBlock services:Localization.Text="settings.general" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
 
           <ListViewItem Tag="Behavior">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <FontIcon Glyph="&#xE9E9;" FontSize="16" />
-              <TextBlock Text="Behavior" VerticalAlignment="Center" />
+              <TextBlock services:Localization.Text="settings.behavior" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
 
           <ListViewItem Tag="Appearance">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <FontIcon Glyph="&#xE790;" FontSize="16" />
-              <TextBlock Text="Appearance" VerticalAlignment="Center" />
+              <TextBlock services:Localization.Text="settings.appearance" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
 
           <ListViewItem Tag="About">
             <StackPanel Orientation="Horizontal" Spacing="14">
               <FontIcon Glyph="&#xE946;" FontSize="16" />
-              <TextBlock Text="About" VerticalAlignment="Center" />
+              <TextBlock services:Localization.Text="settings.about" VerticalAlignment="Center" />
             </StackPanel>
           </ListViewItem>
         </ListView>
 
         <!-- Reset button at bottom of sidebar -->
         <Button
-          Content="Reset to Defaults"
+          services:Localization.Content="settings.reset_defaults"
           Grid.Row="1"
           Margin="16,8,16,16"
           HorizontalAlignment="Stretch"

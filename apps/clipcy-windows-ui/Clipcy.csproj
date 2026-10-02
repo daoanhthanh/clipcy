@@ -68,6 +68,13 @@
     <TrimmerRootDescriptor Include="LinkerDescriptors.xml" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Localization\*.json">
+      <LogicalName>Clipcy.Localization.%(Filename)%(Extension)</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <!-- Copy Rust DLL to output directory -->
   <ItemGroup>
     <Content

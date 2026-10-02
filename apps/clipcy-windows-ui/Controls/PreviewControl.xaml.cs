@@ -29,6 +29,11 @@ public sealed partial class PreviewControl : UserControl
     private static readonly Regex HtmlBreakRegex = new("<br\\s*/?>", RegexOptions.IgnoreCase);
 
     private bool _suppressSelectionEvents;
+    private bool _isLanguageSubscribed;
+    private string _displayType = "common.loading";
+    private string _fileStatusKey = string.Empty;
+    private FilePreviewResult? _statusPreview;
+    private string? _statusFallback;
 
     public static readonly DependencyProperty PreviewDataProperty = DependencyProperty.Register(
         nameof(PreviewData),
@@ -61,6 +66,79 @@ public sealed partial class PreviewControl : UserControl
     public PreviewControl()
     {
         this.InitializeComponent();
+        ContentTypeText.Text = LocalizationService.Get("common.loading");
+        UpdateAccessibilityNames();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
+    }
+
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!_isLanguageSubscribed)
+        {
+            LocalizationService.LanguageChanged += OnLanguageChanged;
+            _isLanguageSubscribed = true;
+        }
+        OnLanguageChanged(this, EventArgs.Empty);
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        if (_isLanguageSubscribed)
+        {
+            LocalizationService.LanguageChanged -= OnLanguageChanged;
+            _isLanguageSubscribed = false;
+        }
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        UpdateAccessibilityNames();
+        UpdateContentTypeLabel();
+        if (PreviewData is { } data)
+        {
+            UpdateMetadata(data);
+            UpdateFileCount(data.FilePaths?.Count ?? 0);
+            if (FileStatusText.Visibility == Visibility.Visible)
+            {
+                FileStatusText.Text = _statusPreview == null
+                    ? LocalizationService.Get(_fileStatusKey)
+                    : _statusFallback == null
+                        ? FormatStatus(_statusPreview)
+                        : GetStatusMessage(_statusPreview, _statusFallback);
+            }
+            if (data.PreviewType == "RichText"
+                && PreviewText.Visibility == Visibility.Visible
+                && (data.TextContent == null || data.TextContent == "[RTF Content]"))
+            {
+                PreviewText.Text = LocalizationService.Get("content.rtf_placeholder");
+            }
+        }
+    }
+
+    private void UpdateAccessibilityNames()
+    {
+        AutomationProperties.SetName(FileSelector, LocalizationService.Get("preview.selected_file"));
+        AutomationProperties.SetName(AudioSymbol, LocalizationService.Get("preview.audio_file"));
+    }
+
+    private void UpdateContentTypeLabel()
+    {
+        ContentTypeText.Text = LocalizationService.Get(_displayType switch
+        {
+            "Html" => "content.html",
+            "RichText" => "content.rich_text",
+            "Text" => "content.text",
+            "Image" => "content.image",
+            "Files" => "content.files",
+            "Table" => "content.table",
+            "Video" => "content.video",
+            "Audio" => "content.audio",
+            "Folder" => "content.folder",
+            "Other" => "content.other",
+            _ => _displayType,
+        });
     }
 
     private static void OnPreviewDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -81,6 +159,7 @@ public sealed partial class PreviewControl : UserControl
         FileSelectorRow.Visibility = Visibility.Collapsed;
         FileNameText.Visibility = Visibility.Collapsed;
         FileNameText.Text = string.Empty;
+        _displayType = string.Empty;
         ContentTypeText.Text = string.Empty;
         MetadataText.Text = string.Empty;
         SourceAppRow.Visibility = Visibility.Collapsed;
@@ -97,6 +176,9 @@ public sealed partial class PreviewControl : UserControl
         AudioIconPanel.Visibility = Visibility.Collapsed;
         FileStatusText.Visibility = Visibility.Collapsed;
         FileStatusText.Text = string.Empty;
+        _fileStatusKey = string.Empty;
+        _statusPreview = null;
+        _statusFallback = null;
     }
 
 
@@ -144,13 +226,15 @@ public sealed partial class PreviewControl : UserControl
                     }
                     catch
                     {
-                        PreviewText.Text = data.TextContent ?? "[RTF Content]";
+                        PreviewText.Text = data.TextContent == null || data.TextContent == "[RTF Content]"
+                            ? LocalizationService.Get("content.rtf_placeholder") : data.TextContent;
                         PreviewText.Visibility = Visibility.Visible;
                     }
                 }
                 else
                 {
-                    PreviewText.Text = data.TextContent ?? "[RTF Content]";
+                    PreviewText.Text = data.TextContent == null || data.TextContent == "[RTF Content]"
+                        ? LocalizationService.Get("content.rtf_placeholder") : data.TextContent;
                     PreviewText.Visibility = Visibility.Visible;
                 }
                 break;
@@ -160,7 +244,8 @@ public sealed partial class PreviewControl : UserControl
                 break;
         }
 
-        ContentTypeText.Text = displayType;
+        _displayType = displayType;
+        UpdateContentTypeLabel();
         UpdateMetadata(data);
     }
 
@@ -174,7 +259,7 @@ public sealed partial class PreviewControl : UserControl
         {
             if (data.IsFilePreviewLoading)
             {
-                ShowFileStatus("Loading…");
+                ShowFileStatus("preview.loading_ellipsis");
             }
             else if (!string.IsNullOrEmpty(data.TextContent))
             {
@@ -184,7 +269,7 @@ public sealed partial class PreviewControl : UserControl
             }
             else
             {
-                ShowFileStatus("File paths unavailable");
+                ShowFileStatus("preview.paths_unavailable");
             }
 
             displayType = "Files";
@@ -200,7 +285,7 @@ public sealed partial class PreviewControl : UserControl
 
         if (data.IsFilePreviewLoading && data.FilePreview is null)
         {
-            ShowFileStatus("Loading preview…");
+            ShowFileStatus("preview.loading");
             displayType = "Files";
             return;
         }
@@ -208,18 +293,18 @@ public sealed partial class PreviewControl : UserControl
         var preview = data.FilePreview;
         if (preview is null)
         {
-            ShowFileStatus("No preview");
+            ShowFileStatus("preview.none");
             displayType = "Files";
             return;
         }
 
         displayType = preview.Kind switch
         {
-            FilePreviewKind.Image => "Files · Image",
-            FilePreviewKind.Text => "Files · Text",
-            FilePreviewKind.Video => "Files · Video",
-            FilePreviewKind.Audio => "Files · Audio",
-            FilePreviewKind.Folder => "Files · Folder",
+            FilePreviewKind.Image => "preview.files_image",
+            FilePreviewKind.Text => "preview.files_text",
+            FilePreviewKind.Video => "preview.files_video",
+            FilePreviewKind.Audio => "preview.files_audio",
+            FilePreviewKind.Folder => "preview.files_folder",
             _ => "Files",
         };
 
@@ -232,17 +317,28 @@ public sealed partial class PreviewControl : UserControl
             case FilePreviewStatus.Loading:
             case FilePreviewStatus.Canceled:
                 // Canceled stays quiet; a newer request should replace this.
-                ShowFileStatus("Loading preview…");
+                ShowFileStatus("preview.loading");
                 break;
             default:
-                ShowFileStatus(FormatStatus(preview));
+                ShowPreviewStatus(preview);
                 break;
         }
     }
 
     private void ShowFileStatus(string message)
     {
-        FileStatusText.Text = message;
+        _fileStatusKey = message;
+        _statusPreview = null;
+        _statusFallback = null;
+        FileStatusText.Text = LocalizationService.Get(message);
+        FileStatusText.Visibility = Visibility.Visible;
+    }
+
+    private void ShowPreviewStatus(FilePreviewResult preview, string? fallback = null)
+    {
+        _statusPreview = preview;
+        _statusFallback = fallback;
+        FileStatusText.Text = fallback == null ? FormatStatus(preview) : GetStatusMessage(preview, fallback);
         FileStatusText.Visibility = Visibility.Visible;
     }
 
@@ -259,7 +355,7 @@ public sealed partial class PreviewControl : UserControl
                 }
                 else
                 {
-                    ShowFileStatus(preview.StatusMessage ?? "Image unavailable");
+                    ShowPreviewStatus(preview, "preview.image_unavailable");
                 }
                 break;
 
@@ -267,7 +363,7 @@ public sealed partial class PreviewControl : UserControl
                 PreviewText.Text = preview.TextContent ?? string.Empty;
                 PreviewText.Visibility = Visibility.Visible;
                 if (preview.IsTruncated || preview.Status == FilePreviewStatus.Truncated)
-                    ShowFileStatus(preview.StatusMessage ?? "Showing first 64 KiB");
+                    ShowPreviewStatus(preview, "preview.text_truncated");
                 break;
 
             case FilePreviewKind.Audio:
@@ -276,7 +372,7 @@ public sealed partial class PreviewControl : UserControl
                 break;
 
             default:
-                ShowFileStatus(FormatStatus(preview));
+                ShowPreviewStatus(preview);
                 break;
         }
     }
@@ -286,16 +382,29 @@ public sealed partial class PreviewControl : UserControl
     {
         var baseMsg = preview.Status switch
         {
-            FilePreviewStatus.Unavailable => "Unavailable",
-            FilePreviewStatus.Unsupported => "Unsupported",
-            FilePreviewStatus.RemoteOrCloud => "Remote/cloud path not previewed",
-            FilePreviewStatus.ResourceLimited => "Resource limit",
-            FilePreviewStatus.Truncated => "Truncated",
-            _ => preview.Status.ToString(),
+            FilePreviewStatus.Unavailable => "status.unavailable",
+            FilePreviewStatus.Unsupported => "status.unsupported",
+            FilePreviewStatus.RemoteOrCloud => "status.remote_or_cloud",
+            FilePreviewStatus.ResourceLimited => "status.resource_limit",
+            FilePreviewStatus.Truncated => "status.truncated",
+            FilePreviewStatus.Ready => "main.ready",
+            FilePreviewStatus.Loading => "preview.loading_ellipsis",
+            FilePreviewStatus.Canceled => "status.canceled",
+            _ => "status.unavailable",
         };
+        var localizedBase = LocalizationService.Get(baseMsg);
         if (!string.IsNullOrWhiteSpace(preview.StatusMessage))
-            return $"{baseMsg}: {preview.StatusMessage}";
-        return baseMsg;
+            return LocalizationService.Format("common.pair", localizedBase, GetStatusMessage(preview, baseMsg));
+        return localizedBase;
+    }
+
+    private static string GetStatusMessage(FilePreviewResult preview, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(preview.StatusMessage))
+            return LocalizationService.Get(fallback);
+        return preview.StatusMessageArguments is { } arguments
+            ? LocalizationService.Format(preview.StatusMessage, arguments)
+            : LocalizationService.Get(preview.StatusMessage);
     }
 
     private void BindFileSelector(PreviewData data)
@@ -322,7 +431,7 @@ public sealed partial class PreviewControl : UserControl
 
             var idx = Math.Clamp(data.SelectedFileIndex, 0, paths.Count - 1);
             FileSelector.SelectedIndex = idx;
-            FileCountText.Text = paths.Count == 1 ? "1 file" : $"{paths.Count} files";
+            UpdateFileCount(paths.Count);
             // Multi-file only: single file uses FileNameText instead.
             FileSelectorRow.Visibility = paths.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -330,6 +439,13 @@ public sealed partial class PreviewControl : UserControl
         {
             _suppressSelectionEvents = false;
         }
+    }
+
+    private void UpdateFileCount(int count)
+    {
+        FileCountText.Text = count == 1
+            ? LocalizationService.Get("preview.one_file")
+            : LocalizationService.Format("preview.n_files", count);
     }
 
 
@@ -356,8 +472,7 @@ public sealed partial class PreviewControl : UserControl
         {
             PreviewImage.Source = null;
             PreviewImageBorder.Visibility = Visibility.Collapsed;
-            FileStatusText.Text = "Failed to render image";
-            FileStatusText.Visibility = Visibility.Visible;
+            ShowFileStatus("preview.render_image_failed");
         }
     }
 
@@ -558,8 +673,8 @@ public sealed partial class PreviewControl : UserControl
 
         if (!string.IsNullOrEmpty(data.RelativeTime))
         {
-            var displayTime = GetDisplayTime(data.RelativeTime, data.CreatedAtTimestamp);
-            metadata.AppendLine($"Copied: {displayTime}");
+            var displayTime = GetDisplayTime(data.CreatedAtTimestamp);
+            metadata.AppendLine(LocalizationService.Format("preview.copied", displayTime));
         }
 
         switch (data.PreviewType)
@@ -570,7 +685,7 @@ public sealed partial class PreviewControl : UserControl
                     sizeBytes = (data.Thumbnail?.Length ?? 0);
                 if (sizeBytes > 0)
                 {
-                    metadata.AppendLine($"Size: {sizeBytes / 1024.0:N1} KB");
+                    metadata.AppendLine(LocalizationService.Format("preview.size_kb", sizeBytes / 1024.0));
                 }
                 break;
             case "Files":
@@ -580,13 +695,13 @@ public sealed partial class PreviewControl : UserControl
                         ? data.TextContent.Split('\n').Count(f => !string.IsNullOrWhiteSpace(f))
                         : 0);
                 if (count > 0)
-                    metadata.AppendLine($"Files: {count}");
+                    metadata.AppendLine(LocalizationService.Format("preview.files_count", count));
 
                 if (data.FilePreview is { } fp)
                 {
-                    metadata.AppendLine($"Kind: {fp.Kind}");
+                    metadata.AppendLine(LocalizationService.Format("preview.kind", GetFileKindLabel(fp.Kind)));
                     if (fp.IsTruncated || fp.Status == FilePreviewStatus.Truncated)
-                        metadata.AppendLine("Truncated preview");
+                        metadata.AppendLine(LocalizationService.Get("preview.truncated_label"));
                     if (fp.Status is FilePreviewStatus.Unsupported
                         or FilePreviewStatus.Unavailable
                         or FilePreviewStatus.RemoteOrCloud
@@ -632,26 +747,34 @@ public sealed partial class PreviewControl : UserControl
         }
     }
 
-    private string GetDisplayTime(string relativeTime, ulong timestamp)
+    private static string GetDisplayTime(ulong timestamp)
     {
         var dateTime = DateTimeOffset.FromUnixTimeSeconds((long)timestamp).ToLocalTime();
-        var timeFormat = dateTime.ToString("HH:mm");
+        var diff = DateTimeOffset.Now - dateTime;
+        if (diff.TotalDays >= 4)
+            return dateTime.ToString("g");
 
-        if (relativeTime == "just now" || relativeTime.Contains("m ago") || relativeTime.Contains("h ago"))
+        var relativeTime = diff.TotalMinutes switch
         {
-            return $"{relativeTime}, {timeFormat}";
-        }
+            < 1 => LocalizationService.Get("time.just_now"),
+            < 60 => LocalizationService.Format("time.m_ago", (int)diff.TotalMinutes),
+            < 1440 => LocalizationService.Format("time.h_ago", (int)diff.TotalHours),
+            _ => LocalizationService.Format("time.d_ago", (int)diff.TotalDays),
+        };
+        return LocalizationService.Format("common.list_pair", relativeTime, dateTime.ToString("t"));
+    }
 
-        if (relativeTime.Contains("d ago"))
+    private static string GetFileKindLabel(FilePreviewKind kind)
+    {
+        return LocalizationService.Get(kind switch
         {
-            var daysPart = relativeTime.Replace("d ago", "").Trim();
-            if (int.TryParse(daysPart, out int days) && days <= 3)
-            {
-                return $"{relativeTime}, {timeFormat}";
-            }
-        }
-
-        return dateTime.ToString("yyyy-MM-dd HH:mm");
+            FilePreviewKind.Image => "content.image",
+            FilePreviewKind.Text => "content.text",
+            FilePreviewKind.Video => "content.video",
+            FilePreviewKind.Audio => "content.audio",
+            FilePreviewKind.Folder => "content.folder",
+            _ => "content.other",
+        });
     }
 
     private static string GetFileNameSafe(string path)

@@ -481,7 +481,7 @@ public class PreviewService : IPreviewService
         {
             data.IsFilePreviewLoading = false;
             data.FilePaths = Array.Empty<string>();
-            data.FilePreview = UnavailableFileResult("Empty path list");
+            data.FilePreview = UnavailableFileResult("file_preview.empty_path_list");
             _previewControl?.Refresh();
             return;
         }
@@ -533,7 +533,7 @@ public class PreviewService : IPreviewService
                     popupId,
                     fileReq,
                     selectedIndex,
-                    UnavailableFileResult("Invalid selection")
+                    UnavailableFileResult("file_preview.invalid_selection")
                 );
                 return;
             }

@@ -43,6 +43,7 @@ public class TrayService : IDisposable
     {
         _mainWindow = mainWindow;
         InitializeTrayIcon();
+        LocalizationService.LanguageChanged += OnLanguageChanged;
 
         // Keep native menu theme in sync with app/system theme
         ThemeManager.ThemeChanged += OnThemeChanged;
@@ -66,7 +67,7 @@ public class TrayService : IDisposable
 
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
-            Text = "Show Clipcy",
+            Text = LocalizationService.Get("tray.show"),
             Command = new RelayCommand(ShowMainWindow),
         });
 
@@ -74,13 +75,13 @@ public class TrayService : IDisposable
 
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
-            Text = "Clear History",
+            Text = LocalizationService.Get("tray.clear_history"),
             Command = new RelayCommand(ClearHistory),
         });
 
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
-            Text = "Settings",
+            Text = LocalizationService.Get("common.settings"),
             Command = new RelayCommand(OpenSettings),
         });
 
@@ -88,13 +89,13 @@ public class TrayService : IDisposable
 
         _contextMenu.Items.Add(new MenuFlyoutItem
         {
-            Text = "Exit",
+            Text = LocalizationService.Get("tray.exit"),
             Command = new RelayCommand(ExitApplication),
         });
 
         _trayIcon = new TaskbarIcon
         {
-            ToolTipText = "Clipcy - Clipboard Manager",
+            ToolTipText = LocalizationService.Get("tray.tooltip"),
             // Native Win32 popup menu (default); SecondWindow was a WinUI flyout chrome.
             ContextMenuMode = ContextMenuMode.PopupMenu,
             ContextFlyout = _contextMenu,
@@ -110,6 +111,18 @@ public class TrayService : IDisposable
 
         // Force create to show the icon immediately
         _trayIcon.ForceCreate();
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        if (_trayIcon == null || _contextMenu == null)
+            return;
+
+        ((MenuFlyoutItem)_contextMenu.Items[0]).Text = LocalizationService.Get("tray.show");
+        ((MenuFlyoutItem)_contextMenu.Items[2]).Text = LocalizationService.Get("tray.clear_history");
+        ((MenuFlyoutItem)_contextMenu.Items[3]).Text = LocalizationService.Get("common.settings");
+        ((MenuFlyoutItem)_contextMenu.Items[5]).Text = LocalizationService.Get("tray.exit");
+        _trayIcon.ToolTipText = LocalizationService.Get("tray.tooltip");
     }
 
     private void OnThemeChanged(AppTheme theme)
@@ -285,7 +298,7 @@ public class TrayService : IDisposable
     {
         _trayIcon?.ShowNotification(
             "Clipcy",
-            message,
+            LocalizationService.Get(message),
             NotificationIcon.Info,
             customIconHandle: null,
             largeIcon: false,
@@ -333,6 +346,7 @@ public class TrayService : IDisposable
 
         // Unsubscribe from theme changes
         ThemeManager.ThemeChanged -= OnThemeChanged;
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
 
         if (App.Bridge != null)
         {

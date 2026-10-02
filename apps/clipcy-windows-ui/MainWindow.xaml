@@ -25,7 +25,7 @@
       x:Name="SearchBox"
       Grid.Row="0"
       Margin="4,4,4,4"
-      PlaceholderText="Search clipboard history..."
+      services:Localization.PlaceholderText="main.search_placeholder"
       TextChanged="SearchBox_TextChanged"
       GotFocus="SearchBox_GotFocus"
       BorderThickness="0"
@@ -70,7 +70,7 @@
                   Click="PinUnpinMenuItem_Click"
                 />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Delete" Click="DeleteMenuItem_Click" />
+                <MenuFlyoutItem services:Localization.Text="common.delete" Click="DeleteMenuItem_Click" />
               </MenuFlyout>
             </Grid.ContextFlyout>
 
@@ -160,7 +160,7 @@
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
         <Button
-          Content="Settings"
+          services:Localization.Content="common.settings"
           Click="SettingsButton_Click"
           Style="{StaticResource SubtleButtonStyle}"
           FontSize="11"

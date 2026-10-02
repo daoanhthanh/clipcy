@@ -46,6 +46,8 @@ public partial class App : Application
     {
         InitializeConsole();
 
+        LocalizationService.Initialize();
+
         // Initialize the Rust bridge
         try
         {

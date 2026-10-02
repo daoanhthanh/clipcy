@@ -23,17 +23,18 @@ internal static class VideoFirstFrameDecoder
         Native.MFVideoFormat_YUY2,
     ];
 
-    internal readonly record struct DecodeOutcome(FilePreviewStatus Status, string? Message, byte[]? PngBytes);
+    internal readonly record struct DecodeOutcome(
+        FilePreviewStatus Status, string? Message, byte[]? PngBytes, object[]? MessageArguments = null);
 
     public static DecodeOutcome TryDecodeFirstFramePng(SafeFileHandle fileHandle, CancellationToken token)
     {
         if (fileHandle.IsInvalid || fileHandle.IsClosed)
-            return new(FilePreviewStatus.Unavailable, "Invalid file handle", null);
+            return new(FilePreviewStatus.Unavailable, "file_preview.invalid_handle", null);
 
         var hrCo = Native.CoInitializeEx(IntPtr.Zero, Native.COINIT_MULTITHREADED);
         var weInitializedCom = hrCo == Native.S_OK;
         if (hrCo < 0 && hrCo != Native.RPC_E_CHANGED_MODE && hrCo != Native.S_FALSE)
-            return new(FilePreviewStatus.Unavailable, $"CoInitializeEx failed: 0x{hrCo:X8}", null);
+            return new(FilePreviewStatus.Unavailable, "file_preview.coinit_failed", null, [hrCo]);
 
         var mfStarted = false;
         IntPtr reader = IntPtr.Zero;
@@ -45,11 +46,11 @@ internal static class VideoFirstFrameDecoder
         try
         {
             if (token.IsCancellationRequested)
-                return new(FilePreviewStatus.Canceled, "Canceled", null);
+                return new(FilePreviewStatus.Canceled, "status.canceled", null);
 
             var hr = Native.MFStartup(Native.MF_VERSION, Native.MFSTARTUP_FULL);
             if (hr < 0)
-                return new(FilePreviewStatus.Unavailable, $"MFStartup failed: 0x{hr:X8}", null);
+                return new(FilePreviewStatus.Unavailable, "file_preview.mfstartup_failed", null, [hr]);
             mfStarted = true;
 
             if (!Native.DuplicateHandle(
@@ -62,7 +63,7 @@ internal static class VideoFirstFrameDecoder
                     Native.DUPLICATE_SAME_ACCESS
                 ))
             {
-                return new(FilePreviewStatus.Unavailable, $"DuplicateHandle failed: {Marshal.GetLastWin32Error()}", null);
+                return new(FilePreviewStatus.Unavailable, "file_preview.dup_handle_failed", null, [Marshal.GetLastWin32Error()]);
             }
 
             dup = new SafeFileHandle(dupHandle, ownsHandle: true);
@@ -88,14 +89,14 @@ internal static class VideoFirstFrameDecoder
             }
 
             if (hr < 0 || byteStream == IntPtr.Zero)
-                return new(FilePreviewStatus.Unavailable, $"MFCreateMFByteStreamOnStream failed: 0x{hr:X8}", null);
+                return new(FilePreviewStatus.Unavailable, "file_preview.mf_bytestream_failed", null, [hr]);
 
             Native.IMFByteStream_SetCurrentPosition(byteStream, 0);
 
             // Enable color conversion / video processing so RGB32 output is available.
             hr = Native.MFCreateAttributes(out var readerAttrs, 2);
             if (hr < 0 || readerAttrs == IntPtr.Zero)
-                return new(FilePreviewStatus.Unavailable, $"MFCreateAttributes failed: 0x{hr:X8}", null);
+                return new(FilePreviewStatus.Unavailable, "file_preview.mf_attrs_failed", null, [hr]);
             try
             {
                 Native.IMFAttributes_SetUINT32(readerAttrs, Native.MF_SOURCE_READER_ENABLE_VIDEO_PROCESSING, 1);
@@ -107,13 +108,13 @@ internal static class VideoFirstFrameDecoder
             }
 
             if (hr < 0 || reader == IntPtr.Zero)
-                return new(FilePreviewStatus.Unavailable, $"Source reader failed: 0x{hr:X8}", null);
+                return new(FilePreviewStatus.Unavailable, "file_preview.source_reader_failed", null, [hr]);
 
             Native.IMFSourceReader_SetStreamSelection(reader, Native.MF_SOURCE_READER_ALL_STREAMS, false);
 
             var videoStream = FindFirstVideoStream(reader);
             if (videoStream < 0)
-                return new(FilePreviewStatus.Unsupported, "No video stream", null);
+                return new(FilePreviewStatus.Unsupported, "file_preview.no_video_stream", null);
 
             Native.IMFSourceReader_SetStreamSelection(reader, videoStream, true);
 
@@ -130,7 +131,7 @@ internal static class VideoFirstFrameDecoder
                 }
             }
             if (hrType < 0)
-                return new(FilePreviewStatus.Unsupported, $"Cannot negotiate decoded video type: 0x{hrType:X8}", null);
+                return new(FilePreviewStatus.Unsupported, "file_preview.video_type_failed", null, [hrType]);
 
             uint width = 0, height = 0;
             int defaultStride = 0;
@@ -154,18 +155,18 @@ internal static class VideoFirstFrameDecoder
             }
 
             if (width == 0 || height == 0)
-                return new(FilePreviewStatus.Unsupported, "Unknown frame size", null);
+                return new(FilePreviewStatus.Unsupported, "file_preview.unknown_frame_size", null);
             if ((long)width * height > MaxSourcePixels)
-                return new(FilePreviewStatus.ResourceLimited, "Video exceeds 16M pixel limit", null);
+                return new(FilePreviewStatus.ResourceLimited, "file_preview.video_pixel_limit", null);
 
             var started = Environment.TickCount64;
             for (var calls = 0; calls < MaxReadSampleCalls; calls++)
             {
                 if (token.IsCancellationRequested)
-                    return new(FilePreviewStatus.Canceled, "Canceled", null);
+                    return new(FilePreviewStatus.Canceled, "status.canceled", null);
 
                 if (Environment.TickCount64 - started > MaxElapsed.TotalMilliseconds)
-                    return new(FilePreviewStatus.ResourceLimited, "Video decode time budget exceeded", null);
+                    return new(FilePreviewStatus.ResourceLimited, "file_preview.video_time_budget", null);
 
                 hr = Native.IMFSourceReader_ReadSample(
                     reader,
@@ -178,13 +179,13 @@ internal static class VideoFirstFrameDecoder
                 );
 
                 if (hr < 0)
-                    return new(FilePreviewStatus.Unavailable, $"ReadSample failed: 0x{hr:X8}", null);
+                    return new(FilePreviewStatus.Unavailable, "file_preview.read_sample_failed", null, [hr]);
 
                 if ((flags & Native.MF_SOURCE_READERF_ENDOFSTREAM) != 0)
                 {
                     if (sample != IntPtr.Zero)
                         Marshal.Release(sample);
-                    return new(FilePreviewStatus.Unsupported, "No decoded video sample", null);
+                    return new(FilePreviewStatus.Unsupported, "file_preview.no_video_sample", null);
                 }
 
                 if ((flags & Native.MF_SOURCE_READERF_CURRENTMEDIATYPECHANGED) != 0)
@@ -198,7 +199,7 @@ internal static class VideoFirstFrameDecoder
                             {
                                 if (sample != IntPtr.Zero)
                                     Marshal.Release(sample);
-                                return new(FilePreviewStatus.ResourceLimited, "Invalid frame size after type change", null);
+                                return new(FilePreviewStatus.ResourceLimited, "file_preview.frame_size_after_change", null);
                             }
                         }
                         finally
@@ -215,7 +216,7 @@ internal static class VideoFirstFrameDecoder
                 {
                     var png = SampleToPng(sample, width, height, defaultStride, outputSubtype, token);
                     if (png is null)
-                        return new(FilePreviewStatus.Unavailable, "Failed to encode frame", null);
+                        return new(FilePreviewStatus.Unavailable, "file_preview.encode_frame_failed", null);
                     return new(FilePreviewStatus.Ready, null, png);
                 }
                 finally
@@ -224,11 +225,11 @@ internal static class VideoFirstFrameDecoder
                 }
             }
 
-            return new(FilePreviewStatus.ResourceLimited, "ReadSample call budget exceeded", null);
+            return new(FilePreviewStatus.ResourceLimited, "file_preview.read_sample_budget", null);
         }
         catch (OperationCanceledException)
         {
-            return new(FilePreviewStatus.Canceled, "Canceled", null);
+            return new(FilePreviewStatus.Canceled, "status.canceled", null);
         }
         catch (Exception ex)
         {

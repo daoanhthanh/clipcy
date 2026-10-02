@@ -80,3 +80,4 @@ apps/clipcy-windows-ui/Bindings/*.cs
 *node_modules/
 tasks/
 .claude
+**/binTempVerify

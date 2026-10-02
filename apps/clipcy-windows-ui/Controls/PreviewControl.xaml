@@ -52,7 +52,6 @@
           FontSize="13"
           FontWeight="SemiBold"
           Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-          Text="Loading..."
         />
 
         <!-- Multi-file selector (Files only; hidden for single file) -->
@@ -67,7 +66,6 @@
             HorizontalAlignment="Stretch"
             IsEditable="False"
             SelectionChanged="FileSelector_SelectionChanged"
-            AutomationProperties.Name="Selected file"
           />
           <TextBlock
             x:Name="FileCountText"
@@ -155,7 +153,6 @@
               Symbol="Audio"
               Width="48"
               Height="48"
-              AutomationProperties.Name="Audio file"
             />
             <TextBlock
               x:Name="AudioFileNameText"
@@ -215,13 +212,13 @@
               FontSize="11"
               LineHeight="16"
               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-              Text="Ctrl+P to pin"
+              services:Localization.Text="preview.hint_pin"
             />
             <TextBlock
               FontSize="11"
               LineHeight="16"
               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-              Text="Del to delete"
+              services:Localization.Text="preview.hint_delete"
             />
           </StackPanel>
         </Grid>
