@@ -6,7 +6,7 @@ Native WinUI 3 frontend for Clipcy clipboard manager.
 
 This application uses a "Logic Sandwich" architecture:
 - **Rust Backend**: Core clipboard logic, SQLite storage, system hooks via UniFFI
-- **C# Frontend**: WinUI 3 UI with Mica backdrop, native Windows 11 look
+- **C# Frontend**: WinUI 3 UI with desktop Acrylic backdrop, native Windows 11 look
 
 ## Prerequisites
 
@@ -78,11 +78,11 @@ apps/clipcy-windows-ui/
 
 ## Features
 
-- **Mica Backdrop**: Windows 11 translucent material design
+- **Desktop Acrylic**: Main clipboard window and item preview use `DesktopAcrylicBackdrop` (OS solid fallback when transparency/high contrast suppress the material)
 - **System Tray**: Always-accessible tray icon with context menu
 - **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
-- **Preview Panel**: Content preview for images and text
+- **Preview Panel**: Desktop Acrylic popup beside the list for clipboard Text/Html/RTF/Image and **file** items. File previews read the **current** local path (not a history snapshot): images (PNG/JPEG/BMP/GIF/TIFF/ICO/JXR) as static aspect-fit PNG ≤1024px long edge; text (UTF-8 or BOM UTF-16, ≤64 KiB prefix with truncation notice); video first decoded presentation frame via Media Foundation (H.264 MP4 baseline; OS codecs for others); audio as a music-note icon only. Mixed multi-file selections show an original-order selector (default first). UNC/remote/cloud/reparse paths keep name/status without hydration. Paste still uses original CF_HDROP paths.
 - **Theming**: Follows system light/dark theme
 
 ## Configuration

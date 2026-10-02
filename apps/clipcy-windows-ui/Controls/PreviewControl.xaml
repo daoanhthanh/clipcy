@@ -6,7 +6,6 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:services="using:Clipcy.Services"
-  xmlns:media="using:Microsoft.UI.Xaml.Media"
   mc:Ignorable="d"
 >
   <UserControl.Resources>
@@ -32,16 +31,9 @@
     CornerRadius="8"
     BorderThickness="1"
     BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+    Background="Transparent"
     Translation="0,0,32"
   >
-    <Border.Background>
-      <media:AcrylicBrush
-        TintColor="{ThemeResource LayerFillColorDefault}"
-        TintOpacity="0.5"
-        TintLuminosityOpacity="0.5"
-        FallbackColor="{ThemeResource LayerFillColorDefault}"
-      />
-    </Border.Background>
     <Border.Shadow>
       <ThemeShadow />
     </Border.Shadow>
@@ -54,19 +46,63 @@
       </Grid.RowDefinitions>
 
       <!-- Header -->
-      <TextBlock
-        x:Name="ContentTypeText"
-        Grid.Row="0"
-        FontSize="13"
-        FontWeight="SemiBold"
-        Margin="0,0,0,4"
-        Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-        Text="Loading..."
-      />
+      <StackPanel Grid.Row="0" Spacing="6">
+        <TextBlock
+          x:Name="ContentTypeText"
+          FontSize="13"
+          FontWeight="SemiBold"
+          Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+          Text="Loading..."
+        />
+
+        <!-- Multi-file selector (Files only; hidden for single file) -->
+        <Grid x:Name="FileSelectorRow" Visibility="Collapsed">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <ComboBox
+            x:Name="FileSelector"
+            Grid.Column="0"
+            HorizontalAlignment="Stretch"
+            IsEditable="False"
+            SelectionChanged="FileSelector_SelectionChanged"
+            AutomationProperties.Name="Selected file"
+          />
+          <TextBlock
+            x:Name="FileCountText"
+            Grid.Column="1"
+            Margin="8,0,0,0"
+            VerticalAlignment="Center"
+            FontSize="11"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+          />
+        </Grid>
+
+        <TextBlock
+          x:Name="FileNameText"
+          FontSize="12"
+          TextWrapping="NoWrap"
+          TextTrimming="CharacterEllipsis"
+          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+          Visibility="Collapsed"
+        />
+      </StackPanel>
+
 
       <!-- Content -->
       <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="280">
         <StackPanel Spacing="10">
+          <!-- Status / loading for file previews -->
+          <TextBlock
+            x:Name="FileStatusText"
+            TextWrapping="Wrap"
+            FontSize="13"
+            LineHeight="20"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Visibility="Collapsed"
+          />
+
           <!-- Text Content -->
           <TextBlock
             x:Name="PreviewText"
@@ -75,6 +111,7 @@
             LineHeight="20"
             Foreground="{ThemeResource TextFillColorPrimaryBrush}"
             Visibility="Collapsed"
+            IsTextSelectionEnabled="True"
           />
 
           <!-- RTF Content -->
@@ -104,6 +141,32 @@
           <Border x:Name="PreviewImageBorder" CornerRadius="4" Visibility="Collapsed">
             <Image x:Name="PreviewImage" Stretch="Uniform" MaxWidth="336" MaxHeight="260" />
           </Border>
+
+          <!-- Audio: music-note icon only (no waveform decode) -->
+          <StackPanel
+            x:Name="AudioIconPanel"
+            Orientation="Vertical"
+            HorizontalAlignment="Center"
+            Spacing="8"
+            Visibility="Collapsed"
+          >
+            <SymbolIcon
+              x:Name="AudioSymbol"
+              Symbol="Audio"
+              Width="48"
+              Height="48"
+              AutomationProperties.Name="Audio file"
+            />
+            <TextBlock
+              x:Name="AudioFileNameText"
+              FontSize="12"
+              HorizontalAlignment="Center"
+              TextWrapping="Wrap"
+              TextAlignment="Center"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            />
+          </StackPanel>
+
         </StackPanel>
       </ScrollViewer>
 

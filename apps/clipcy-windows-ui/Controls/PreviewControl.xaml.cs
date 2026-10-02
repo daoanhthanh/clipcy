@@ -5,9 +5,11 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using Clipcy.Services;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage.Streams;
 
 namespace Clipcy.Controls;
 
@@ -25,6 +27,9 @@ public sealed partial class PreviewControl : UserControl
     );
     private static readonly Regex HtmlTagRegex = new("<.*?>", RegexOptions.Singleline);
     private static readonly Regex HtmlBreakRegex = new("<br\\s*/?>", RegexOptions.IgnoreCase);
+
+    private bool _suppressSelectionEvents;
+
     public static readonly DependencyProperty PreviewDataProperty = DependencyProperty.Register(
         nameof(PreviewData),
         typeof(PreviewData),
@@ -37,6 +42,9 @@ public sealed partial class PreviewControl : UserControl
         get => (PreviewData?)GetValue(PreviewDataProperty);
         set => SetValue(PreviewDataProperty, value);
     }
+
+    /// <summary>Raised when the user picks a different file in a multi-file selection.</summary>
+    public event EventHandler<int>? SelectedFileIndexChanged;
 
     /// <summary>
     /// Forces a refresh of the UI from the current PreviewData.
@@ -53,69 +61,77 @@ public sealed partial class PreviewControl : UserControl
     public PreviewControl()
     {
         this.InitializeComponent();
-
-        // Ensure Shadow/Translation if XAML fails (though we put it back in XAML for now,
-        // if this fails again we will move it back to C#).
-        // Since we are rewriting, let's keep XAML clean and verify.
-        // Wait, I put Translation/Shadow back in XAML in the step above.
-        // If it fails I'll move it here.
     }
 
     private static void OnPreviewDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is PreviewControl control && e.NewValue is PreviewData data)
-        {
+        if (d is not PreviewControl control)
+            return;
+
+        if (e.NewValue is PreviewData data)
             control.UpdateContent(data);
-        }
+        else
+            control.ResetAllContent();
     }
+
+
+    private void ResetAllContent()
+    {
+        ClearContentSurfaces();
+        FileSelectorRow.Visibility = Visibility.Collapsed;
+        FileNameText.Visibility = Visibility.Collapsed;
+        FileNameText.Text = string.Empty;
+        ContentTypeText.Text = string.Empty;
+        MetadataText.Text = string.Empty;
+        SourceAppRow.Visibility = Visibility.Collapsed;
+    }
+
+    private void ClearContentSurfaces()
+    {
+        PreviewText.Visibility = Visibility.Collapsed;
+        PreviewText.Text = string.Empty;
+        PreviewRichText.Visibility = Visibility.Collapsed;
+        HideTable();
+        PreviewImage.Source = null;
+        PreviewImageBorder.Visibility = Visibility.Collapsed;
+        AudioIconPanel.Visibility = Visibility.Collapsed;
+        FileStatusText.Visibility = Visibility.Collapsed;
+        FileStatusText.Text = string.Empty;
+    }
+
 
     private void UpdateContent(PreviewData data)
     {
-        if (data == null)
-            return;
-
-        // Reset Visibility
-        PreviewText.Visibility = Visibility.Collapsed;
-        PreviewRichText.Visibility = Visibility.Collapsed;
-        HideTable();
-        PreviewImageBorder.Visibility = Visibility.Collapsed;
+        ClearContentSurfaces();
 
         var displayType = data.PreviewType;
 
-        // Update Content based on type
         switch (data.PreviewType)
         {
             case "Text":
-            case "Html":
-            case "Files":
-                if (data.PreviewType == "Text")
+                if (TryShowTableFromText(data.TextContent))
                 {
-                    if (TryShowTableFromText(data.TextContent))
-                    {
-                        displayType = "Table";
-                        break;
-                    }
-
-                    PreviewText.Text = data.TextContent ?? string.Empty;
-                    PreviewText.Visibility = Visibility.Visible;
-                    break;
-                }
-
-                if (data.PreviewType == "Html")
-                {
-                    if (TryShowTableFromHtml(data.TextContent))
-                    {
-                        displayType = "Table";
-                        break;
-                    }
-
-                    PreviewText.Text = StripHtmlToText(data.TextContent) ?? string.Empty;
-                    PreviewText.Visibility = Visibility.Visible;
+                    displayType = "Table";
                     break;
                 }
 
                 PreviewText.Text = data.TextContent ?? string.Empty;
                 PreviewText.Visibility = Visibility.Visible;
+                break;
+
+            case "Html":
+                if (TryShowTableFromHtml(data.TextContent))
+                {
+                    displayType = "Table";
+                    break;
+                }
+
+                PreviewText.Text = StripHtmlToText(data.TextContent) ?? string.Empty;
+                PreviewText.Visibility = Visibility.Visible;
+                break;
+
+            case "Files":
+                UpdateFilesContent(data, ref displayType);
                 break;
 
             case "RichText":
@@ -144,11 +160,205 @@ public sealed partial class PreviewControl : UserControl
                 break;
         }
 
-        // Header
         ContentTypeText.Text = displayType;
-
-        // Update Metadata
         UpdateMetadata(data);
+    }
+
+
+    private void UpdateFilesContent(PreviewData data, ref string displayType)
+    {
+        BindFileSelector(data);
+
+        var paths = data.FilePaths;
+        if (paths is null || paths.Count == 0)
+        {
+            if (data.IsFilePreviewLoading)
+            {
+                ShowFileStatus("Loading…");
+            }
+            else if (!string.IsNullOrEmpty(data.TextContent))
+            {
+                // Fallback: path list text until full data arrives.
+                PreviewText.Text = data.TextContent;
+                PreviewText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                ShowFileStatus("File paths unavailable");
+            }
+
+            displayType = "Files";
+            return;
+        }
+
+        var index = Math.Clamp(data.SelectedFileIndex, 0, paths.Count - 1);
+        var path = paths[index];
+        FileNameText.Text = path;
+        ToolTipService.SetToolTip(FileNameText, path);
+        FileNameText.Visibility = Visibility.Visible;
+        AutomationProperties.SetName(FileNameText, path);
+
+        if (data.IsFilePreviewLoading && data.FilePreview is null)
+        {
+            ShowFileStatus("Loading preview…");
+            displayType = "Files";
+            return;
+        }
+
+        var preview = data.FilePreview;
+        if (preview is null)
+        {
+            ShowFileStatus("No preview");
+            displayType = "Files";
+            return;
+        }
+
+        displayType = preview.Kind switch
+        {
+            FilePreviewKind.Image => "Files · Image",
+            FilePreviewKind.Text => "Files · Text",
+            FilePreviewKind.Video => "Files · Video",
+            FilePreviewKind.Audio => "Files · Audio",
+            FilePreviewKind.Folder => "Files · Folder",
+            _ => "Files",
+        };
+
+        switch (preview.Status)
+        {
+            case FilePreviewStatus.Ready:
+            case FilePreviewStatus.Truncated:
+                RenderFilePreview(preview);
+                break;
+            case FilePreviewStatus.Loading:
+            case FilePreviewStatus.Canceled:
+                // Canceled stays quiet; a newer request should replace this.
+                ShowFileStatus("Loading preview…");
+                break;
+            default:
+                ShowFileStatus(FormatStatus(preview));
+                break;
+        }
+    }
+
+    private void ShowFileStatus(string message)
+    {
+        FileStatusText.Text = message;
+        FileStatusText.Visibility = Visibility.Visible;
+    }
+
+
+    private void RenderFilePreview(FilePreviewResult preview)
+    {
+        switch (preview.Kind)
+        {
+            case FilePreviewKind.Image:
+            case FilePreviewKind.Video:
+                if (preview.PreviewPngBytes is { Length: > 0 } png)
+                {
+                    SetImageFromBytes(png);
+                }
+                else
+                {
+                    ShowFileStatus(preview.StatusMessage ?? "Image unavailable");
+                }
+                break;
+
+            case FilePreviewKind.Text:
+                PreviewText.Text = preview.TextContent ?? string.Empty;
+                PreviewText.Visibility = Visibility.Visible;
+                if (preview.IsTruncated || preview.Status == FilePreviewStatus.Truncated)
+                    ShowFileStatus(preview.StatusMessage ?? "Showing first 64 KiB");
+                break;
+
+            case FilePreviewKind.Audio:
+                AudioFileNameText.Text = preview.DisplayName;
+                AudioIconPanel.Visibility = Visibility.Visible;
+                break;
+
+            default:
+                ShowFileStatus(FormatStatus(preview));
+                break;
+        }
+    }
+
+
+    private static string FormatStatus(FilePreviewResult preview)
+    {
+        var baseMsg = preview.Status switch
+        {
+            FilePreviewStatus.Unavailable => "Unavailable",
+            FilePreviewStatus.Unsupported => "Unsupported",
+            FilePreviewStatus.RemoteOrCloud => "Remote/cloud path not previewed",
+            FilePreviewStatus.ResourceLimited => "Resource limit",
+            FilePreviewStatus.Truncated => "Truncated",
+            _ => preview.Status.ToString(),
+        };
+        if (!string.IsNullOrWhiteSpace(preview.StatusMessage))
+            return $"{baseMsg}: {preview.StatusMessage}";
+        return baseMsg;
+    }
+
+    private void BindFileSelector(PreviewData data)
+    {
+        var paths = data.FilePaths;
+        if (paths is null || paths.Count == 0)
+        {
+            FileSelectorRow.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _suppressSelectionEvents = true;
+        try
+        {
+            FileSelector.Items.Clear();
+            foreach (var p in paths)
+            {
+                FileSelector.Items.Add(new ComboBoxItem
+                {
+                    Content = GetFileNameSafe(p),
+                    Tag = p,
+                });
+            }
+
+            var idx = Math.Clamp(data.SelectedFileIndex, 0, paths.Count - 1);
+            FileSelector.SelectedIndex = idx;
+            FileCountText.Text = paths.Count == 1 ? "1 file" : $"{paths.Count} files";
+            // Multi-file only: single file uses FileNameText instead.
+            FileSelectorRow.Visibility = paths.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        }
+        finally
+        {
+            _suppressSelectionEvents = false;
+        }
+    }
+
+
+    private void FileSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressSelectionEvents)
+            return;
+        if (FileSelector.SelectedIndex < 0)
+            return;
+        SelectedFileIndexChanged?.Invoke(this, FileSelector.SelectedIndex);
+    }
+
+    private void SetImageFromBytes(byte[] imageData)
+    {
+        try
+        {
+            using var stream = new MemoryStream(imageData);
+            var bitmap = new BitmapImage();
+            bitmap.SetSource(stream.AsRandomAccessStream());
+            PreviewImage.Source = bitmap;
+            PreviewImageBorder.Visibility = Visibility.Visible;
+        }
+        catch
+        {
+            PreviewImage.Source = null;
+            PreviewImageBorder.Visibility = Visibility.Collapsed;
+            FileStatusText.Text = "Failed to render image";
+            FileStatusText.Visibility = Visibility.Visible;
+        }
     }
 
     private void HideTable()
@@ -329,38 +539,29 @@ public sealed partial class PreviewControl : UserControl
 
     private void UpdateImage(PreviewData data)
     {
-        byte[]? imageData = data.ImageBytes ?? data.Thumbnail;
+        var imageData = data.ImageBytes ?? data.Thumbnail;
+        if (imageData is { Length: > 0 })
+        {
+            SetImageFromBytes(imageData);
+            return;
+        }
 
-        if (imageData != null && imageData.Length > 0)
-        {
-            using var stream = new MemoryStream(imageData);
-            var bitmap = new BitmapImage();
-            bitmap.SetSource(stream.AsRandomAccessStream());
-            PreviewImage.Source = bitmap;
-            PreviewImageBorder.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            PreviewImage.Source = null;
-            PreviewImageBorder.Visibility = Visibility.Visible; // Show empty or hide?
-            // If waiting for load, maybe show placeholder?
-            // Logic in PreviewService handles async loading which triggers UpdateContent again
-        }
+        PreviewImage.Source = null;
+        PreviewImageBorder.Visibility = Visibility.Visible;
     }
+
 
     private void UpdateMetadata(PreviewData data)
     {
         UpdateSourceApp(data);
         var metadata = new System.Text.StringBuilder();
 
-        // Created time
         if (!string.IsNullOrEmpty(data.RelativeTime))
         {
             var displayTime = GetDisplayTime(data.RelativeTime, data.CreatedAtTimestamp);
             metadata.AppendLine($"Copied: {displayTime}");
         }
 
-        // Content-specific metadata
         switch (data.PreviewType)
         {
             case "Image":
@@ -373,12 +574,30 @@ public sealed partial class PreviewControl : UserControl
                 }
                 break;
             case "Files":
-                if (!string.IsNullOrEmpty(data.TextContent))
-                {
-                    var count = data.TextContent.Split('\n').Where(f => !string.IsNullOrWhiteSpace(f)).Count();
+            {
+                var count = data.FilePaths?.Count
+                    ?? (!string.IsNullOrEmpty(data.TextContent)
+                        ? data.TextContent.Split('\n').Count(f => !string.IsNullOrWhiteSpace(f))
+                        : 0);
+                if (count > 0)
                     metadata.AppendLine($"Files: {count}");
+
+                if (data.FilePreview is { } fp)
+                {
+                    metadata.AppendLine($"Kind: {fp.Kind}");
+                    if (fp.IsTruncated || fp.Status == FilePreviewStatus.Truncated)
+                        metadata.AppendLine("Truncated preview");
+                    if (fp.Status is FilePreviewStatus.Unsupported
+                        or FilePreviewStatus.Unavailable
+                        or FilePreviewStatus.RemoteOrCloud
+                        or FilePreviewStatus.ResourceLimited)
+                    {
+                        metadata.AppendLine(FormatStatus(fp));
+                    }
                 }
                 break;
+            }
+
         }
 
         MetadataText.Text = metadata.ToString().TrimEnd();
@@ -418,13 +637,11 @@ public sealed partial class PreviewControl : UserControl
         var dateTime = DateTimeOffset.FromUnixTimeSeconds((long)timestamp).ToLocalTime();
         var timeFormat = dateTime.ToString("HH:mm");
 
-        // Show relative time with time for up to 3 days
         if (relativeTime == "just now" || relativeTime.Contains("m ago") || relativeTime.Contains("h ago"))
         {
             return $"{relativeTime}, {timeFormat}";
         }
 
-        // Check if it's within 3 days (1d ago, 2d ago, 3d ago)
         if (relativeTime.Contains("d ago"))
         {
             var daysPart = relativeTime.Replace("d ago", "").Trim();
@@ -434,7 +651,19 @@ public sealed partial class PreviewControl : UserControl
             }
         }
 
-        // Beyond 3 days, show full timestamp as YYYY-MM-DD HH:mm
         return dateTime.ToString("yyyy-MM-dd HH:mm");
+    }
+
+    private static string GetFileNameSafe(string path)
+    {
+        try
+        {
+            var name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            return string.IsNullOrEmpty(name) ? path : name;
+        }
+        catch
+        {
+            return path;
+        }
     }
 }

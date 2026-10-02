@@ -20,12 +20,18 @@ public class PreviewService : IPreviewService
     private DispatcherTimer? _hideTimer;
     private PreviewData? _pendingPreviewData;
     private FrameworkElement? _previewTarget;
+    private long _pendingShowGeneration;
+    private long _scheduledShowGeneration;
 
     private Popup? _previewPopup;
     private PreviewControl? _previewControl;
     private PreviewData? _currentPreviewData;
     private bool _isPointerOverPreview = false;
     private bool _disposed;
+
+    private long _popupRequestId;
+    private long _fileRequestId;
+    private CancellationTokenSource? _fileLoadCts;
 
     public PreviewService(Window window, Grid rootGrid, IWindowService windowService)
     {
@@ -41,15 +47,19 @@ public class PreviewService : IPreviewService
         if (_disposed)
             return;
 
+        _disposed = true;
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
+        _pendingPreviewData = null;
+        _pendingShowGeneration++;
+        CancelFileLoad();
         _rootGrid.ActualThemeChanged -= OnRootActualThemeChanged;
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
         }
 
-        _disposed = true;
+        _currentPreviewData = null;
     }
 
     private Popup PreviewPopup
@@ -71,16 +81,20 @@ public class PreviewService : IPreviewService
             IsLightDismissEnabled = false,
             ShouldConstrainToRootBounds = false,
             XamlRoot = _rootGrid?.XamlRoot,
+            SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop(),
         };
         SynchronizePreviewTheme(popup);
 
         _previewControl = new PreviewControl();
 
-        // Track pointer over the control to prevent auto-hide
         _previewControl.PointerEntered += (s, e) =>
         {
             _isPointerOverPreview = true;
             _hideTimer?.Stop();
+            // Entering popup cancels obsolete pending replacements.
+            _pendingPreviewData = null;
+            _pendingShowGeneration++;
+            _previewDelayTimer?.Stop();
         };
 
         _previewControl.PointerExited += (s, e) =>
@@ -89,9 +103,10 @@ public class PreviewService : IPreviewService
             ScheduleHide();
         };
 
+        _previewControl.SelectedFileIndexChanged += OnSelectedFileIndexChanged;
+
         popup.Child = _previewControl;
 
-        // Animation logic
         popup.Opened += (s, e) =>
         {
             if (_previewControl.Content is FrameworkElement rootBorder)
@@ -113,12 +128,16 @@ public class PreviewService : IPreviewService
                 storyboard.Children.Add(fadeIn);
                 storyboard.Begin();
 
-                // Simple manual translation animation
-                // (Alternatively, could use Composition animations for smoother performance)
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
                 var elapsed = 0.0;
                 timer.Tick += (s2, e2) =>
                 {
+                    if (_disposed)
+                    {
+                        timer.Stop();
+                        return;
+                    }
+
                     elapsed += 16;
                     var progress = Math.Min(1.0, elapsed / 150.0);
                     var eased = 1 - Math.Pow(1 - progress, 2);
@@ -141,10 +160,18 @@ public class PreviewService : IPreviewService
 
         _dispatcherQueue.TryEnqueue(() =>
         {
+            if (_disposed)
+                return;
+
             _hideTimer?.Stop();
 
+            // Same item already open: keep it; do not restart delay.
             if (_currentPreviewData?.Id == data.Id && _previewPopup != null && _previewPopup.IsOpen)
                 return;
+
+            // Invalidate any pending different-item show before scheduling this one.
+            _pendingShowGeneration++;
+            var generation = _pendingShowGeneration;
 
             _pendingPreviewData = data;
             _previewTarget = target;
@@ -156,6 +183,7 @@ public class PreviewService : IPreviewService
             }
 
             _previewDelayTimer.Stop();
+            _scheduledShowGeneration = generation;
             _previewDelayTimer.Start();
         });
     }
@@ -167,14 +195,19 @@ public class PreviewService : IPreviewService
 
         _dispatcherQueue.TryEnqueue(() =>
         {
+            if (_disposed)
+                return;
+
             if (_hideTimer == null)
             {
                 _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
                 _hideTimer.Tick += (s, e) =>
                 {
                     _hideTimer?.Stop();
+                    if (_disposed)
+                        return;
                     if (!_isPointerOverPreview)
-                        Hide();
+                        HidePreviewInternal();
                 };
             }
 
@@ -187,13 +220,21 @@ public class PreviewService : IPreviewService
     {
         if (_disposed)
             return;
-        _dispatcherQueue.TryEnqueue(() => HidePreviewInternal());
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            if (_disposed)
+                return;
+            HidePreviewInternal();
+        });
     }
 
     private void HidePreviewInternal()
     {
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
+        _pendingPreviewData = null;
+        _pendingShowGeneration++;
+        CancelFileLoad();
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
@@ -204,43 +245,62 @@ public class PreviewService : IPreviewService
     private void PreviewDelayTimer_Tick(object? sender, object e)
     {
         _previewDelayTimer?.Stop();
+        if (_disposed)
+            return;
+
+        if (_scheduledShowGeneration != _pendingShowGeneration)
+            return;
+
         if (_pendingPreviewData != null)
         {
-            ShowPreviewInternal(_pendingPreviewData);
+            var data = _pendingPreviewData;
+            _pendingPreviewData = null;
+            ShowPreviewInternal(data);
         }
     }
 
     private void ShowPreviewInternal(PreviewData data)
     {
-        if (_currentPreviewData?.Id == data.Id && PreviewPopup.IsOpen)
+        if (_disposed)
+            return;
+
+        if (_currentPreviewData?.Id == data.Id && PreviewPopup.IsOpen && ReferenceEquals(_currentPreviewData, data))
             return;
 
         try
         {
             _previewDelayTimer?.Stop();
             _hideTimer?.Stop();
+            CancelFileLoad();
+
             var popup = PreviewPopup;
             SynchronizePreviewTheme(popup);
             if (_previewControl == null)
                 return;
 
+            _popupRequestId++;
+            var popupId = _popupRequestId;
             _currentPreviewData = data;
 
-            // Push data to the control
-            _previewControl.PreviewData = data;
-
-            // Handle Async full-data loading
-            if (data.LoadFullData != null)
+            // Clear previous file preview state on the model when rebinding.
+            if (data.PreviewType == "Files")
             {
-                _ = LoadFullDataAsync(data);
+                data.FilePreview = null;
+                data.IsFilePreviewLoading = data.LoadFullData != null;
+                data.SelectedFileIndex = 0;
             }
 
-            // --- Positioning Logic ---
+            _previewControl.PreviewData = data;
+
+            if (data.LoadFullData != null)
+            {
+                _ = LoadFullDataAsync(data, popupId);
+            }
+
             if (_previewTarget != null)
             {
                 popup.XamlRoot = _previewTarget.XamlRoot;
 
-                // Ensure Layout Updated to get correct size
                 _previewControl.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
                 var popupWidth = _previewControl.DesiredSize.Width;
                 var popupHeight = _previewControl.DesiredSize.Height;
@@ -254,7 +314,6 @@ public class PreviewService : IPreviewService
 
                 double dpiScale = _windowService.GetDpiScale();
 
-                // Window/Monitor info (Physical)
                 var appWindow = _windowService.AppWindow;
                 var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
                     appWindow.Id,
@@ -273,14 +332,11 @@ public class PreviewService : IPreviewService
                 double popupPhysicalHeight = popupHeight * dpiScale;
                 double spacingPhysical = 10.0 * dpiScale;
 
-                // Default: Right of target
                 double finalPhysicalX = targetPhysicalX + targetPhysicalWidth + spacingPhysical;
                 double finalPhysicalY = targetPhysicalY;
 
-                // Check Horizontal Fit
                 if (finalPhysicalX + popupPhysicalWidth > workArea.X + workArea.Width)
                 {
-                    // Try Left
                     double leftTry = targetPhysicalX - popupPhysicalWidth - spacingPhysical;
                     finalPhysicalX =
                         (leftTry >= workArea.X)
@@ -288,7 +344,6 @@ public class PreviewService : IPreviewService
                             : (workArea.X + workArea.Width - popupPhysicalWidth - spacingPhysical);
                 }
 
-                // Check Vertical Fit
                 if (finalPhysicalY + popupPhysicalHeight > workArea.Y + workArea.Height)
                 {
                     finalPhysicalY = (workArea.Y + workArea.Height) - popupPhysicalHeight - spacingPhysical;
@@ -309,6 +364,255 @@ public class PreviewService : IPreviewService
         }
     }
 
+    private void OnSelectedFileIndexChanged(object? sender, int index)
+    {
+        if (_disposed || _currentPreviewData is null)
+            return;
+        if (_currentPreviewData.PreviewType != "Files")
+            return;
+        if (_currentPreviewData.FilePaths is null || index < 0 || index >= _currentPreviewData.FilePaths.Count)
+            return;
+        if (_currentPreviewData.SelectedFileIndex == index && _currentPreviewData.FilePreview is not null)
+            return;
+
+        var data = _currentPreviewData;
+        var popupId = _popupRequestId;
+        data.SelectedFileIndex = index;
+        data.FilePreview = null;
+        data.IsFilePreviewLoading = true;
+        _previewControl?.Refresh();
+
+        _ = LoadSelectedFileAsync(data, popupId, index);
+    }
+
+    private void CancelFileLoad()
+    {
+        _fileRequestId++;
+        var cts = _fileLoadCts;
+        _fileLoadCts = null;
+        if (cts is null)
+            return;
+
+        try
+        {
+            cts.Cancel();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        cts.Dispose();
+    }
+
+    private async Task LoadFullDataAsync(PreviewData data, long popupId)
+    {
+        try
+        {
+            byte[]? fullData = null;
+            try
+            {
+                fullData = await data.LoadFullData!();
+            }
+            catch
+            {
+                fullData = null;
+            }
+
+            if (_disposed || popupId != _popupRequestId || !ReferenceEquals(_currentPreviewData, data))
+                return;
+
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                if (_disposed || popupId != _popupRequestId || !ReferenceEquals(_currentPreviewData, data))
+                    return;
+
+                if (fullData is null || fullData.Length == 0)
+                {
+                    if (data.PreviewType == "Files")
+                    {
+                        data.IsFilePreviewLoading = false;
+                        data.FilePaths = Array.Empty<string>();
+                        data.FilePreview = UnavailableFileResult("File paths unavailable");
+                        _previewControl?.Refresh();
+                    }
+                    return;
+                }
+
+
+                switch (data.PreviewType)
+                {
+                    case "Image":
+                        data.ImageBytes = fullData;
+                        break;
+                    case "RichText":
+                        var rtf = Encoding.UTF8.GetString(fullData);
+                        data.RtfContent = rtf;
+                        data.TextContent = rtf;
+                        break;
+                    case "Text":
+                        data.TextContent = Encoding.UTF8.GetString(fullData);
+                        break;
+                    case "Html":
+                        var html = Encoding.UTF8.GetString(fullData);
+                        data.TextContent = ExtractHtmlFragment(fullData) ?? html;
+                        break;
+                    case "Files":
+                        ApplyFilesPayload(data, fullData, popupId);
+                        return; // ApplyFilesPayload refreshes and starts file load
+                }
+
+                if (_previewControl != null)
+                    _previewControl.Refresh();
+            });
+        }
+        catch
+        {
+            // discard
+        }
+    }
+
+    private void ApplyFilesPayload(PreviewData data, byte[] fullData, long popupId)
+    {
+        var paths = ParseFilePaths(fullData);
+        data.TextContent = Encoding.UTF8.GetString(fullData);
+
+        if (paths.Count == 0)
+        {
+            data.IsFilePreviewLoading = false;
+            data.FilePaths = Array.Empty<string>();
+            data.FilePreview = UnavailableFileResult("Empty path list");
+            _previewControl?.Refresh();
+            return;
+        }
+
+        data.FilePaths = paths;
+        data.SelectedFileIndex = 0;
+        data.IsFilePreviewLoading = true;
+        data.FilePreview = null;
+        _previewControl?.Refresh();
+
+        _ = LoadSelectedFileAsync(data, popupId, 0);
+    }
+
+    /// <summary>
+    /// Decode UTF-8 path list: split LF, strip optional CR, drop empty entries, preserve order/spelling.
+    /// </summary>
+    internal static IReadOnlyList<string> ParseFilePaths(byte[] fullData)
+    {
+        var text = Encoding.UTF8.GetString(fullData);
+        if (string.IsNullOrEmpty(text))
+            return Array.Empty<string>();
+
+        var lines = text.Split('\n');
+        var list = new List<string>(lines.Length);
+        foreach (var line in lines)
+        {
+            var path = line.EndsWith('\r') ? line[..^1] : line;
+            if (path.Length == 0)
+                continue;
+            list.Add(path);
+        }
+
+        return list;
+    }
+
+    private async Task LoadSelectedFileAsync(PreviewData data, long popupId, int selectedIndex)
+    {
+        CancelFileLoad();
+        var fileReq = _fileRequestId;
+        var cts = new CancellationTokenSource();
+        _fileLoadCts = cts;
+
+        try
+        {
+            if (data.FilePaths is null || selectedIndex < 0 || selectedIndex >= data.FilePaths.Count)
+            {
+                PublishFileResult(
+                    data,
+                    popupId,
+                    fileReq,
+                    selectedIndex,
+                    UnavailableFileResult("Invalid selection")
+                );
+                return;
+            }
+
+
+            var path = data.FilePaths[selectedIndex];
+            FilePreviewResult result;
+            try
+            {
+                result = await FilePreviewLoader.LoadAsync(path, cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                result = new FilePreviewResult
+                {
+                    OriginalPath = path,
+                    DisplayName = System.IO.Path.GetFileName(path),
+                    Kind = FilePreviewKind.Other,
+                    Status = FilePreviewStatus.Unavailable,
+                    StatusMessage = ex.Message,
+                };
+            }
+
+
+            if (cts.IsCancellationRequested || fileReq != _fileRequestId)
+                return;
+
+            PublishFileResult(data, popupId, fileReq, selectedIndex, result);
+        }
+        finally
+        {
+            if (ReferenceEquals(_fileLoadCts, cts))
+            {
+                _fileLoadCts = null;
+                cts.Dispose();
+            }
+        }
+    }
+
+    private void PublishFileResult(
+        PreviewData data,
+        long popupId,
+        long fileReq,
+        int selectedIndex,
+        FilePreviewResult result
+    )
+    {
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            if (_disposed
+                || popupId != _popupRequestId
+                || fileReq != _fileRequestId
+                || !ReferenceEquals(_currentPreviewData, data)
+                || data.SelectedFileIndex != selectedIndex)
+            {
+                return;
+            }
+
+            data.FilePreview = result;
+            data.IsFilePreviewLoading = false;
+            _previewControl?.Refresh();
+        });
+    }
+
+    private static FilePreviewResult UnavailableFileResult(string message) =>
+        new()
+        {
+            OriginalPath = string.Empty,
+            DisplayName = string.Empty,
+            Kind = FilePreviewKind.Other,
+            Status = FilePreviewStatus.Unavailable,
+            StatusMessage = message,
+        };
+
+
     private void OnRootActualThemeChanged(FrameworkElement sender, object args)
     {
         if (_disposed || _previewPopup == null)
@@ -322,48 +626,6 @@ public class PreviewService : IPreviewService
         var theme = _rootGrid.ActualTheme;
         if (popup.RequestedTheme != theme)
             popup.RequestedTheme = theme;
-    }
-
-    private async Task LoadFullDataAsync(PreviewData data)
-    {
-        try
-        {
-            var fullData = await data.LoadFullData!();
-            _dispatcherQueue.TryEnqueue(() =>
-            {
-                if (_currentPreviewData?.Id != data.Id)
-                    return;
-
-                if (fullData != null && fullData.Length > 0)
-                {
-                    switch (data.PreviewType)
-                    {
-                        case "Image":
-                            data.ImageBytes = fullData;
-                            break;
-                        case "RichText":
-                            var rtf = Encoding.UTF8.GetString(fullData);
-                            data.RtfContent = rtf;
-                            data.TextContent = rtf;
-                            break;
-                        case "Text":
-                            data.TextContent = Encoding.UTF8.GetString(fullData);
-                            break;
-                        case "Html":
-                            var html = Encoding.UTF8.GetString(fullData);
-                            data.TextContent = ExtractHtmlFragment(fullData) ?? html;
-                            break;
-                        case "Files":
-                            data.TextContent = Encoding.UTF8.GetString(fullData);
-                            break;
-                    }
-
-                    if (_previewControl != null)
-                        _previewControl.Refresh();
-                }
-            });
-        }
-        catch { }
     }
 
     private static string? ExtractHtmlFragment(byte[] data)
