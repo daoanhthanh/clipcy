@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace Clipcy.Services;
 
 /// <summary>
-/// Manages the system tray icon and context menu
+/// Manages the system tray icon and native Win32 context menu.
 /// </summary>
 public class TrayService : IDisposable
 {
@@ -24,13 +24,29 @@ public class TrayService : IDisposable
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
+    // Undocumented uxtheme ordinals used by Windows shell apps for dark/light classic menus.
+    [DllImport("uxtheme.dll", EntryPoint = "#135", ExactSpelling = true)]
+    private static extern int SetPreferredAppMode(PreferredAppMode preferredAppMode);
+
+    [DllImport("uxtheme.dll", EntryPoint = "#136", ExactSpelling = true)]
+    private static extern void FlushMenuThemes();
+
+    private enum PreferredAppMode
+    {
+        Default = 0,
+        AllowDark = 1,
+        ForceDark = 2,
+        ForceLight = 3,
+    }
+
     public TrayService(MainWindow mainWindow)
     {
         _mainWindow = mainWindow;
         InitializeTrayIcon();
 
-        // Subscribe to theme changes
+        // Keep native menu theme in sync with app/system theme
         ThemeManager.ThemeChanged += OnThemeChanged;
+        ApplyNativeMenuTheme(ThemeManager.CurrentTheme);
 
         // Subscribe to bridge events
         if (App.Bridge != null)
@@ -43,52 +59,53 @@ public class TrayService : IDisposable
 
     private void InitializeTrayIcon()
     {
-        // Create context menu
+        // MenuFlyout is the source definition; ContextMenuMode.PopupMenu converts it to a
+        // native Win32 HMENU that follows the Windows menu chrome + theme.
+        // PopupMenu mode only invokes MenuFlyoutItem.Command (Click handlers are ignored).
         _contextMenu = new MenuFlyout();
 
-        // Show/Hide item
-        var showItem = new MenuFlyoutItem { Text = "Show Clipcy" };
-        showItem.Click += (s, e) => ShowMainWindow();
-        _contextMenu.Items.Add(showItem);
+        _contextMenu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "Show Clipcy",
+            Command = new RelayCommand(ShowMainWindow),
+        });
 
         _contextMenu.Items.Add(new MenuFlyoutSeparator());
 
-        // Clear History item
-        var clearItem = new MenuFlyoutItem { Text = "Clear History" };
-        clearItem.Click += (s, e) => ClearHistory();
-        _contextMenu.Items.Add(clearItem);
+        _contextMenu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "Clear History",
+            Command = new RelayCommand(ClearHistory),
+        });
 
-        // Settings item
-        var settingsItem = new MenuFlyoutItem { Text = "Settings" };
-        settingsItem.Click += (s, e) => OpenSettings();
-        _contextMenu.Items.Add(settingsItem);
+        _contextMenu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "Settings",
+            Command = new RelayCommand(OpenSettings),
+        });
 
         _contextMenu.Items.Add(new MenuFlyoutSeparator());
 
-        // Exit item
-        var exitItem = new MenuFlyoutItem { Text = "Exit" };
-        exitItem.Click += (s, e) => ExitApplication();
-        _contextMenu.Items.Add(exitItem);
+        _contextMenu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "Exit",
+            Command = new RelayCommand(ExitApplication),
+        });
 
-        // Apply initial theme to context menu
-        ApplyThemeToContextMenu(ThemeManager.CurrentTheme);
-
-        // Create tray icon
         _trayIcon = new TaskbarIcon
         {
             ToolTipText = "Clipcy - Clipboard Manager",
-            ContextMenuMode = ContextMenuMode.SecondWindow,
+            // Native Win32 popup menu (default); SecondWindow was a WinUI flyout chrome.
+            ContextMenuMode = ContextMenuMode.PopupMenu,
             ContextFlyout = _contextMenu,
         };
 
-        // Set the icon from the application directory
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
         if (File.Exists(iconPath))
         {
             _trayIcon.Icon = new Icon(iconPath);
         }
 
-        // Handle left click to show the main window
         _trayIcon.LeftClickCommand = new RelayCommand(ShowMainWindow);
 
         // Force create to show the icon immediately
@@ -97,23 +114,33 @@ public class TrayService : IDisposable
 
     private void OnThemeChanged(AppTheme theme)
     {
-        ApplyThemeToContextMenu(theme);
+        ApplyNativeMenuTheme(theme);
     }
 
-    private void ApplyThemeToContextMenu(AppTheme theme)
+    /// <summary>
+    /// Configures process-wide preferred app mode so TrackPopupMenu uses light/dark menu chrome.
+    /// </summary>
+    private static void ApplyNativeMenuTheme(AppTheme theme)
     {
-        if (_contextMenu == null)
-            return;
-
-        // MenuFlyout doesn't have RequestedTheme, so apply to items directly
-        // This is still fast since we only have a few menu items
-        var elementTheme = ThemeManager.GetElementTheme(theme);
-        foreach (var item in _contextMenu.Items)
+        try
         {
-            if (item is FrameworkElement fe)
+            var mode = theme switch
             {
-                fe.RequestedTheme = elementTheme;
-            }
+                AppTheme.Light => PreferredAppMode.ForceLight,
+                AppTheme.Dark => PreferredAppMode.ForceDark,
+                // System: let Windows pick based on AppsUseLightTheme
+                _ => PreferredAppMode.AllowDark,
+            };
+
+            _ = SetPreferredAppMode(mode);
+            FlushMenuThemes();
+        }
+        catch (DllNotFoundException)
+        {
+            // Pre-Win10 builds without the ordinal — classic menu only.
+        }
+        catch (EntryPointNotFoundException)
+        {
         }
     }
 
