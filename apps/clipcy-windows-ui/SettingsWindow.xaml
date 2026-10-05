@@ -29,7 +29,7 @@
         >
           <FontIcon Glyph="&#xE700;" FontSize="16" />
         </Button>
-        <FontIcon Glyph="&#xE713;" FontSize="16" />
+        <Image Source="ms-appx:///Assets/Square44x44Logo.png" Width="20" Height="20" VerticalAlignment="Center" />
         <TextBlock
           services:Localization.Text="settings.title"
           Style="{StaticResource BodyTextBlockStyle}"
@@ -236,7 +236,7 @@
                 </controls:SettingsCard>
 
                 <!-- Show notifications -->
-                <controls:SettingsCard
+                <!-- <controls:SettingsCard
                   services:Localization.Header="settings.show_notifications"
                   services:Localization.Description="settings.show_notifications_desc"
                 >
@@ -253,7 +253,7 @@
                     services:Localization.OnContent="common.on"
                     services:Localization.OffContent="common.off"
                   />
-                </controls:SettingsCard>
+                </controls:SettingsCard> -->
 
                 <!-- Excluded apps (collapsible section) -->
                 <Expander
@@ -394,11 +394,12 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                       </Grid.ColumnDefinitions>
-                      <FontIcon
+                      <Image
                         Grid.Column="0"
-                        Glyph="&#xE8C8;"
-                        FontSize="24"
-                        Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                        Source="ms-appx:///Assets/Square44x44Logo.png"
+                        Width="44"
+                        Height="44"
+                        VerticalAlignment="Center"
                         Margin="0,0,16,0"
                       />
                       <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">

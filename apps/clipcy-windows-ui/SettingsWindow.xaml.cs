@@ -417,7 +417,7 @@ public sealed partial class SettingsWindow : Window
             || ExcludedAppsTextBox == null
             || StartOnBootToggle == null
             || ShowPreviewToggle == null
-            || ShowNotificationsToggle == null
+            // || ShowNotificationsToggle == null
         )
             return;
 
@@ -429,7 +429,7 @@ public sealed partial class SettingsWindow : Window
 
         StartOnBootToggle.IsOn = _settings.StartOnBoot;
         ShowPreviewToggle.IsOn = _settings.ShowPreviewPanel;
-        ShowNotificationsToggle.IsOn = _settings.ShowNotifications;
+        // ShowNotificationsToggle.IsOn = _settings.ShowNotifications;
         ExcludedAppsTextBox.Text = string.Join(Environment.NewLine, _settings.ExcludedApps);
         AdjustExcludedAppsTextBoxHeight();
 
@@ -831,14 +831,14 @@ public sealed partial class SettingsWindow : Window
         SaveSettings();
     }
 
-    private void ShowNotificationsToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializingSettings || ShowNotificationsToggle == null)
-            return;
-
-        _settings.ShowNotifications = ShowNotificationsToggle.IsOn;
-        SaveSettings();
-    }
+    // private void ShowNotificationsToggle_Toggled(object sender, RoutedEventArgs e)
+    // {
+    //     if (_isInitializingSettings || ShowNotificationsToggle == null)
+    //         return;
+    //
+    //     _settings.ShowNotifications = ShowNotificationsToggle.IsOn;
+    //     SaveSettings();
+    // }
 
     private void ExcludedAppsTextBox_LostFocus(object sender, RoutedEventArgs e)
     {

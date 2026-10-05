@@ -80,6 +80,7 @@ apps/clipcy-windows-ui/
 
 - **Desktop Acrylic**: Main clipboard window and item preview use `DesktopAcrylicBackdrop` (OS solid fallback when transparency/high contrast suppress the material)
 - **System Tray**: Always-accessible tray icon with context menu
+- **Settings app branding**: The title bar and About tab display the Clipcy app logo from `Assets/Square44x44Logo.png`.
 - **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
 - **Pinning**: Hover/focus a history row or select it with Up/Down, then press **Ctrl+P** to pin/unpin it (also available in the row's context menu). Pinned items sit in their own region above the regular list, separated by a horizontal line. Each region scrolls on its own. The pinned region shows at most 3 rows; more pins scroll inside it, and the popup grows by that region's height so the regular list keeps its space. Selection follows the toggled item when it moves between regions, so pressing **Ctrl+P** again unpins the same item; pinning does not clear the search filter.
@@ -91,6 +92,8 @@ apps/clipcy-windows-ui/
 ## Configuration
 
 Settings are stored in `%LOCALAPPDATA%\clipcy\settings.json` and shared with the Rust backend.
+
+The **Show notifications** control and its C# toggle handling are commented out; the saved notification preference is unchanged.
 
 The frontend language preference is stored separately in `%LOCALAPPDATA%\clipcy\ui-settings.json`:
 
