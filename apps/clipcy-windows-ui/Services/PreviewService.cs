@@ -32,6 +32,7 @@ public class PreviewService : IPreviewService
     private long _popupRequestId;
     private long _fileRequestId;
     private CancellationTokenSource? _fileLoadCts;
+    private bool _positioningPreview;
 
     public PreviewService(Window window, Grid rootGrid, IWindowService windowService)
     {
@@ -104,6 +105,12 @@ public class PreviewService : IPreviewService
         };
 
         _previewControl.SelectedFileIndexChanged += OnSelectedFileIndexChanged;
+        _previewControl.SizeChanged += (_, _) =>
+        {
+            if (_disposed || _previewPopup is not { IsOpen: true })
+                return;
+            PositionPreviewPopup();
+        };
 
         popup.Child = _previewControl;
 
@@ -299,61 +306,7 @@ public class PreviewService : IPreviewService
 
             if (_previewTarget != null)
             {
-                popup.XamlRoot = _previewTarget.XamlRoot;
-
-                _previewControl.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-                var popupWidth = _previewControl.DesiredSize.Width;
-                var popupHeight = _previewControl.DesiredSize.Height;
-                if (popupWidth <= 0)
-                    popupWidth = 360;
-                if (popupHeight <= 0)
-                    popupHeight = 260;
-
-                var transform = _previewTarget.TransformToVisual(null);
-                var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
-
-                double dpiScale = _windowService.GetDpiScale();
-
-                var appWindow = _windowService.AppWindow;
-                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
-                    appWindow.Id,
-                    Microsoft.UI.Windowing.DisplayAreaFallback.Nearest
-                );
-                var workArea = displayArea.WorkArea;
-
-                double winX = appWindow.Position.X;
-                double winY = appWindow.Position.Y;
-
-                double targetPhysicalX = winX + (targetPos.X * dpiScale);
-                double targetPhysicalY = winY + (targetPos.Y * dpiScale);
-                double targetPhysicalWidth = _previewTarget.ActualWidth * dpiScale;
-
-                double popupPhysicalWidth = popupWidth * dpiScale;
-                double popupPhysicalHeight = popupHeight * dpiScale;
-                double spacingPhysical = 10.0 * dpiScale;
-
-                double finalPhysicalX = targetPhysicalX + targetPhysicalWidth + spacingPhysical;
-                double finalPhysicalY = targetPhysicalY;
-
-                if (finalPhysicalX + popupPhysicalWidth > workArea.X + workArea.Width)
-                {
-                    double leftTry = targetPhysicalX - popupPhysicalWidth - spacingPhysical;
-                    finalPhysicalX =
-                        (leftTry >= workArea.X)
-                            ? leftTry
-                            : (workArea.X + workArea.Width - popupPhysicalWidth - spacingPhysical);
-                }
-
-                if (finalPhysicalY + popupPhysicalHeight > workArea.Y + workArea.Height)
-                {
-                    finalPhysicalY = (workArea.Y + workArea.Height) - popupPhysicalHeight - spacingPhysical;
-                }
-                if (finalPhysicalY < workArea.Y)
-                    finalPhysicalY = workArea.Y + spacingPhysical;
-
-                popup.HorizontalOffset = (finalPhysicalX - winX) / dpiScale;
-                popup.VerticalOffset = (finalPhysicalY - winY) / dpiScale;
-
+                PositionPreviewPopup();
                 popup.IsOpen = true;
             }
         }
@@ -362,6 +315,103 @@ public class PreviewService : IPreviewService
             System.Diagnostics.Debug.WriteLine($"ShowPreview error: {ex.Message}");
             HidePreviewInternal();
         }
+    }
+
+    // Matches PreviewControl RootBorder.MaxHeight. Reserve this while async content
+    // (file/image decode) can still grow the pane downward.
+    private const double PreviewMaxHeight = 400;
+
+    private void PositionPreviewPopup()
+    {
+        if (_positioningPreview || _disposed)
+            return;
+
+        var popup = _previewPopup;
+        var target = _previewTarget;
+        var control = _previewControl;
+        if (popup == null || target == null || control == null || target.XamlRoot == null)
+            return;
+
+        _positioningPreview = true;
+        try
+        {
+            popup.XamlRoot = target.XamlRoot;
+
+            control.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            var popupWidth = control.DesiredSize.Width;
+            var popupHeight = Math.Max(control.DesiredSize.Height, control.ActualHeight);
+            if (popupWidth <= 0)
+                popupWidth = 360;
+            if (popupHeight <= 0)
+                popupHeight = 260;
+            if (PreviewMayGrow(_currentPreviewData))
+                popupHeight = Math.Max(popupHeight, PreviewMaxHeight);
+
+            var transform = target.TransformToVisual(null);
+            var targetPos = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+
+            double dpiScale = _windowService.GetDpiScale();
+            if (dpiScale <= 0)
+                dpiScale = 1;
+
+            var appWindow = _windowService.AppWindow;
+            double winX = appWindow.Position.X;
+            double winY = appWindow.Position.Y;
+
+            double targetPhysicalX = winX + (targetPos.X * dpiScale);
+            double targetPhysicalY = winY + (targetPos.Y * dpiScale);
+            double targetPhysicalWidth = target.ActualWidth * dpiScale;
+            double popupPhysicalWidth = popupWidth * dpiScale;
+            double popupPhysicalHeight = popupHeight * dpiScale;
+            double spacingPhysical = 10.0 * dpiScale;
+
+            if (
+                !_windowService.TryGetWorkArea((int)targetPhysicalX, (int)targetPhysicalY, out var workArea)
+            )
+            {
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
+                    appWindow.Id,
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Nearest
+                );
+                workArea = displayArea.WorkArea;
+            }
+
+            double finalPhysicalX = targetPhysicalX + targetPhysicalWidth + spacingPhysical;
+            double finalPhysicalY = targetPhysicalY;
+            double workRight = workArea.X + workArea.Width;
+            double workBottom = workArea.Y + workArea.Height;
+
+            if (finalPhysicalX + popupPhysicalWidth > workRight)
+            {
+                double leftTry = targetPhysicalX - popupPhysicalWidth - spacingPhysical;
+                finalPhysicalX = leftTry >= workArea.X ? leftTry : workRight - popupPhysicalWidth - spacingPhysical;
+            }
+            if (finalPhysicalX < workArea.X)
+                finalPhysicalX = workArea.X + spacingPhysical;
+
+            if (finalPhysicalY + popupPhysicalHeight > workBottom)
+                finalPhysicalY = workBottom - popupPhysicalHeight - spacingPhysical;
+            if (finalPhysicalY < workArea.Y)
+                finalPhysicalY = workArea.Y + spacingPhysical;
+
+            popup.HorizontalOffset = (finalPhysicalX - winX) / dpiScale;
+            popup.VerticalOffset = (finalPhysicalY - winY) / dpiScale;
+        }
+        finally
+        {
+            _positioningPreview = false;
+        }
+    }
+
+    private static bool PreviewMayGrow(PreviewData? data)
+    {
+        if (data == null)
+            return false;
+        if (data.PreviewType == "Files")
+            return data.IsFilePreviewLoading || data.FilePreview == null;
+        if (data.PreviewType == "Image")
+            return data.ImageBytes is not { Length: > 0 } && data.Thumbnail is not { Length: > 0 };
+        return false;
     }
 
     private void OnSelectedFileIndexChanged(object? sender, int index)

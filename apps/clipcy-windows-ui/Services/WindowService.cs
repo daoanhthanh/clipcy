@@ -255,6 +255,27 @@ public class WindowService : IWindowService
         }
     }
 
+    public bool TryGetWorkArea(int screenX, int screenY, out Windows.Graphics.RectInt32 workArea)
+    {
+        workArea = default;
+        var monitor = MonitorFromPoint(new POINT { X = screenX, Y = screenY }, MONITOR_DEFAULTTONEAREST);
+        if (monitor == IntPtr.Zero)
+            return false;
+
+        var info = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (!GetMonitorInfo(monitor, ref info))
+            return false;
+
+        workArea = new Windows.Graphics.RectInt32
+        {
+            X = info.rcWork.Left,
+            Y = info.rcWork.Top,
+            Width = info.rcWork.Right - info.rcWork.Left,
+            Height = info.rcWork.Bottom - info.rcWork.Top,
+        };
+        return workArea.Width > 0 && workArea.Height > 0;
+    }
+
     public void ShowAtCursor()
     {
         // Save the current foreground window BEFORE showing our popup

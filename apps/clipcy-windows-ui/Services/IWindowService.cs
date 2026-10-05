@@ -25,6 +25,12 @@ public interface IWindowService
     double GetDpiScale();
 
     /// <summary>
+    /// Work area of the monitor nearest the screen point, excluding the taskbar.
+    /// Coordinates are physical screen pixels.
+    /// </summary>
+    bool TryGetWorkArea(int screenX, int screenY, out Windows.Graphics.RectInt32 workArea);
+
+    /// <summary>
     /// Ensures the backdrop (Acrylic/Mica) remains active.
     /// </summary>
     void EnsureBackdropActive();
