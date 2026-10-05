@@ -20,7 +20,7 @@ export default {
   },
   
   hero: {
-    eyebrow: 'Trình quản lý clipboard cho Windows',
+    eyebrow: 'Trình quản lý clipboard miễn phí cho Windows',
     title: 'Clipboard của bạn, sẵn sàng cho lần dán tiếp theo.',
     subtitle: 'Nhẹ và được thiết kế để hoạt động nhanh, với giao diện Windows gốc và phản hồi nhanh như ánh sáng',
     ctaPrimary: 'Tải xuống cho Windows',
@@ -108,6 +108,44 @@ export default {
     }
   },
   
+  comparison: {
+  "heading": "Giải pháp thay thế hoàn hảo cho Win+V",
+  "body": "Lịch sử clipboard của Windows đáp ứng nhu cầu cơ bản. Clipcy thêm tìm kiếm và bảng xem trước riêng, lưu mọi thứ trên PC của bạn.",
+  "eyebrow": "So sánh",
+  "windows": "Clipboard Windows",
+  "rows": [
+    {
+      "label": "Lịch sử",
+      "clipcy": "Lên đến 1.000 mục. Luôn sẵn sàng khi bạn cần.",
+      "windows": "Tối đa 25 mục gần đây; mục chưa ghim bị mất khi khởi động lại.",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "Xem trước riêng",
+      "clipcy": "Bảng xem trước riêng cho văn bản, ảnh và tệp",
+      "windows": "Không có",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "Đồng bộ",
+      "clipcy": "Chỉ lưu cục bộ (đồng bộ đám mây đang được phát triển)",
+      "windows": "Tùy chọn đồng bộ giữa các thiết bị",
+      "clipcyPro": false,
+      "windowsPro": true
+    },
+    {
+      "label": "Tốc độ",
+      "clipcy": "Nhanh như Win+V gốc",
+      "windows": "Nhanh",
+      "clipcyPro": true,
+      "windowsPro": true
+    }
+  ],
+  "source": "Tài liệu clipboard của Microsoft"
+},
+
   finalCta: {
     heading: 'Sẵn sàng giữ lịch sử clipboard của bạn?',
     ctaPrimary: 'Tải xuống cho Windows',

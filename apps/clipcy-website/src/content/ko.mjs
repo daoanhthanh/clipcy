@@ -20,7 +20,7 @@ export default {
   },
   
   hero: {
-    eyebrow: 'Windows용 클립보드 관리자',
+    eyebrow: 'Windows용 무료 클립보드 관리자',
     title: '클립보드, 다음 붙여넣기 준비 완료.',
     subtitle: '가볍고 빠른 동작을 위해 설계된 Windows 네이티브 인터페이스와 빛처럼 빠른 응답',
     ctaPrimary: 'Windows용 다운로드',
@@ -108,6 +108,44 @@ export default {
     }
   },
   
+  comparison: {
+  "heading": "완벽한 대안: Win+V",
+  "body": "Windows 클립보드 기록은 기본 기능을 제공합니다. Clipcy는 검색과 전용 미리보기를 더하고 데이터를 PC에 저장합니다.",
+  "eyebrow": "비교",
+  "windows": "Windows 클립보드",
+  "rows": [
+    {
+      "label": "기록",
+      "clipcy": "최대 1,000개. 필요할 때 언제든 사용할 수 있습니다.",
+      "windows": "최근 항목 최대 25개; 고정하지 않은 항목은 재시작 시 삭제됩니다.",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "전용 미리보기",
+      "clipcy": "텍스트, 이미지, 파일 전용 미리보기",
+      "windows": "없음",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "동기화",
+      "clipcy": "로컬 저장만 지원 (클라우드 동기화 개발 중)",
+      "windows": "기기 간 동기화 선택 가능",
+      "clipcyPro": false,
+      "windowsPro": true
+    },
+    {
+      "label": "속도",
+      "clipcy": "Windows 기본 Win+V만큼 빠르게",
+      "windows": "빠름",
+      "clipcyPro": true,
+      "windowsPro": true
+    }
+  ],
+  "source": "Microsoft 클립보드 문서"
+},
+
   finalCta: {
     heading: '클립보드 기록을 유지할 준비가 되셨나요?',
     ctaPrimary: 'Windows용 다운로드',

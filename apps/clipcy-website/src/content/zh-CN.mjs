@@ -20,7 +20,7 @@ export default {
   },
   
   hero: {
-    eyebrow: 'Windows 剪贴板管理器',
+    eyebrow: '免费的 Windows 剪贴板管理器',
     title: '您的剪贴板，随时准备再次粘贴。',
     subtitle: '轻量，为速度而设计，采用原生 Windows 界面，响应快如光速',
     ctaPrimary: '下载 Windows 版',
@@ -108,6 +108,44 @@ export default {
     }
   },
   
+  comparison: {
+  "heading": "完美替代方案：Win+V",
+  "body": "Windows 剪贴板历史满足基本需求。Clipcy 添加搜索和独立预览，内容始终保存在你的电脑上。",
+  "eyebrow": "对比",
+  "windows": "Windows 剪贴板",
+  "rows": [
+    {
+      "label": "历史记录",
+      "clipcy": "最多 1,000 条，随时可用。",
+      "windows": "最多 25 条近期记录；未固定的内容在重启后清除。",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "独立预览",
+      "clipcy": "独立预览文本、图片和文件",
+      "windows": "无",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "同步",
+      "clipcy": "仅本地存储（云同步正在开发中）",
+      "windows": "可选的跨设备同步",
+      "clipcyPro": false,
+      "windowsPro": true
+    },
+    {
+      "label": "速度",
+      "clipcy": "与原生 Win+V 一样快",
+      "windows": "快速",
+      "clipcyPro": true,
+      "windowsPro": true
+    }
+  ],
+  "source": "Microsoft 剪贴板文档"
+},
+
   finalCta: {
     heading: '准备好保留剪贴板历史记录了吗？',
     ctaPrimary: '下载 Windows 版',

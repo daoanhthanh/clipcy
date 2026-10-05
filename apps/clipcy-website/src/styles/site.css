@@ -47,11 +47,11 @@ kbd { font-family: var(--font-mono); font-size: .8rem; border: 1px solid var(--c
 .release-note { margin-top: 18px; max-width: 44ch; font-size: .8rem; }
 .product-scene { position: relative; isolation: isolate; padding: 40px 22px 50px; min-width: 0; }
 /* Interactive native popup demonstration. */
-.clipboard-demo { position: relative; display: grid; grid-template-columns: 56% 44%; min-height: 436px; color: #fff; }
+.clipboard-demo { position: relative; display: grid; grid-template-columns: 56% 44%; min-height: 440px; color: #fff; }
 .demo-menu { background: linear-gradient(145deg, #0d3289, #102bb0 55%, #0c357b); border: 1px solid #1c489e; border-radius: 10px; padding: 12px; box-shadow: 0 20px 45px -15px #123f7e45; min-width: 0; }
 .demo-search { width: 100%; min-height: 40px; border: 1px solid transparent; border-radius: 4px; background: #ffffff12; color: white; font: inherit; font-size: .8rem; padding: 10px; }
 .demo-search::placeholder { color: #d6e3ff; opacity: 1; }
-.demo-rows { position: relative; isolation: isolate; margin-block: 12px; max-height: 352px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #86b1ff transparent; }
+.demo-rows { position: relative; isolation: isolate; margin-block: 12px; max-height: 357px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #86b1ff transparent; }
 .demo-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 10px 8px; border: 0; border-right: 2px solid transparent; background: transparent; color: white; text-align: left; font: inherit; font-size: .8rem; }
 .demo-row[hidden] { display: none; }
 .demo-selection { position: absolute; top: 0; left: 0; right: 0; z-index: -1; background: #4263ff30; border-right: 2px solid #86b1ff; pointer-events: none; transition: transform 340ms cubic-bezier(.22, 1, .36, 1), height 340ms cubic-bezier(.22, 1, .36, 1); }
@@ -228,3 +228,113 @@ html.paged-home {
   .paged-home .hero { background-image: linear-gradient(180deg, rgb(235 245 255 / .94), rgb(235 245 255 / .65) 42%, transparent 75%), url('/window-wallpaper.jpg'); }
 }
 .hero .product-scene figcaption { color: #fff; background: rgb(20 32 54 / .72); border: 1px solid rgb(255 255 255 / .18); border-radius: 4px; padding: 6px 12px; width: fit-content; max-width: 100%; margin-inline: auto; }
+
+.hero .demo-row.demo-pinned-end { position: relative; margin-bottom: 5px; }
+.hero .demo-row.demo-pinned-end::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px; background: rgb(255 255 255 / .18); pointer-events: none; }
+
+.demo-image { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; object-fit: contain; border-radius: 4px; margin-block: 16px; }
+.demo-image[hidden], .demo-content[hidden] { display: none; }
+.demo-file-content { font-family: var(--font-mono); font-size: .75rem; }
+/* Light desktop-inspired feature panel with frosted acrylic cards. */
+.intro-section {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+.intro-section::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: calc((100% - 100vw) / 2);
+  width: 100vw;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 12% 70%, rgb(163 204 255 / .55), transparent 52%),
+    radial-gradient(ellipse at 85% 35%, rgb(205 191 255 / .42), transparent 52%),
+    radial-gradient(ellipse at 65% 95%, rgb(179 231 244 / .45), transparent 48%),
+    linear-gradient(135deg, #f6faff, #edf3ff 55%, #f8f5ff);
+}
+.intro-section .feature {
+  position: relative;
+  background: rgb(255 255 255 / .55);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgb(255 255 255 / .8);
+  border-bottom-color: rgb(135 157 189 / .25);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .8), 0 8px 24px -12px rgb(46 75 116 / .2), 0 1px 3px rgb(46 75 116 / .06);
+}
+.intro-section .feature::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath filter='url(%23n)' opacity='.12' d='M0 0h128v128H0z'/%3E%3C/svg%3E");
+  opacity: .18;
+}
+.intro-section .feature-icon { background: rgb(233 241 255 / .8); border: 1px solid rgb(255 255 255 / .65); border-radius: 8px; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .intro-section .feature { background: #f7faff; }
+}
+.intro-section.container { max-width: none; padding-inline: max(32px, calc((100% - 1136px) / 2)); }
+.intro-section::before { left: 0; width: 100%; }
+@media (max-width: 700px) { .intro-section.container { padding-inline: 20px; } }
+@media (max-width: 380px) { .intro-section.container { padding-inline: 16px; } }
+/* Extend the light acrylic treatment to the workflow and final panels. */
+.workflow-section, .page-panel:has(> .final-cta) {
+  background:
+    radial-gradient(ellipse at 15% 75%, rgb(163 204 255 / .5), transparent 52%),
+    radial-gradient(ellipse at 85% 25%, rgb(205 191 255 / .4), transparent 52%),
+    linear-gradient(135deg, #f6faff, #edf3ff 55%, #f8f5ff);
+}
+.page-panel:has(> .final-cta) { max-width: none; }
+.workflow-step, .final-cta {
+  background: rgb(255 255 255 / .55);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgb(255 255 255 / .8);
+  border-bottom-color: rgb(135 157 189 / .25);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .8), 0 8px 24px -12px rgb(46 75 116 / .2), 0 1px 3px rgb(46 75 116 / .06);
+}
+.workflow-step { padding: 22px; margin-bottom: 16px; }
+.paged-home .final-cta { width: min(100%, 760px); margin-inline: auto; padding: 48px 24px; }
+.workflow-section .big-shortcut kbd, .workflow-section .shortcut-list kbd {
+  background: rgb(255 255 255 / .62);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-color: rgb(255 255 255 / .85);
+  border-bottom-color: rgb(135 157 189 / .3);
+}
+.final-cta .btn { border-radius: 4px; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .workflow-step, .final-cta { background: #f7faff; }
+}
+@media (max-width: 700px) {
+  .workflow-step { padding: 20px; }
+  .paged-home .final-cta { padding: 32px 20px; }
+}
+.comparison-section { background: radial-gradient(ellipse at 85% 30%, #ddd9ff80, transparent 55%), linear-gradient(135deg, #f4f9ff, #eaf3ff, #f6f3ff); }
+.comparison-description { margin-top: 20px; color: var(--color-muted); }
+.comparison-table-wrap { margin-top: 32px; background: rgb(255 255 255 / .55); backdrop-filter: blur(24px) saturate(140%); -webkit-backdrop-filter: blur(24px) saturate(140%); border: 1px solid #ffffffcc; border-radius: 8px; box-shadow: 0 12px 32px -20px #28477840; overflow: hidden; }
+.comparison-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: left; font-size: .9rem; }
+.comparison-table th, .comparison-table td { padding: 20px; overflow-wrap: anywhere; border-bottom: 1px solid #c6d5e66b; vertical-align: top; }
+.comparison-table th:first-child, .comparison-table td:first-child { width: 20%; }
+.comparison-table td:nth-child(2), .comparison-table th:nth-child(2) { background: #e6efff66; }
+.comparison-table thead th { font-size: 1.05rem; }
+.comparison-table kbd { display: inline-block; margin-top: 8px; font-size: .75rem; }
+.comparison-table tbody tr:last-child > * { border-bottom: 0; }
+.comparison-source { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; font-size: .8rem; }
+@media(max-width:700px) { .comparison-table th, .comparison-table td { padding: 12px 8px; font-size: .8rem; } .comparison-table thead th { font-size: .85rem; } .comparison-table th:first-child, .comparison-table td:first-child { width: 22%; } }
+.windows-shortcut { display: inline-flex; align-items: center; gap: .16em; white-space: nowrap; vertical-align: baseline; }
+.windows-shortcut svg { width: .72em; height: .72em; fill: currentColor; stroke: none; }
+
+
+.comparison-table .comparison-mark { display: inline-block; width: 22px; height: 22px; min-width: 22px; margin-right: 8px; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.comparison-table .comparison-mark.is-pro { color: #176b43; }
+.comparison-table .comparison-mark.is-con { color: #a32c52; }
+.comparison-mark .comparison-mark-circle { stroke: none; }
+.comparison-mark.is-pro .comparison-mark-circle { fill: #dcf5e6; }
+.comparison-mark.is-con .comparison-mark-circle { fill: #ffe2eb; }

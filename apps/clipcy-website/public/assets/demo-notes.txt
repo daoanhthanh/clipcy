@@ -1,0 +1,3 @@
+Clipcy notes
+Copy once. Paste when you need it.
+Alt+V opens your clipboard history.

@@ -20,7 +20,7 @@ export default {
   },
   
   hero: {
-    eyebrow: 'Clipboard manager for Windows',
+    eyebrow: 'Free clipboard manager for Windows',
     title: 'Your clipboard, ready for another paste.',
     subtitle: 'Lightweight and built for speed, with a native Windows interface and a lightspeed response',
     ctaPrimary: 'Download for Windows',
@@ -108,6 +108,44 @@ export default {
     }
   },
   
+  comparison: {
+  "heading": "Perfect alternative for Win+V",
+  "body": "Windows clipboard history covers the basics. Clipcy adds search and a dedicated preview, while keeping everything on your PC.",
+  "eyebrow": "Compare",
+  "windows": "Windows clipboard",
+  "rows": [
+    {
+      "label": "History",
+      "clipcy": "Up to 1,000 items. Always there when you need it.",
+      "windows": "Up to 25 recent items; unpinned items are lost on restart.",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "Dedicated preview",
+      "clipcy": "Dedicated text, image, and file preview",
+      "windows": "None",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "Sync",
+      "clipcy": "Local only (cloud sync is being developed)",
+      "windows": "Optional sync across devices",
+      "clipcyPro": false,
+      "windowsPro": true
+    },
+    {
+      "label": "Speed",
+      "clipcy": "As fast as native Win+V",
+      "windows": "Fast",
+      "clipcyPro": true,
+      "windowsPro": true
+    }
+  ],
+  "source": "Microsoft clipboard documentation"
+},
+
   finalCta: {
     heading: 'Ready to keep your clipboard history?',
     ctaPrimary: 'Download for Windows',

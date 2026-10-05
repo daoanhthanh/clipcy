@@ -1,6 +1,16 @@
 ---
+import fileContent from '../../public/assets/demo-notes.txt?raw';
 const { catalog } = Astro.props;
-const items = ['clipcy.dev', 'Hello, clipboard.', catalog.hero.title, 'Meeting notes\nMonday · 10:00\nReview the next release.', 'Design inspiration\nLight, minimal, and keyboard friendly.', 'Project checklist\nBuild → Test → Ship', 'npm run dev', 'Alt + V'];
+const items = [
+  { type: 'text', label: 'clipcy.dev', content: 'clipcy.dev' },
+  { type: 'text', label: 'Hello, clipboard.', content: 'Hello, clipboard.' },
+  { type: 'text', label: catalog.hero.title, content: catalog.hero.title },
+  { type: 'file', label: 'demo-notes.txt', content: fileContent.trim(), source: '/assets/demo-notes.txt' },
+  { type: 'image', label: 'window-wallpaper.jpg', content: 'window-wallpaper.jpg', source: '/window-wallpaper.jpg' },
+  { type: 'text', label: 'Project checklist', content: 'Project checklist\nBuild → Test → Ship' },
+  { type: 'text', label: 'npm run dev', content: 'npm run dev' },
+  { type: 'text', label: 'Alt + V', content: 'Alt + V' }
+];
 ---
 <div class="clipboard-demo" data-clipboard-demo>
   <div class="demo-menu">
@@ -8,23 +18,32 @@ const items = ['clipcy.dev', 'Hello, clipboard.', catalog.hero.title, 'Meeting n
     <input id="demo-search" class="demo-search" type="search" placeholder={catalog.features.find.label} autocomplete="off" />
     <div class="demo-rows" aria-label={catalog.features.find.label}>
       <div class="demo-selection" aria-hidden="true" hidden></div>
-      {items.map((text, index) => <button type="button" class="demo-row" data-content={text} aria-controls="demo-pane" aria-expanded="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="12" height="14" rx="3"/><path d="M5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2"/></svg>
-        <span>{text.split('\n')[0]}</span>
+      {items.map((item, index) => <button type="button" class:list={['demo-row', { 'demo-pinned-end': index === 1 }]} data-content={item.content} data-kind={item.type} data-label={item.label} data-source={item.source} aria-controls="demo-pane" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          {item.type === 'text' ? <><rect x="8" y="3" width="12" height="14" rx="3"/><path d="M5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2"/></> : item.type === 'file' ? <path d="M6 2h8l4 4v16H6zM14 2v5h4M9 12h6M9 16h6"/> : <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/><circle cx="16" cy="7" r="1"/></>}
+        </svg>
+        <span>{item.label}</span>
         {index < 2 && <svg class="demo-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5"/></svg>}
       </button>)}
     </div>
     <div class="demo-footer"><span>{catalog.features.find.label}</span><kbd>Alt+V</kbd></div>
   </div>
   <aside id="demo-pane" class="demo-pane" aria-label={catalog.features.preview.title} hidden>
-    <strong>{catalog.features.preview.label}</strong>
-    <p class="demo-content"></p>
+    <strong class="demo-preview-title">{catalog.features.preview.label}</strong>
+    <div class="demo-preview-body">
+      <p class="demo-content"></p>
+      <img class="demo-image" src="/window-wallpaper.jpg" alt="" width="2560" height="1600" hidden />
+    </div>
     <div class="demo-meta"><span>Clipcy</span><kbd>Ctrl+P</kbd></div>
   </aside>
 </div>
 <script>
   document.querySelectorAll<HTMLElement>('[data-clipboard-demo]').forEach(demo => {
     const pane = demo.querySelector<HTMLElement>('.demo-pane')!;
+    const previewTitle = demo.querySelector<HTMLElement>('.demo-preview-title')!;
+    const textPreviewTitle = previewTitle.textContent;
+    const previewBody = demo.querySelector<HTMLElement>('.demo-preview-body')!;
+    const previewImage = demo.querySelector<HTMLImageElement>('.demo-image')!;
     const content = demo.querySelector<HTMLElement>('.demo-content')!;
     const rows = [...demo.querySelectorAll<HTMLButtonElement>('.demo-row')];
     const search = demo.querySelector<HTMLInputElement>('.demo-search')!;
@@ -49,7 +68,16 @@ const items = ['clipcy.dev', 'Hello, clipboard.', catalog.hero.title, 'Meeting n
       contentAnimation?.cancel();
       activeRow = row;
       rows.forEach(item => item.setAttribute('aria-expanded', String(item === row)));
+      const isImage = row.dataset.kind === 'image';
+      previewTitle.textContent = row.dataset.kind === 'text' ? textPreviewTitle : row.dataset.label || '';
       content.textContent = row.dataset.content || '';
+      content.hidden = isImage;
+      content.classList.toggle('demo-file-content', row.dataset.kind === 'file');
+      previewImage.hidden = !isImage;
+      if (isImage) {
+        previewImage.src = row.dataset.source || '';
+        previewImage.alt = row.dataset.label || '';
+      }
       pane.hidden = false;
       selection.hidden = false;
       selection.style.transform = `translateY(${row.offsetTop}px)`;
@@ -66,7 +94,7 @@ const items = ['clipcy.dev', 'Hello, clipboard.', catalog.hero.title, 'Meeting n
         { transform: from, opacity: wasHidden ? 0 : 1 },
         { transform: 'translate(0, 0) scale(1)', opacity: 1 }
       ], { duration: 340, easing: 'cubic-bezier(.22, 1, .36, 1)' });
-      contentAnimation = content.animate([
+      contentAnimation = previewBody.animate([
         { opacity: .25, transform: 'translateY(4px)' },
         { opacity: 1, transform: 'translateY(0)' }
       ], { duration: 240, easing: 'ease-out' });
@@ -99,7 +127,7 @@ const items = ['clipcy.dev', 'Hello, clipboard.', catalog.hero.title, 'Meeting n
     search.addEventListener('input', () => {
       close();
       const query = search.value.trim().toLocaleLowerCase();
-      rows.forEach(row => { row.hidden = !row.dataset.content?.toLocaleLowerCase().includes(query); });
+      rows.forEach(row => { row.hidden = !`${row.dataset.label} ${row.dataset.content}`.toLocaleLowerCase().includes(query); });
     });
     search.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown') { event.preventDefault(); rows.find(row => !row.hidden)?.focus(); }

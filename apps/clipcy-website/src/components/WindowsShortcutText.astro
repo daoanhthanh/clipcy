@@ -1,0 +1,5 @@
+---
+const { text } = Astro.props;
+const parts = text.split('Win+V');
+---
+{parts.map((part, index) => <>{part}{index < parts.length - 1 && <span class="windows-shortcut" role="img" aria-label="Windows + V"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M1 1h8v8H1zM11 1h8v8h-8zM1 11h8v8H1zM11 11h8v8h-8z"/></svg><span aria-hidden="true">+ V</span></span>}</>)}

@@ -20,7 +20,7 @@ export default {
   },
   
   hero: {
-    eyebrow: 'Windows用クリップボードマネージャー',
+    eyebrow: 'Windows 向けの無料クリップボードマネージャー',
     title: 'あなたのクリップボード、次の貼り付けの準備ができています。',
     subtitle: '軽量で、速さを重視した設計。Windows ネイティブの UI と光速のレスポンス',
     ctaPrimary: 'Windows版をダウンロード',
@@ -108,6 +108,44 @@ export default {
     }
   },
   
+  comparison: {
+  "heading": "理想的な代替アプリ：Win+V",
+  "body": "Windows のクリップボード履歴は基本をカバー。Clipcy は検索と専用プレビューを追加し、データを PC 内に保存します。",
+  "eyebrow": "比較",
+  "windows": "Windows クリップボード",
+  "rows": [
+    {
+      "label": "履歴",
+      "clipcy": "最大 1,000 件。必要なときにいつでも。",
+      "windows": "直近 25 件まで。ピン留めしていない項目は再起動時に削除。",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "専用プレビュー",
+      "clipcy": "テキスト・画像・ファイルの専用プレビュー",
+      "windows": "なし",
+      "clipcyPro": true,
+      "windowsPro": false
+    },
+    {
+      "label": "同期",
+      "clipcy": "ローカルのみ（クラウド同期は開発中）",
+      "windows": "デバイス間同期を選択可能",
+      "clipcyPro": false,
+      "windowsPro": true
+    },
+    {
+      "label": "速度",
+      "clipcy": "Windows 標準の Win+V と同じ速さ",
+      "windows": "高速",
+      "clipcyPro": true,
+      "windowsPro": true
+    }
+  ],
+  "source": "Microsoft のクリップボード資料"
+},
+
   finalCta: {
     heading: 'クリップボード履歴を保持する準備はできましたか？',
     ctaPrimary: 'Windows版をダウンロード',
