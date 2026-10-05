@@ -56,8 +56,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
             if (bridge == null)
                 return;
 
-            // Run database call on background thread
-            var items = await Task.Run(() => bridge.GetHistory());
+            var query = SearchQuery;
+            var items = await Task.Run(() => string.IsNullOrWhiteSpace(query)
+                ? bridge.GetHistory()
+                : bridge.Search(query));
+            if (query != SearchQuery)
+                return;
 
             // Differential update - only change what's different
             // Remove items no longer in the new list
@@ -74,16 +78,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 var newItem = items[i];
                 
-                // Check if item exists at correct position
-                if (i < Items.Count && Items[i].Id == newItem.Id)
-                {
-                    // Item is already in correct position, update properties if needed
-                    if (Items[i].Pinned != newItem.Pinned)
-                    {
-                        Items[i].Pinned = newItem.Pinned;
-                    }
-                }
-                else
+                if (i >= Items.Count || Items[i].Id != newItem.Id)
                 {
                     // Find if item exists elsewhere
                     int existingIndex = -1;
@@ -107,9 +102,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
                         Items.Insert(i, newItem);
                     }
                 }
+
+                // Moves retain the existing view model, including its old pin state.
+                Items[i].Pinned = newItem.Pinned;
             }
 
-            SetStatus("main.n_items", Items.Count);
+            SetStatus(string.IsNullOrWhiteSpace(query) ? "main.n_items" : "main.n_results", Items.Count);
         }
         catch (Exception ex)
         {
@@ -168,12 +166,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void TogglePin(ClipboardItemViewModel item)
+    private async Task TogglePinAsync(ClipboardItemViewModel item)
     {
         try
         {
-            App.Bridge?.SetPinned(item.Id, !item.Pinned);
+            var bridge = App.Bridge;
+            if (bridge == null)
+                return;
+
+            bridge.SetPinned(item.Id, !item.Pinned);
             item.Pinned = !item.Pinned;
+            await RefreshHistoryAsync();
         }
         catch (Exception ex)
         {

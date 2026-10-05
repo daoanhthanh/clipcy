@@ -143,7 +143,7 @@ public sealed partial class MainWindow : Window
         this.HidePopup();
     }
 
-    private void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
+    private async void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == Windows.System.VirtualKey.Escape)
         {
@@ -154,18 +154,10 @@ public sealed partial class MainWindow : Window
 
         if (IsKeyDown(Windows.System.VirtualKey.Control) && e.Key == Windows.System.VirtualKey.P)
         {
-            if (HistoryListView.SelectedItem is ClipboardItemViewModel item)
+            if (GetPinTarget() is ClipboardItemViewModel item)
             {
                 e.Handled = true;
-                try
-                {
-                    App.Bridge?.SetPinned(item.Id, !item.Pinned);
-                    ViewModel.RefreshHistory();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error toggling pin: {ex.Message}");
-                }
+                await TogglePinAsync(item);
             }
             return;
         }
@@ -245,6 +237,45 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private ClipboardItemViewModel? GetPinTarget()
+    {
+        // Arrow navigation controls selection without moving native keyboard focus.
+        if (!_keyboardNavigationActive)
+        {
+            var focused = FocusManager.GetFocusedElement(RootGrid.XamlRoot) as DependencyObject;
+            while (focused != null && focused != HistoryListView)
+            {
+                if (focused is ListViewItem container
+                    && HistoryListView.ItemFromContainer(container) is ClipboardItemViewModel item)
+                {
+                    return item;
+                }
+                focused = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(focused);
+            }
+        }
+
+        return HistoryListView.SelectedItem as ClipboardItemViewModel;
+    }
+
+    private async Task TogglePinAsync(ClipboardItemViewModel item)
+    {
+        if (!ViewModel.TogglePinCommand.CanExecute(item))
+            return;
+
+        _previewService.Hide();
+        await ViewModel.TogglePinCommand.ExecuteAsync(item);
+
+        // Follow the same item after its row moves, so Ctrl+P again unpins it.
+        if (_windowService.IsVisible && ViewModel.Items.Contains(item))
+        {
+            HistoryListView.SelectedItem = item;
+            HistoryListView.ScrollIntoView(item);
+            HistoryListView.UpdateLayout();
+            if (HistoryListView.ContainerFromItem(item) is ListViewItem container)
+                container.Focus(FocusState.Programmatic);
+        }
+    }
+
     public void ShowAtCursor()
     {
         _windowService.ShowAtCursor();
@@ -314,6 +345,10 @@ public sealed partial class MainWindow : Window
     {
         if (sender is ListViewItem item && item.Content is ClipboardItemViewModel viewModel)
         {
+            if (HistoryListView.SelectedItem != viewModel)
+            {
+                HistoryListView.SelectedItem = viewModel;
+            }
             var data = MapToPreviewData(viewModel);
             _previewService.ScheduleShow(data, item);
         }
@@ -337,7 +372,6 @@ public sealed partial class MainWindow : Window
             HistoryListView.SelectedIndex = index;
         }
 
-        item.Focus(FocusState.Pointer);
     }
 
     private static bool IsKeyDown(Windows.System.VirtualKey key) =>
@@ -498,19 +532,11 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void PinUnpinMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void PinUnpinMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuFlyoutItem item && item.DataContext is ClipboardItemViewModel vm)
         {
-            try
-            {
-                App.Bridge?.SetPinned(vm.Id, !vm.Pinned);
-                ViewModel.RefreshHistory();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error toggling pin: {ex.Message}");
-            }
+            await TogglePinAsync(vm);
         }
     }
 

@@ -82,6 +82,7 @@ apps/clipcy-windows-ui/
 - **System Tray**: Always-accessible tray icon with context menu
 - **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
+- **Pinning**: Hover/focus a history row or select it with Up/Down, then press **Ctrl+P** to pin/unpin it (also available in the row's context menu). Pinned items stay above unpinned items in history and search results. Selection follows the toggled item when it moves, so pressing **Ctrl+P** again unpins the same item; pinning does not clear the search filter.
 - **Preview Panel**: Desktop Acrylic popup beside the list for clipboard Text/Html/RTF/Image and **file** items. File previews read the **current** local path (not a history snapshot): images (PNG/JPEG/BMP/GIF/TIFF/ICO/JXR) as static aspect-fit PNG ≤1024px long edge; text (UTF-8 or BOM UTF-16, ≤64 KiB prefix with truncation notice); video first decoded presentation frame via Media Foundation (H.264 MP4 baseline; OS codecs for others); audio as a music-note icon only. Mixed multi-file selections show an original-order selector (default first). UNC/remote/cloud/reparse paths keep name/status without hydration. Paste still uses original CF_HDROP paths.
 - **Theming**: Follows system light/dark theme
 - **Languages**: English, Simplified Chinese, Japanese, Russian, Korean, and Vietnamese. Change language in **Settings → General → Language**; open windows, dialogs, previews, and the tray menu update without restarting.
