@@ -25,6 +25,7 @@ internal class RustBridgeService : IDisposable, UiCallback
     public event Action<ClipboardItemViewModel>? OnClipboardChanged;
     public event Action<string>? OnNotification;
     public event Action? OnReady;
+    public event Action<bool>? OnPreviewPanelChanged;
 
     public RustBridgeService()
     {
@@ -291,6 +292,8 @@ internal class RustBridgeService : IDisposable, UiCallback
             );
 
             _engine?.SaveSettings(dto);
+            var showPreviewPanel = settings.ShowPreviewPanel;
+            _dispatcherQueue?.TryEnqueue(() => OnPreviewPanelChanged?.Invoke(showPreviewPanel));
         }
         catch (Exception ex)
         {

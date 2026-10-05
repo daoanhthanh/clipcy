@@ -15,6 +15,8 @@ public class PreviewService : IPreviewService
     private readonly Grid _rootGrid;
     private readonly IWindowService _windowService;
     private readonly DispatcherQueue _dispatcherQueue;
+    private readonly RustBridgeService? _bridge;
+    private bool _showPreviewPanel;
 
     private DispatcherTimer? _previewDelayTimer;
     private DispatcherTimer? _hideTimer;
@@ -40,6 +42,10 @@ public class PreviewService : IPreviewService
         _rootGrid = rootGrid;
         _windowService = windowService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _bridge = App.Bridge;
+        _showPreviewPanel = _bridge?.GetSettings().ShowPreviewPanel ?? true;
+        if (_bridge != null)
+            _bridge.OnPreviewPanelChanged += OnPreviewPanelChanged;
         _rootGrid.ActualThemeChanged += OnRootActualThemeChanged;
     }
 
@@ -55,6 +61,8 @@ public class PreviewService : IPreviewService
         _pendingShowGeneration++;
         CancelFileLoad();
         _rootGrid.ActualThemeChanged -= OnRootActualThemeChanged;
+        if (_bridge != null)
+            _bridge.OnPreviewPanelChanged -= OnPreviewPanelChanged;
         if (_previewPopup != null)
         {
             _previewPopup.IsOpen = false;
@@ -170,6 +178,12 @@ public class PreviewService : IPreviewService
             if (_disposed)
                 return;
 
+            if (!_showPreviewPanel)
+            {
+                HidePreviewInternal();
+                return;
+            }
+
             _hideTimer?.Stop();
 
             // Same item already open: keep it; do not restart delay.
@@ -270,6 +284,12 @@ public class PreviewService : IPreviewService
     {
         if (_disposed)
             return;
+
+        if (!_showPreviewPanel)
+        {
+            HidePreviewInternal();
+            return;
+        }
 
         if (_currentPreviewData?.Id == data.Id && PreviewPopup.IsOpen && ReferenceEquals(_currentPreviewData, data))
             return;
@@ -662,6 +682,16 @@ public class PreviewService : IPreviewService
             StatusMessage = message,
         };
 
+
+    private void OnPreviewPanelChanged(bool showPreviewPanel)
+    {
+        if (_disposed)
+            return;
+
+        _showPreviewPanel = showPreviewPanel;
+        if (!showPreviewPanel)
+            HidePreviewInternal();
+    }
 
     private void OnRootActualThemeChanged(FrameworkElement sender, object args)
     {
