@@ -14,7 +14,23 @@ public sealed partial class MainWindow : Window
 
     private readonly IWindowService _windowService;
     private readonly IPreviewService _previewService;
-    private bool _keyboardNavigationActive;
+    private enum SelectionOwner
+    {
+        None,
+        Pointer,
+        Keyboard,
+    }
+
+    private bool _syncingSelection;
+    private bool _userSelecting;
+    private bool _pinnedChromeQueued;
+    private bool _returningFocus;
+    private bool _hasPointer;
+    private SelectionOwner _owner;
+    private ListView? _activeList;
+    private int _activeIndex = -1;
+    private ClipboardItemViewModel? _focusedItem;
+    private Windows.Foundation.Point _lastPointer;
 
     public MainWindow()
     {
@@ -28,6 +44,10 @@ public sealed partial class MainWindow : Window
 
         ViewModel = new MainViewModel();
         ((FrameworkElement)this.Content).DataContext = this;
+        PinnedListView.MaxHeight = WindowService.PinnedRowHeightDip * WindowService.PinnedMaxVisibleRows;
+        DisableListFocus(PinnedListView);
+        DisableListFocus(HistoryListView);
+        ViewModel.PinnedItems.CollectionChanged += (_, _) => QueuePinnedChrome();
 
 
         // Subscribe to theme changes and apply to Content
@@ -46,6 +66,13 @@ public sealed partial class MainWindow : Window
             // Load initial data when Rust engine is ready
             App.Bridge.OnReady += RefreshHistory;
         }
+
+    }
+
+    private static void DisableListFocus(ListView list)
+    {
+        list.IsTabStop = false;
+        list.AllowFocusOnInteraction = false;
 
     }
 
@@ -103,7 +130,15 @@ public sealed partial class MainWindow : Window
 
             // List is already populated in background - do nothing
 
+            _owner = SelectionOwner.None;
+            _focusedItem = null;
+            _activeList = null;
+            _activeIndex = -1;
+            _hasPointer = false;
+            _syncingSelection = true;
+            PinnedListView.SelectedIndex = -1;
             HistoryListView.SelectedIndex = -1;
+            _syncingSelection = false;
             RootGrid.Focus(FocusState.Programmatic);
 
             _windowService.EnsureBackdropActive();
@@ -164,7 +199,7 @@ public sealed partial class MainWindow : Window
 
         if (e.Key == Windows.System.VirtualKey.Delete)
         {
-            if (HistoryListView.SelectedItem is ClipboardItemViewModel item)
+            if (SelectedClipboardItem() is ClipboardItemViewModel item)
             {
                 e.Handled = true;
                 try
@@ -182,7 +217,7 @@ public sealed partial class MainWindow : Window
 
         if (e.Key == Windows.System.VirtualKey.Enter)
         {
-            if (HistoryListView.SelectedItem is ClipboardItemViewModel item)
+            if (SelectedClipboardItem() is ClipboardItemViewModel item)
             {
                 e.Handled = true;
                 PasteSelectedItem(item);
@@ -192,70 +227,17 @@ public sealed partial class MainWindow : Window
 
         if (e.Key == Windows.System.VirtualKey.Down)
         {
-            _keyboardNavigationActive = true;
-
-            if (SearchBox.FocusState != FocusState.Unfocused)
-            {
-                e.Handled = true;
-                HistoryListView.Focus(FocusState.Programmatic);
-                if (HistoryListView.Items.Count > 0)
-                {
-                    HistoryListView.SelectedIndex = 0;
-                }
-                return;
-            }
-
             e.Handled = true;
-
-            if (HistoryListView.SelectedIndex < 0)
-            {
-                if (ViewModel.Items.Count > 0)
-                {
-                    HistoryListView.SelectedIndex = 0;
-                    HistoryListView.Focus(FocusState.Keyboard);
-                }
-            }
-            else if (HistoryListView.SelectedIndex < ViewModel.Items.Count - 1)
-            {
-                HistoryListView.SelectedIndex++;
-            }
+            MoveSelection(1);
         }
         else if (e.Key == Windows.System.VirtualKey.Up)
         {
-            _keyboardNavigationActive = true;
             e.Handled = true;
-
-            if (HistoryListView.SelectedIndex > 0)
-            {
-                HistoryListView.SelectedIndex--;
-            }
-            else if (HistoryListView.SelectedIndex == 0)
-            {
-                HistoryListView.SelectedIndex = -1;
-                RootGrid.Focus(FocusState.Keyboard);
-            }
+            MoveSelection(-1);
         }
     }
 
-    private ClipboardItemViewModel? GetPinTarget()
-    {
-        // Arrow navigation controls selection without moving native keyboard focus.
-        if (!_keyboardNavigationActive)
-        {
-            var focused = FocusManager.GetFocusedElement(RootGrid.XamlRoot) as DependencyObject;
-            while (focused != null && focused != HistoryListView)
-            {
-                if (focused is ListViewItem container
-                    && HistoryListView.ItemFromContainer(container) is ClipboardItemViewModel item)
-                {
-                    return item;
-                }
-                focused = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(focused);
-            }
-        }
-
-        return HistoryListView.SelectedItem as ClipboardItemViewModel;
-    }
+    private ClipboardItemViewModel? GetPinTarget() => _focusedItem;
 
     private async Task TogglePinAsync(ClipboardItemViewModel item)
     {
@@ -265,19 +247,169 @@ public sealed partial class MainWindow : Window
         _previewService.Hide();
         await ViewModel.TogglePinCommand.ExecuteAsync(item);
 
-        // Follow the same item after its row moves, so Ctrl+P again unpins it.
-        if (_windowService.IsVisible && ViewModel.Items.Contains(item))
+        // Follow the same item after it moves between the pinned and regular regions.
+        if (_windowService.IsVisible)
+            RevealItem(item);
+    }
+
+    private ClipboardItemViewModel? SelectedClipboardItem() => _focusedItem;
+
+    private ListView? SelectedList() =>
+        _activeList != null && _activeIndex >= 0 && _activeList.SelectedIndex == _activeIndex
+            ? _activeList
+            : null;
+
+    private bool TrySelectFirst()
+    {
+        if (ViewModel.PinnedItems.Count > 0)
+            return SetFocusedItem(PinnedListView, 0, SelectionOwner.Keyboard);
+
+        if (ViewModel.RegularItems.Count > 0)
+            return SetFocusedItem(HistoryListView, 0, SelectionOwner.Keyboard);
+
+        return false;
+    }
+
+    private void MoveSelection(int delta)
+    {
+        EnforceExclusiveSelection();
+        var list = SelectedList();
+        if (list == null)
         {
-            HistoryListView.SelectedItem = item;
-            HistoryListView.ScrollIntoView(item);
-            HistoryListView.UpdateLayout();
-            if (HistoryListView.ContainerFromItem(item) is ListViewItem container)
-                container.Focus(FocusState.Programmatic);
+            if (delta > 0)
+                TrySelectFirst();
+            return;
         }
+
+        int index = list.SelectedIndex + delta;
+        if (index >= 0 && index < list.Items.Count)
+        {
+            SetFocusedItem(list, index, SelectionOwner.Keyboard);
+            return;
+        }
+
+        if (delta > 0 && list == PinnedListView && HistoryListView.Items.Count > 0)
+        {
+            SetFocusedItem(HistoryListView, 0, SelectionOwner.Keyboard);
+            return;
+        }
+
+        if (delta < 0 && list == HistoryListView && PinnedListView.Items.Count > 0)
+        {
+            SetFocusedItem(PinnedListView, PinnedListView.Items.Count - 1, SelectionOwner.Keyboard);
+            return;
+        }
+
+        if (delta < 0)
+            ClearFocusedItem();
+    }
+
+    private bool SetFocusedItem(ListView list, int index, SelectionOwner owner)
+    {
+        if (index < 0 || index >= list.Items.Count || list.Items[index] is not ClipboardItemViewModel item)
+            return false;
+
+        _owner = owner;
+        _activeList = list;
+        _activeIndex = index;
+        _focusedItem = item;
+
+        _syncingSelection = true;
+        _userSelecting = true;
+        if (!ReferenceEquals(list, PinnedListView))
+            PinnedListView.SelectedIndex = -1;
+        if (!ReferenceEquals(list, HistoryListView))
+            HistoryListView.SelectedIndex = -1;
+        list.SelectedIndex = index;
+        _userSelecting = false;
+        _syncingSelection = false;
+        EnforceExclusiveSelection();
+
+        list.ScrollIntoView(item);
+        list.UpdateLayout();
+        if (list.ContainerFromItem(item) is ListViewItem container)
+        {
+            _returningFocus = true;
+            container.Focus(FocusState.Programmatic);
+            _returningFocus = false;
+            _previewService.ScheduleShow(MapToPreviewData(item), container);
+        }
+
+        return true;
+    }
+
+    private void ClearFocusedItem()
+    {
+        _owner = SelectionOwner.None;
+        _focusedItem = null;
+        _activeList = null;
+        _activeIndex = -1;
+        _syncingSelection = true;
+        PinnedListView.SelectedIndex = -1;
+        HistoryListView.SelectedIndex = -1;
+        _syncingSelection = false;
+        RootGrid.Focus(FocusState.Programmatic);
+        _previewService.Hide();
+    }
+
+    private void RevealItem(ClipboardItemViewModel item)
+    {
+        ListView? list = null;
+        if (ViewModel.PinnedItems.Contains(item))
+            list = PinnedListView;
+        else if (ViewModel.RegularItems.Contains(item))
+            list = HistoryListView;
+
+        if (list == null)
+            return;
+
+        int index = list.Items.IndexOf(item);
+        if (index < 0)
+            return;
+
+        SetFocusedItem(list, index, _owner == SelectionOwner.None ? SelectionOwner.Keyboard : _owner);
+    }
+
+
+    private ListView? ListOwning(ListViewItem item)
+    {
+        return ItemsControl.ItemsControlFromItemContainer(item) as ListView;
+    }
+
+    private void QueuePinnedChrome()
+    {
+        if (_pinnedChromeQueued)
+            return;
+
+        _pinnedChromeQueued = true;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            _pinnedChromeQueued = false;
+            ApplyPinnedChrome();
+        });
+    }
+
+    private void ApplyPinnedChrome()
+    {
+        int count = ViewModel.PinnedItems.Count;
+        if (count == 0 && PinnedListView.SelectedIndex >= 0)
+            PinnedListView.SelectedIndex = -1;
+
+        int visible = Math.Min(count, WindowService.PinnedMaxVisibleRows);
+        PinnedListView.Height = count == 0
+            ? double.NaN
+            : visible * WindowService.PinnedRowHeightDip;
+        ScrollViewer.SetVerticalScrollBarVisibility(
+            PinnedListView,
+            count > WindowService.PinnedMaxVisibleRows
+                ? ScrollBarVisibility.Auto
+                : ScrollBarVisibility.Disabled);
+        _windowService.SetExtraHeightDip(WindowService.ExtraHeightForPinnedCount(count));
     }
 
     public void ShowAtCursor()
     {
+        ApplyPinnedChrome();
         _windowService.ShowAtCursor();
     }
 
@@ -293,17 +425,18 @@ public sealed partial class MainWindow : Window
     {
         if (args.ItemContainer is ListViewItem item)
         {
+            item.IsTabStop = false;
+            item.AllowFocusOnInteraction = false;
+            item.UseSystemFocusVisuals = false;
             item.PointerEntered -= ListViewItem_PointerEntered;
             item.PointerMoved -= ListViewItem_PointerMoved;
             item.PointerExited -= ListViewItem_PointerExited;
             item.GotFocus -= ListViewItem_GotFocus;
-            item.LostFocus -= ListViewItem_LostFocus;
 
             item.PointerEntered += ListViewItem_PointerEntered;
             item.PointerMoved += ListViewItem_PointerMoved;
             item.PointerExited += ListViewItem_PointerExited;
             item.GotFocus += ListViewItem_GotFocus;
-            item.LostFocus += ListViewItem_LostFocus;
         }
 
         if (args.Item is ClipboardItemViewModel vm)
@@ -315,48 +448,72 @@ public sealed partial class MainWindow : Window
     private void ListViewItem_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
         if (sender is ListViewItem item)
-        {
-            _keyboardNavigationActive = false;
-            ApplyPointerSelection(item);
-        }
-
-        if (sender is ListViewItem li && li.Content is ClipboardItemViewModel viewModel)
-        {
-            var data = MapToPreviewData(viewModel);
-            _previewService.ScheduleShow(data, li);
-        }
+            TryPointerTakeover(item, e);
     }
 
     private void ListViewItem_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (_keyboardNavigationActive && sender is ListViewItem item)
-        {
-            _keyboardNavigationActive = false;
-            ApplyPointerSelection(item);
-        }
+        if (sender is ListViewItem item)
+            TryPointerTakeover(item, e);
     }
 
     private void ListViewItem_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        _previewService.ScheduleHide();
+        if (_owner == SelectionOwner.Pointer
+            && sender is ListViewItem item
+            && ReferenceEquals(item.Content, _focusedItem))
+        {
+            _previewService.ScheduleHide();
+        }
+    }
+
+    private void TryPointerTakeover(ListViewItem item, PointerRoutedEventArgs e)
+    {
+        if (!PointerMovedSince(e) && _owner == SelectionOwner.Keyboard)
+            return;
+
+        var list = ListOwning(item);
+        if (list == null)
+            return;
+
+        int index = list.IndexFromContainer(item);
+        if (index < 0)
+            return;
+
+        if (_owner == SelectionOwner.Pointer && ReferenceEquals(_focusedItem, item.Content))
+        {
+            _previewService.ScheduleShow(MapToPreviewData((ClipboardItemViewModel)item.Content), item);
+            return;
+        }
+
+        SetFocusedItem(list, index, SelectionOwner.Pointer);
+    }
+
+    private bool PointerMovedSince(PointerRoutedEventArgs e)
+    {
+        var pos = e.GetCurrentPoint(RootGrid).Position;
+        bool moved = !_hasPointer
+            || Math.Abs(pos.X - _lastPointer.X) > 1
+            || Math.Abs(pos.Y - _lastPointer.Y) > 1;
+        _lastPointer = pos;
+        _hasPointer = true;
+        return moved;
     }
 
     private void ListViewItem_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (sender is ListViewItem item && item.Content is ClipboardItemViewModel viewModel)
-        {
-            if (HistoryListView.SelectedItem != viewModel)
-            {
-                HistoryListView.SelectedItem = viewModel;
-            }
-            var data = MapToPreviewData(viewModel);
-            _previewService.ScheduleShow(data, item);
-        }
-    }
+        if (_returningFocus || sender is not ListViewItem item)
+            return;
+        if (ReferenceEquals(item.Content, _focusedItem))
+            return;
 
-    private void ListViewItem_LostFocus(object sender, RoutedEventArgs e)
-    {
-        _previewService.ScheduleHide();
+        _returningFocus = true;
+        if (_activeList?.ContainerFromItem(_focusedItem) is ListViewItem owned)
+            owned.Focus(FocusState.Programmatic);
+        else
+            RootGrid.Focus(FocusState.Programmatic);
+        _returningFocus = false;
+        EnforceExclusiveSelection();
     }
 
     private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
@@ -364,14 +521,41 @@ public sealed partial class MainWindow : Window
         _previewService.Hide();
     }
 
-    private void ApplyPointerSelection(ListViewItem item)
+    private void EnforceExclusiveSelection()
     {
-        var index = HistoryListView.IndexFromContainer(item);
-        if (index >= 0 && HistoryListView.SelectedIndex != index)
+        _syncingSelection = true;
+        if (!ReferenceEquals(_activeList, PinnedListView) && PinnedListView.SelectedIndex >= 0)
+            PinnedListView.SelectedIndex = -1;
+        if (!ReferenceEquals(_activeList, HistoryListView) && HistoryListView.SelectedIndex >= 0)
+            HistoryListView.SelectedIndex = -1;
+        if (_activeList != null
+            && _activeIndex >= 0
+            && _activeIndex < _activeList.Items.Count
+            && _activeList.SelectedIndex != _activeIndex)
         {
-            HistoryListView.SelectedIndex = index;
+            _activeList.SelectedIndex = _activeIndex;
+        }
+        _syncingSelection = false;
+    }
+
+    private void ClipboardList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingSelection || sender is not ListView list || list.SelectedIndex < 0)
+            return;
+
+        if (!_userSelecting)
+        {
+            EnforceExclusiveSelection();
+            return;
         }
 
+        _activeList = list;
+        _syncingSelection = true;
+        if (!ReferenceEquals(list, PinnedListView))
+            PinnedListView.SelectedIndex = -1;
+        if (!ReferenceEquals(list, HistoryListView))
+            HistoryListView.SelectedIndex = -1;
+        _syncingSelection = false;
     }
 
     private static bool IsKeyDown(Windows.System.VirtualKey key) =>
@@ -522,10 +706,13 @@ public sealed partial class MainWindow : Window
 
     private void HistoryListView_Loaded(object sender, RoutedEventArgs e)
     {
-        var scrollViewer = FindScrollViewer(HistoryListView);
+        if (sender is not DependencyObject root)
+            return;
+
+        var scrollViewer = FindScrollViewer(root);
         if (scrollViewer != null)
         {
-            scrollViewer.ViewChanging += (s, args) =>
+            scrollViewer.ViewChanging += (_, _) =>
             {
                 _previewService?.Hide();
             };

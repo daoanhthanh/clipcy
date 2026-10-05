@@ -20,6 +20,11 @@ public interface IWindowService
     void Hide();
 
     /// <summary>
+    /// Grows the popup below its base height, in logical pixels. Reclamps when visible.
+    /// </summary>
+    void SetExtraHeightDip(int extraDip);
+
+    /// <summary>
     /// Gets the current DPI scale factor for the window.
     /// </summary>
     double GetDpiScale();

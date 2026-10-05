@@ -8,6 +8,8 @@ namespace Clipcy.ViewModels;
 public partial class MainViewModel : ObservableObject, IDisposable
 {
     public ObservableCollection<ClipboardItemViewModel> Items { get; } = new();
+    public ObservableCollection<ClipboardItemViewModel> PinnedItems { get; } = new();
+    public ObservableCollection<ClipboardItemViewModel> RegularItems { get; } = new();
 
 #pragma warning disable MVVMTK0045
     [ObservableProperty]
@@ -15,6 +17,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasPinnedItems;
 #pragma warning restore MVVMTK0045
 
     private string _statusKey = "main.ready";
@@ -107,6 +112,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Items[i].Pinned = newItem.Pinned;
             }
 
+            SyncSections();
             SetStatus(string.IsNullOrWhiteSpace(query) ? "main.n_items" : "main.n_results", Items.Count);
         }
         catch (Exception ex)
@@ -145,6 +151,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Items.Add(item);
             }
 
+            SyncSections();
             SetStatus("main.n_results", Items.Count);
         }
         catch (Exception ex)
@@ -191,6 +198,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             App.Bridge?.DeleteItem(item.Id);
             Items.Remove(item);
+            SyncSections();
             SetStatus("main.n_items", Items.Count);
         }
         catch (Exception ex)
@@ -211,5 +219,68 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             SetStatus("main.clear_error", ex.Message);
         }
+    }
+
+    private void SyncSections()
+    {
+        var pinned = new List<ClipboardItemViewModel>();
+        var regular = new List<ClipboardItemViewModel>();
+        foreach (var item in Items)
+        {
+            if (item.Pinned)
+                pinned.Add(item);
+            else
+                regular.Add(item);
+        }
+
+        // Drop cross-membership before inserts so a row is never in both lists.
+        RemoveMissing(PinnedItems, pinned);
+        RemoveMissing(RegularItems, regular);
+        Align(PinnedItems, pinned);
+        Align(RegularItems, regular);
+        HasPinnedItems = PinnedItems.Count > 0;
+    }
+
+    private static void RemoveMissing(
+        ObservableCollection<ClipboardItemViewModel> target,
+        List<ClipboardItemViewModel> desired)
+    {
+        var keep = new HashSet<ClipboardItemViewModel>(desired);
+        for (int i = target.Count - 1; i >= 0; i--)
+        {
+            if (!keep.Contains(target[i]))
+                target.RemoveAt(i);
+        }
+    }
+
+    private static void Align(
+        ObservableCollection<ClipboardItemViewModel> target,
+        List<ClipboardItemViewModel> desired)
+    {
+        for (int i = 0; i < desired.Count; i++)
+        {
+            if (i < target.Count && ReferenceEquals(target[i], desired[i]))
+                continue;
+
+            int existing = -1;
+            for (int j = i; j < target.Count; j++)
+            {
+                if (ReferenceEquals(target[j], desired[i]))
+                {
+                    existing = j;
+                    break;
+                }
+            }
+
+            if (existing >= 0)
+                target.Move(existing, i);
+            else if (i >= target.Count)
+                target.Add(desired[i]);
+            else
+                target.Insert(i, desired[i]);
+        }
+
+        while (target.Count > desired.Count)
+            target.RemoveAt(target.Count - 1);
     }
 }

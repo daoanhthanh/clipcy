@@ -11,6 +11,14 @@ public class WindowService : IWindowService
 {
     private readonly Window _window;
     private SystemBackdropConfiguration? _configurationSource;
+    public const int PopupWidthDip = 400;
+    public const int PopupBaseHeightDip = 500;
+    public const int PinnedRowHeightDip = 44;
+    public const int PinnedMaxVisibleRows = 3;
+    // Pinned list top margin (4) + separator top margin (4) + separator (1).
+    public const int PinnedSectionChromeDip = 9;
+
+    private int _extraHeightDip;
 
     #region Native Methods
 
@@ -121,6 +129,63 @@ public class WindowService : IWindowService
         _window.AppWindow.Hide();
     }
 
+    public void SetExtraHeightDip(int extraDip)
+    {
+        extraDip = Math.Max(0, extraDip);
+        if (extraDip == _extraHeightDip)
+            return;
+
+        _extraHeightDip = extraDip;
+        var (width, height) = ApplyPopupSize();
+        var pos = _window.AppWindow.Position;
+        if (IsVisible && pos.X > -2000 && pos.Y > -2000)
+            ClampToWorkArea(width, height);
+    }
+
+    public static int ExtraHeightForPinnedCount(int pinnedCount)
+    {
+        if (pinnedCount <= 0)
+            return 0;
+
+        int visible = Math.Min(pinnedCount, PinnedMaxVisibleRows);
+        return PinnedSectionChromeDip + visible * PinnedRowHeightDip;
+    }
+
+    private (int Width, int Height) ApplyPopupSize()
+    {
+        var scale = GetDpiScale();
+        int width = (int)(PopupWidthDip * scale);
+        int height = (int)((PopupBaseHeightDip + _extraHeightDip) * scale);
+        var size = _window.AppWindow.Size;
+        if (size.Width != width || size.Height != height)
+        {
+            _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = width, Height = height });
+        }
+
+        return (width, height);
+    }
+
+    private void ClampToWorkArea(int windowWidth, int windowHeight)
+    {
+        var pos = _window.AppWindow.Position;
+        if (!TryGetWorkArea(pos.X + windowWidth / 2, pos.Y + windowHeight / 2, out var workArea))
+            return;
+
+        int x = pos.X;
+        int y = pos.Y;
+        if (x + windowWidth > workArea.X + workArea.Width)
+            x = workArea.X + workArea.Width - windowWidth;
+        if (x < workArea.X)
+            x = workArea.X;
+        if (y + windowHeight > workArea.Y + workArea.Height)
+            y = workArea.Y + workArea.Height - windowHeight;
+        if (y < workArea.Y)
+            y = workArea.Y;
+
+        if (x != pos.X || y != pos.Y)
+            _window.AppWindow.Move(new Windows.Graphics.PointInt32(x, y));
+    }
+
     private void ConfigureWindowStyle()
     {
         if (_window.AppWindow.Presenter is OverlappedPresenter presenter)
@@ -133,10 +198,7 @@ public class WindowService : IWindowService
         }
 
         // Apply DPI scaling to window dimensions
-        var scale = GetDpiScale();
-        var scaledWidth = (int)(400 * scale);
-        var scaledHeight = (int)(500 * scale);
-        _window.AppWindow.Resize(new Windows.Graphics.SizeInt32 { Width = scaledWidth, Height = scaledHeight });
+        ApplyPopupSize();
     }
 
     private void MakeToolWindow()
@@ -288,10 +350,7 @@ public class WindowService : IWindowService
             MONITORINFO monitorInfo = new MONITORINFO();
             monitorInfo.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
 
-            // Apply DPI scaling to window dimensions
-            var scale = GetDpiScale();
-            int windowWidth = (int)(400 * scale);
-            int windowHeight = (int)(500 * scale);
+            var (windowWidth, windowHeight) = ApplyPopupSize();
 
             int x = cursorPos.X;
             int y = cursorPos.Y;

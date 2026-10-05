@@ -9,12 +9,109 @@
 >
   <Grid
     x:Name="RootGrid"
-    KeyDown="RootGrid_KeyDown"
+    PreviewKeyDown="RootGrid_KeyDown"
     Background="{ThemeResource LayerFillColorDefaultBrush}"
     Padding="8"
     IsTabStop="True"
   >
+    <Grid.Resources>
+      <!-- Row height matches WindowService.PinnedRowHeightDip. -->
+      <Style x:Key="ClipboardRowStyle" TargetType="ListViewItem">
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="Margin" Value="4,0" />
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+      </Style>
+      <DataTemplate x:Key="ClipboardItemTemplate" x:DataType="services:ClipboardItemViewModel">
+        <Grid ColumnSpacing="10">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+
+          <Grid.ContextFlyout>
+            <MenuFlyout>
+              <MenuFlyoutItem
+                Text="{x:Bind PinUnpinText, Mode=OneWay}"
+                Click="PinUnpinMenuItem_Click"
+              />
+              <MenuFlyoutSeparator />
+              <MenuFlyoutItem services:Localization.Text="common.delete" Click="DeleteMenuItem_Click" />
+            </MenuFlyout>
+          </Grid.ContextFlyout>
+
+          <FontIcon
+            Grid.Column="0"
+            FontSize="14"
+            Glyph="{x:Bind ContentTypeIcon, Mode=OneWay}"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            VerticalAlignment="Center"
+          />
+
+          <Grid Grid.Column="1" ColumnSpacing="0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+              Grid.Column="0"
+              CornerRadius="3"
+              BorderThickness="1"
+              BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+              Margin="0,0,6,0"
+              Visibility="{x:Bind ImageVisibility, Mode=OneWay}"
+              VerticalAlignment="Center"
+            >
+              <Image
+                Source="{x:Bind ThumbnailImage, Mode=OneWay}"
+                Width="32"
+                Height="32"
+                Stretch="UniformToFill"
+              />
+            </Border>
+
+            <TextBlock
+              Grid.Column="1"
+              Text="{x:Bind DisplayPreview, Mode=OneWay}"
+              TextTrimming="CharacterEllipsis"
+              MaxLines="1"
+              MaxWidth="280"
+              VerticalAlignment="Center"
+              FontSize="13"
+            />
+
+            <FontIcon
+              Grid.Column="2"
+              FontSize="11"
+              Glyph="&#xE751;"
+              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+              Visibility="{x:Bind MultiLineIndicatorVisibility, Mode=OneWay}"
+              Margin="2,0,0,0"
+              VerticalAlignment="Center"
+            />
+          </Grid>
+
+          <FontIcon
+            Grid.Column="2"
+            FontSize="10"
+            Glyph="&#xE718;"
+            Visibility="{x:Bind PinnedVisibility, Mode=OneWay}"
+            Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"
+            VerticalAlignment="Center"
+          />
+        </Grid>
+      </DataTemplate>
+    </Grid.Resources>
+
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
@@ -32,119 +129,64 @@
       Background="{ThemeResource ControlFillColorDefaultBrush}"
     />
 
-    <!-- Clipboard History List -->
+    <!-- Pinned items: at most 3 rows visible; further pins scroll here. -->
     <ListView
-      x:Name="HistoryListView"
+      x:Name="PinnedListView"
       Grid.Row="1"
       Margin="0,4,0,0"
-      ItemsSource="{Binding ViewModel.Items}"
+      Padding="0"
+      ItemsSource="{Binding ViewModel.PinnedItems}"
+      ItemTemplate="{StaticResource ClipboardItemTemplate}"
+      ItemContainerStyle="{StaticResource ClipboardRowStyle}"
       SelectionMode="Single"
       ItemClick="HistoryListView_ItemClick"
       IsItemClickEnabled="True"
       SingleSelectionFollowsFocus="False"
+      IsTabStop="False"
       Background="Transparent"
+      ScrollViewer.VerticalScrollBarVisibility="Auto"
+      ScrollViewer.VerticalScrollMode="Enabled"
+      ScrollViewer.HorizontalScrollMode="Disabled"
+      Visibility="{Binding ViewModel.HasPinnedItems, Converter={StaticResource BoolToVisibility}}"
       ContainerContentChanging="HistoryListView_ContainerContentChanging"
+      SelectionChanged="ClipboardList_SelectionChanged"
       Loaded="HistoryListView_Loaded"
-    >
-      <ListView.ItemContainerStyle>
-        <Style TargetType="ListViewItem">
-          <Setter Property="Padding" Value="8,6" />
-          <Setter Property="Margin" Value="4,1" />
-          <Setter Property="MinHeight" Value="36" />
-          <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        </Style>
-      </ListView.ItemContainerStyle>
-      <ListView.ItemTemplate>
-        <DataTemplate x:DataType="services:ClipboardItemViewModel">
-          <Grid ColumnSpacing="10">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
+    />
 
-            <Grid.ContextFlyout>
-              <MenuFlyout>
-                <MenuFlyoutItem
-                  Text="{x:Bind PinUnpinText, Mode=OneWay}"
-                  Click="PinUnpinMenuItem_Click"
-                />
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem services:Localization.Text="common.delete" Click="DeleteMenuItem_Click" />
-              </MenuFlyout>
-            </Grid.ContextFlyout>
+    <Border
+      x:Name="PinnedSeparator"
+      Grid.Row="2"
+      Height="1"
+      Margin="8,4,8,0"
+      Background="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+      Visibility="{Binding ViewModel.HasPinnedItems, Converter={StaticResource BoolToVisibility}}"
+    />
 
-            <!-- Content Type Icon -->
-            <FontIcon
-              Grid.Column="0"
-              FontSize="14"
-              Glyph="{x:Bind ContentTypeIcon, Mode=OneWay}"
-              Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-              VerticalAlignment="Center"
-            />
-
-            <!-- Content Preview (Text or Image Thumbnail) -->
-            <Grid Grid.Column="1" ColumnSpacing="0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-              </Grid.ColumnDefinitions>
-
-              <Border
-                Grid.Column="0"
-                CornerRadius="3"
-                BorderThickness="1"
-                BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
-                Margin="0,0,6,0"
-                Visibility="{x:Bind ImageVisibility, Mode=OneWay}"
-                VerticalAlignment="Center"
-              >
-                <Image
-                  Source="{x:Bind ThumbnailImage, Mode=OneWay}"
-                  Width="32"
-                  Height="32"
-                  Stretch="UniformToFill"
-                />
-              </Border>
-
-              <TextBlock
-                Grid.Column="1"
-                Text="{x:Bind DisplayPreview, Mode=OneWay}"
-                TextTrimming="CharacterEllipsis"
-                MaxLines="1"
-                MaxWidth="280"
-                VerticalAlignment="Center"
-                FontSize="13"
-              />
-
-              <FontIcon
-                Grid.Column="2"
-                FontSize="11"
-                Glyph="&#xE751;"
-                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                Visibility="{x:Bind MultiLineIndicatorVisibility, Mode=OneWay}"
-                Margin="2,0,0,0"
-                VerticalAlignment="Center"
-              />
-            </Grid>
-
-            <!-- Pin Icon -->
-            <FontIcon
-              Grid.Column="2"
-              FontSize="10"
-              Glyph="&#xE718;"
-              Visibility="{x:Bind PinnedVisibility, Mode=OneWay}"
-              Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"
-              VerticalAlignment="Center"
-            />
-          </Grid>
-        </DataTemplate>
-      </ListView.ItemTemplate>
-    </ListView>
+    <!-- Regular clipboard history -->
+    <ListView
+      x:Name="HistoryListView"
+      Grid.Row="3"
+      Margin="0,4,0,0"
+      Padding="0"
+      ItemsSource="{Binding ViewModel.RegularItems}"
+      ItemTemplate="{StaticResource ClipboardItemTemplate}"
+      ItemContainerStyle="{StaticResource ClipboardRowStyle}"
+      SelectionMode="Single"
+      ItemClick="HistoryListView_ItemClick"
+      IsItemClickEnabled="True"
+      SingleSelectionFollowsFocus="False"
+      IsTabStop="False"
+      Background="Transparent"
+      ScrollViewer.VerticalScrollBarVisibility="Auto"
+      ScrollViewer.VerticalScrollMode="Enabled"
+      ScrollViewer.HorizontalScrollMode="Disabled"
+      ContainerContentChanging="HistoryListView_ContainerContentChanging"
+      SelectionChanged="ClipboardList_SelectionChanged"
+      Loaded="HistoryListView_Loaded"
+    />
 
     <!-- Status Bar -->
-    <Grid Grid.Row="2" Padding="8,4" Margin="0,4,0,0">
+    <Grid Grid.Row="4" Padding="8,4" Margin="0,4,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="Auto" />

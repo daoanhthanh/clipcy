@@ -73,9 +73,10 @@ flowchart LR
 
 ## Sorting Rules
 
-- History list uses metadata-only queries ordered by `pinned DESC, created_at DESC`.
+- History list uses metadata-only queries ordered by `pinned DESC, last_used_at DESC`.
 - Search uses the same pinned-first ordering.
 - Full-data `get_all` ordering (core/service) is `created_at DESC` only.
+- The popup partitions that list: pinned rows render in a region above unpinned rows. The regions scroll independently. At most 3 pinned rows are visible; the popup height grows by the visible pinned region so the regular list does not shrink.
 
 ## Pinning Rules
 
