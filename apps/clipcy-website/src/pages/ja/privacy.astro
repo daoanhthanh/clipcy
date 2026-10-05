@@ -1,0 +1,43 @@
+---
+import Base from '../../layouts/Base.astro';
+import catalog from '../../content/ja.mjs';
+---
+
+<Base 
+  title="Privacy Policy"
+  description={catalog.privacy.appData.clipboard}
+  locale="ja"
+  currentPath="/privacy/"
+>
+  <section style="padding: var(--space-16) 0;">
+    <div class="container">
+      <h1 style="font-size: clamp(2rem, 4vw, 3rem);">{catalog.privacy.heading}</h1>
+      <p class="muted" style="margin-top: var(--space-2);">{catalog.privacy.effectiveDate}: 2026-10-05</p>
+      
+      <div style="margin-top: var(--space-12); max-width: 800px;">
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-4);">{catalog.privacy.appData.heading}</h2>
+        <p style="margin-top: var(--space-4);">{catalog.privacy.appData.clipboard}</p>
+        <p style="margin-top: var(--space-4);">{catalog.privacy.appData.storage}</p>
+        <p style="margin-top: var(--space-4);">{catalog.privacy.appData.previews}</p>
+        <p style="margin-top: var(--space-4); font-weight: 600;">{catalog.privacy.appData.sensitive}</p>
+        <p style="margin-top: var(--space-4);">{catalog.privacy.appData.settings}</p>
+      </div>
+      
+      <div style="margin-top: var(--space-12); max-width: 800px;">
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-4);">{catalog.privacy.websiteData.heading}</h2>
+        <ul style="margin-top: var(--space-4); padding-left: var(--space-8); line-height: 2;">
+          <li>{catalog.privacy.websiteData.noAnalytics}</li>
+          <li>{catalog.privacy.websiteData.noFonts}</li>
+          <li>{catalog.privacy.websiteData.noForms}</li>
+          <li>{catalog.privacy.websiteData.language}</li>
+          <li style="margin-top: var(--space-2);">{catalog.privacy.websiteData.hosting}</li>
+        </ul>
+      </div>
+      
+      <div style="margin-top: var(--space-12); max-width: 800px;">
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-4);">{catalog.privacy.changes.heading}</h2>
+        <p style="margin-top: var(--space-4);">{catalog.privacy.changes.body}</p>
+      </div>
+    </div>
+  </section>
+</Base>

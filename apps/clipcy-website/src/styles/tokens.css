@@ -1,0 +1,60 @@
+/**
+ * CSS design tokens from DESIGN.md
+ */
+
+:root {
+  /* Colors */
+  --color-canvas: #F9FAFC;
+  --color-surface: #FFFFFF;
+  --color-ink: #0F172A;
+  --color-muted: #475569;
+  --color-accent: #2563EB;
+  --color-accent-hover: #1D4ED8;
+  --color-line: #E0E5ED;
+  
+  --color-tint: #EDF3FF;
+
+  /* Typography */
+  --font-body: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-cjk: 'Yu Gothic UI', 'Meiryo', 'Microsoft YaHei', 'Malgun Gothic';
+  --font-mono: Consolas, 'Courier New', monospace;
+  
+  /* Spacing scale (rem) */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-24: 6rem;    /* 96px */
+  --space-32: 8rem;    /* 128px */
+  
+  /* Layout */
+  --max-width: 1200px;
+  --gutter-mobile: 1.25rem;  /* 20px */
+  --gutter-desktop: 2rem;    /* 32px */
+  
+  /* Shape */
+  --radius-panel: 12px;
+  --radius-keycap: 8px;
+  
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --ease: ease-out;
+  
+  /* Z-index */
+  --z-content: 0;
+  --z-header: 10;
+  --z-actions: 20;
+  --z-feedback: 30;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}

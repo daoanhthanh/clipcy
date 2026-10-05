@@ -1,0 +1,50 @@
+# Clipcy
+
+> Clipboard manager for Windows. Search history, pin items, preview before pasting.
+
+## What it does
+
+- **Search**: Find copied text, images, and files with Ctrl+F
+- **Pin**: Keep frequently used items at the top
+- **Preview**: See content before pasting
+- **Keyboard-first**: Alt+V to open, arrow keys to navigate, Enter to paste
+
+## Platform support
+
+- Windows (implemented)
+- macOS and Linux (planned)
+
+## Storage
+
+All clipboard history stored locally at `%LOCALAPPDATA%\clipcy\clipcy.db`. No cloud sync, no analytics, no remote storage.
+
+## Build from source
+
+Repository: https://github.com/daoanhthanh/clipcy
+
+Requirements:
+- Rust (latest stable)
+- .NET 10 SDK
+- Visual Studio 2022 Build Tools
+- UniFFI bindgen for C#
+
+Build steps:
+
+```bash
+git clone https://github.com/daoanhthanh/clipcy.git
+cd clipcy
+cargo build --release -p clipcy-bridge
+uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+.\scripts\build-windows-ui.ps1 -Release
+```
+
+## Languages
+
+User interface available in: English, Simplified Chinese, Japanese, Russian, Korean, Vietnamese.
+
+## Links
+
+- Website: https://clipcy.dev
+- Repository: https://github.com/daoanhthanh/clipcy
+- Download: https://clipcy.dev/en/download/
+- Privacy: https://clipcy.dev/en/privacy/

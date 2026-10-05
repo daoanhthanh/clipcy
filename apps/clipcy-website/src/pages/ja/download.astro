@@ -1,0 +1,49 @@
+---
+import Base from '../../layouts/Base.astro';
+import catalog from '../../content/ja.mjs';
+---
+
+<Base 
+  title="Download Clipcy"
+  description={catalog.download.noRelease.body}
+  locale="ja"
+  currentPath="/download/"
+>
+  <section style="padding: var(--space-16) 0;">
+    <div class="container" style="max-width: 60ch;">
+      <h1 style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: var(--space-8);">{catalog.download.heading}</h1>
+      
+      <section style="margin-bottom: var(--space-12);">
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-3);">{catalog.download.noRelease.title}</h2>
+        <p class="muted">{catalog.download.noRelease.body}</p>
+      </section>
+
+      <section id="build">
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-6);">{catalog.download.buildInstructions.heading}</h2>
+        
+        <h3 style="font-size: 1.25rem; margin: var(--space-6) 0 var(--space-3);">{catalog.download.buildInstructions.prerequisites.heading}</h3>
+        <ul style="padding-left: var(--space-8); line-height: 2;">
+          {catalog.download.buildInstructions.prerequisites.items.map((item: string) => (
+            <li>{item}</li>
+          ))}
+        </ul>
+        
+        <h3 style="font-size: 1.25rem; margin: var(--space-6) 0 var(--space-3);">{catalog.download.buildInstructions.steps.heading}</h3>
+        <ol style="padding-left: var(--space-8); line-height: 2;">
+          <li>{catalog.download.buildInstructions.steps.step1}</li>
+          <li>{catalog.download.buildInstructions.steps.step2}</li>
+          <li>{catalog.download.buildInstructions.steps.step3}</li>
+          <li>{catalog.download.buildInstructions.steps.step4}</li>
+        </ol>
+        
+        <p class="muted" style="margin-top: var(--space-6);">{catalog.download.buildInstructions.steps.runNote}</p>
+      </section>
+
+      <section style="margin-top: var(--space-12);">
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-3);">{catalog.download.requirements.heading}</h2>
+        <p class="muted" style="margin-bottom: var(--space-2);"><strong>Runtime:</strong> {catalog.download.requirements.runtime}</p>
+        <p class="muted">{catalog.download.requirements.runtimeNote}</p>
+      </section>
+    </div>
+  </section>
+</Base>

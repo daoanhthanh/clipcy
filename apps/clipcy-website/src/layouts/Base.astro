@@ -1,0 +1,101 @@
+---
+import '../styles/tokens.css';
+import '../styles/site.css';
+import { locales } from '../locales.mjs';
+import * as catalogs from '../content/index.mjs';
+
+interface Props {
+  title: string;
+  description: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  locale: string;
+  currentPath: string;
+}
+
+const { title, description, ogTitle, ogDescription, locale, currentPath } = Astro.props;
+const catalog = catalogs[locale === 'zh-CN' ? 'zhCN' : locale];
+const siteUrl = 'https://clipcy.dev';
+const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+---
+
+<!DOCTYPE html>
+<html lang={locale} class:list={{ 'paged-home': currentPath === '/' }}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content={ogTitle || title}>
+  <meta property="og:description" content={ogDescription || description}>
+  <meta property="og:url" content={canonicalURL}>
+  <meta property="og:image" content={`${siteUrl}/assets/logo-512.png`}>
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:locale" content={locale.replace('-', '_')}>
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content={ogTitle || title}>
+  <meta name="twitter:description" content={ogDescription || description}>
+  <meta name="twitter:image" content={`${siteUrl}/assets/logo-512.png`}>
+  
+  <link rel="canonical" href={canonicalURL}>
+  <link rel="icon" href="/assets/favicon.ico">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  
+
+</head>
+<body>
+  <a href="#main" class="skip-link">{catalog.a11y.skipToMain}</a>
+  
+  <header class="site-header">
+    <nav class="container header-content" aria-label="Main navigation">
+      <a href={`/${locale}/`} class="logo">
+        <img src="/assets/logo-192.png" alt="" width="32" height="32">
+        <span>Clipcy</span>
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href={`/${locale}/download/`}>{catalog.nav.download}</a></li>
+        <li><a href={`/${locale}/privacy/`}>{catalog.nav.privacy}</a></li>
+        <li>
+          <details class="language-picker">
+            <summary aria-label={catalog.nav.chooseLanguage}>{locale.toUpperCase()} <span aria-hidden="true">⌄</span></summary>
+            <div class="language-options">
+              {locales.map(language => <a href={`/${language.code}${currentPath}`} lang={language.code} aria-current={language.code === locale ? 'true' : undefined}>{language.nativeName}</a>)}
+            </div>
+          </details>
+        </li>
+      </ul>
+    </nav>
+  </header>
+  
+  <main id="main">
+    <slot />
+  </main>
+  
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <ul class="footer-links">
+        <li><a href={`/${locale}/`}>Home</a></li>
+        <li><a href={`/${locale}/download/`}>{catalog.nav.download}</a></li>
+        <li><a href={`/${locale}/privacy/`}>{catalog.nav.privacy}</a></li>
+        <li><a href="https://github.com/daoanhthanh/clipcy">GitHub</a></li>
+      </ul>
+      
+      <p class="muted">Version 0.4.2 • MIT License</p>
+      <p class="muted">Clipcy - Clipboard Manager for Windows</p>
+      
+      <div style="display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; margin-top: var(--space-4);">
+        <button onclick="navigator.clipboard.writeText(window.location.href)" class="btn btn-secondary" style="font-size: 0.875rem;">Copy link</button>
+        <button onclick="if(navigator.share)navigator.share({title:document.title,url:location.href})" class="btn btn-secondary" style="font-size: 0.875rem;">Share</button>
+        <a href={`${Astro.url.pathname.replace(/\/$/, '')}/index.md`} class="btn btn-secondary" style="font-size: 0.875rem;">Markdown</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

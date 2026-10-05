@@ -1,0 +1,118 @@
+---
+import Base from '../layouts/Base.astro';
+import ClipboardPreview from './ClipboardPreview.astro';
+const { catalog, locale } = Astro.props;
+const features = [catalog.features.find, catalog.features.pin, catalog.features.preview];
+const steps = [catalog.workflow.step1, catalog.workflow.step2, catalog.workflow.step3];
+const icons = ['M21 21l-5-5M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5', 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0'];
+---
+<Base title={catalog.meta.title} description={catalog.meta.description} ogTitle={catalog.meta.ogTitle} ogDescription={catalog.meta.ogDescription} locale={locale} currentPath="/">
+  <section class="hero page-panel">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span>{catalog.hero.eyebrow}</p>
+        <h1>{catalog.hero.title}</h1>
+        <p class="hero-description">{catalog.hero.subtitle}</p>
+        <div class="hero-actions">
+          <a href={`/${locale}/download/#build`} class="btn btn-primary">{catalog.hero.ctaSecondary}<span aria-hidden="true">↗</span></a>
+          <a href="#workflow" class="btn btn-secondary">{catalog.nav.howItWorks}<span aria-hidden="true">↓</span></a>
+        </div>
+        <p class="release-note">{catalog.hero.noReleaseNotice}</p>
+      </div>
+      <figure class="product-scene">
+        <ClipboardPreview catalog={catalog} />
+        <figcaption>{catalog.hero.imageCaption}</figcaption>
+      </figure>
+    </div>
+  </section>
+  <section class="intro-section container page-panel">
+    <p class="eyebrow">{catalog.features.heading}</p>
+    <h2>{catalog.problem.title}</h2><p>{catalog.problem.body}</p>
+    <div class="features" id="features">
+      {features.map((feature, index) => <article class="feature"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={icons[index]}/></svg></span><span class="feature-number">0{index + 1}</span></div><p class="feature-label">{feature.label}</p><h3>{feature.title}</h3><p>{feature.body}</p></article>)}
+    </div>
+  </section>
+  <section id="workflow" class="workflow-section page-panel">
+    <div class="container workflow-grid"><div><p class="eyebrow">{catalog.nav.howItWorks}</p><h2>{catalog.workflow.heading}</h2><div class="big-shortcut" aria-hidden="true"><kbd>Alt</kbd><span>+</span><kbd>V</kbd></div></div>
+    <div class="workflow-steps">{steps.map((step,index) => <article class="workflow-step"><span class="step-number">0{index+1}</span><div><h3>{step.title}</h3><p>{step.body}</p></div></article>)}<div class="shortcut-list">{Object.values(catalog.workflow.shortcuts).map(key => <kbd>{key}</kbd>)}</div></div></div>
+  </section>
+  <section class="container page-panel"><div class="final-cta"><img src="/assets/logo-192.png" alt="" width="56" height="56"/><h2>{catalog.finalCta.heading}</h2><p>{catalog.finalCta.planned}</p><a class="btn btn-primary" href={`/${locale}/download/#build`}>{catalog.finalCta.ctaSecondary}<span aria-hidden="true">↗</span></a></div></section>
+</Base>
+
+<script>
+  const home = document.documentElement;
+  if (home.classList.contains('paged-home')) {
+    const header = document.querySelector<HTMLElement>('.site-header');
+    if (header) {
+      const resize = new ResizeObserver(() => {
+        home.style.setProperty('--header-height', `${header.getBoundingClientRect().height}px`);
+      });
+      resize.observe(header);
+    }
+    const motion = matchMedia('(prefers-reduced-motion: reduce)');
+    const panels = document.querySelectorAll<HTMLElement>('.page-panel');
+    const elements = [...document.querySelectorAll<HTMLElement>(
+      '.hero-copy > .eyebrow, .hero-copy > h1, .hero-description, .hero-actions > .btn, .release-note, .product-scene, ' +
+      '.intro-section > .eyebrow, .intro-section > h2, .intro-section > p:not(.eyebrow), .feature, ' +
+      '.workflow-grid > div:first-child > *, .workflow-step, .shortcut-list > kbd, .final-cta > *'
+    )];
+    elements.forEach((element, index) => {
+      element.classList.add('scroll-reveal');
+      element.style.setProperty('--reveal-delay', `${(index % 4) * 45}ms`);
+    });
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const element = entry.target as HTMLElement;
+        const visible = entry.isIntersecting && entry.intersectionRatio >= 0.15;
+        element.classList.toggle('reveal-visible', visible);
+        element.style.setProperty('--reveal-offset', entry.boundingClientRect.top < 0 ? '-22px' : '22px');
+      });
+    }, { threshold: [0, 0.15], rootMargin: '-5% 0px -5% 0px' });
+    let entranceFrame = 0;
+    let entranceCommitFrame = 0;
+    const updateMotion = () => {
+      observer.disconnect();
+      cancelAnimationFrame(entranceFrame);
+      cancelAnimationFrame(entranceCommitFrame);
+      home.classList.toggle('motion-ready', !motion.matches);
+      if (!motion.matches) {
+        elements.forEach(element => element.classList.remove('reveal-visible'));
+        // Paint the initial pose before observing, including on a fresh page load.
+        entranceFrame = requestAnimationFrame(() => {
+          entranceCommitFrame = requestAnimationFrame(() => {
+            elements.forEach(element => observer.observe(element));
+          });
+        });
+      }
+    };
+    updateMotion();
+    let wheelLocked = false;
+    let wheelTotal = 0;
+    let releaseTimer: ReturnType<typeof setTimeout>;
+    const desktop = matchMedia('(min-width: 701px) and (min-height: 601px)');
+    window.addEventListener('wheel', event => {
+      if (!desktop.matches || motion.matches || event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+      const target = event.target as HTMLElement;
+      if (target.closest('.demo-rows, .demo-content, input, textarea, select, .language-options')) return;
+      const headerHeight = header?.getBoundingClientRect().height || 0;
+      const list = [...panels];
+      const current = list.reduce((best, panel, index) =>
+        Math.abs(panel.getBoundingClientRect().top - headerHeight) <
+        Math.abs(list[best].getBoundingClientRect().top - headerHeight) ? index : best, 0);
+      const direction = Math.sign(event.deltaY);
+      if (!wheelLocked && ((current === list.length - 1 && direction > 0) || (scrollY > list[list.length - 1].offsetTop - headerHeight + 20))) return;
+      event.preventDefault();
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(() => { wheelLocked = false; wheelTotal = 0; }, 850);
+      if (wheelLocked) return;
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? innerHeight : 1);
+      wheelTotal = Math.sign(wheelTotal) !== direction ? delta : wheelTotal + delta;
+      if (Math.abs(wheelTotal) < 24) return;
+      const next = Math.max(0, Math.min(list.length - 1, current + direction));
+      wheelLocked = true;
+      wheelTotal = 0;
+      list[next].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, { passive: false });
+    motion.addEventListener('change', updateMotion);
+  }
+</script>

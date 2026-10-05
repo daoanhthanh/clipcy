@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://clipcy.dev/sitemap.xml
+
+# LLM-friendly content
+# Full documentation at https://clipcy.dev/llms.txt
+# Markdown content available at /{locale}/index.md for each page

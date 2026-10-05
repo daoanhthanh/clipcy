@@ -1,0 +1,109 @@
+---
+const { catalog } = Astro.props;
+const items = ['clipcy.dev', 'Hello, clipboard.', catalog.hero.title, 'Meeting notes\nMonday · 10:00\nReview the next release.', 'Design inspiration\nLight, minimal, and keyboard friendly.', 'Project checklist\nBuild → Test → Ship', 'npm run dev', 'Alt + V'];
+---
+<div class="clipboard-demo" data-clipboard-demo>
+  <div class="demo-menu">
+    <label class="visually-hidden" for="demo-search">{catalog.features.find.title}</label>
+    <input id="demo-search" class="demo-search" type="search" placeholder={catalog.features.find.label} autocomplete="off" />
+    <div class="demo-rows" aria-label={catalog.features.find.label}>
+      <div class="demo-selection" aria-hidden="true" hidden></div>
+      {items.map((text, index) => <button type="button" class="demo-row" data-content={text} aria-controls="demo-pane" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="12" height="14" rx="3"/><path d="M5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2"/></svg>
+        <span>{text.split('\n')[0]}</span>
+        {index < 2 && <svg class="demo-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5"/></svg>}
+      </button>)}
+    </div>
+    <div class="demo-footer"><span>{catalog.features.find.label}</span><kbd>Alt+V</kbd></div>
+  </div>
+  <aside id="demo-pane" class="demo-pane" aria-label={catalog.features.preview.title} hidden>
+    <strong>{catalog.features.preview.label}</strong>
+    <p class="demo-content"></p>
+    <div class="demo-meta"><span>Clipcy</span><kbd>Ctrl+P</kbd></div>
+  </aside>
+</div>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-clipboard-demo]').forEach(demo => {
+    const pane = demo.querySelector<HTMLElement>('.demo-pane')!;
+    const content = demo.querySelector<HTMLElement>('.demo-content')!;
+    const rows = [...demo.querySelectorAll<HTMLButtonElement>('.demo-row')];
+    const search = demo.querySelector<HTMLInputElement>('.demo-search')!;
+    const selection = demo.querySelector<HTMLElement>('.demo-selection')!;
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    let paneAnimation: Animation | undefined;
+    let contentAnimation: Animation | undefined;
+    let activeRow: HTMLButtonElement | undefined;
+    const close = () => {
+      paneAnimation?.cancel();
+      contentAnimation?.cancel();
+      activeRow = undefined;
+      selection.hidden = true;
+      pane.hidden = true;
+      rows.forEach(row => row.setAttribute('aria-expanded', 'false'));
+    };
+    const show = (row: HTMLButtonElement) => {
+      if (activeRow === row && !pane.hidden) return;
+      const wasHidden = pane.hidden;
+      const previous = pane.getBoundingClientRect();
+      paneAnimation?.cancel();
+      contentAnimation?.cancel();
+      activeRow = row;
+      rows.forEach(item => item.setAttribute('aria-expanded', String(item === row)));
+      content.textContent = row.dataset.content || '';
+      pane.hidden = false;
+      selection.hidden = false;
+      selection.style.transform = `translateY(${row.offsetTop}px)`;
+      selection.style.height = `${row.offsetHeight}px`;
+      const desiredTop = row.getBoundingClientRect().top - demo.getBoundingClientRect().top;
+      pane.style.setProperty('--preview-top', `${Math.min(desiredTop, Math.max(0, demo.clientHeight - pane.offsetHeight))}px`);
+      if (reducedMotion.matches) return;
+      const next = pane.getBoundingClientRect();
+      // FLIP preserves the visible position when fast hover changes interrupt a morph.
+      const from = wasHidden
+        ? 'translate(-8px, 0) scale(.96)'
+        : `translate(${previous.left - next.left}px, ${previous.top - next.top}px) scale(${previous.width / next.width}, ${previous.height / next.height})`;
+      paneAnimation = pane.animate([
+        { transform: from, opacity: wasHidden ? 0 : 1 },
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 }
+      ], { duration: 340, easing: 'cubic-bezier(.22, 1, .36, 1)' });
+      contentAnimation = content.animate([
+        { opacity: .25, transform: 'translateY(4px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ], { duration: 240, easing: 'ease-out' });
+    };
+    reducedMotion.addEventListener('change', () => {
+      if (reducedMotion.matches) {
+        paneAnimation?.cancel();
+        contentAnimation?.cancel();
+      }
+    });
+    rows.forEach(row => {
+      row.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') show(row); });
+      row.addEventListener('focus', () => show(row));
+      row.addEventListener('click', () => show(row));
+      row.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        event.preventDefault();
+        const visible = rows.filter(item => !item.hidden);
+        const next = visible.indexOf(row) + (event.key === 'ArrowDown' ? 1 : -1);
+        visible[(next + visible.length) % visible.length]?.focus();
+      });
+    });
+    demo.addEventListener('pointerleave', event => {
+      if (event.pointerType !== 'touch' && !demo.contains(document.activeElement)) close();
+    });
+    demo.addEventListener('focusout', event => {
+      if (!demo.contains(event.relatedTarget as Node)) close();
+    });
+    demo.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
+    search.addEventListener('input', () => {
+      close();
+      const query = search.value.trim().toLocaleLowerCase();
+      rows.forEach(row => { row.hidden = !row.dataset.content?.toLocaleLowerCase().includes(query); });
+    });
+    search.addEventListener('keydown', event => {
+      if (event.key === 'ArrowDown') { event.preventDefault(); rows.find(row => !row.hidden)?.focus(); }
+    });
+    document.addEventListener('pointerdown', event => { if (!demo.contains(event.target as Node)) close(); });
+  });
+</script>
