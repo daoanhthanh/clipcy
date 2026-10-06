@@ -202,10 +202,6 @@ impl ClipboardService {
         let item = self.repository.get_by_id(id).await?;
 
         if let Some(item) = item {
-            if let Err(e) = self.repository.touch_last_used_at(item.id).await {
-                tracing::warn!("Failed to update last_used_at: {}", e);
-            }
-
             *self.suppress_until.write() =
                 Some(Instant::now() + Duration::from_millis(PASTE_SUPPRESS_DURATION_MS));
             if let Err(err) = self.monitor.set_content(&item) {
@@ -214,6 +210,15 @@ impl ClipboardService {
             }
             tokio::time::sleep(Duration::from_millis(50)).await;
             self.paste_handler.simulate_paste()?;
+
+            match self.repository.touch_last_used_at(item.id).await {
+                Ok(()) => {
+                    if let Some(callback) = self.on_change_callback.read().as_ref() {
+                        callback();
+                    }
+                }
+                Err(e) => tracing::warn!("Failed to update last_used_at: {}", e),
+            }
         }
 
         Ok(())

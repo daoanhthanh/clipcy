@@ -39,13 +39,13 @@ This application uses a "Logic Sandwich" architecture:
 
 1. Build the Rust bridge library:
    ```bash
-   cargo build --release -p clipcy-bridge
+   cargo build -p clipcy-bridge
    ```
 
 2. Generate C# bindings (requires uniffi-bindgen-cs):
    ```bash
    # Install uniffi-bindgen-cs first
-   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+   uniffi-bindgen-cs --library target/debug/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
    ```
 
 3. Build the C# application:
@@ -53,6 +53,10 @@ This application uses a "Logic Sandwich" architecture:
    cd apps/clipcy-windows-ui
    dotnet build
    ```
+
+Debug UI builds load `target/debug/clipcy_core.dll`; Release UI builds load `target/release/clipcy_core.dll`.
+For a release build, use `cargo build --release -p clipcy-bridge` followed by `dotnet build -c Release`.
+Restart Clipcy after rebuilding so it loads the updated backend.
 
 ## Project Structure
 
@@ -83,6 +87,7 @@ apps/clipcy-windows-ui/
 - **Settings app branding**: The title bar and About tab display the Clipcy app logo from `Assets/Square44x44Logo.png`.
 - **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
+- **Popup scrolling**: The popup remembers the scroll positions of the pinned and regular lists.
 - **Pinning**: Hover/focus a history row or select it with Up/Down, then press **Ctrl+P** to pin/unpin it (also available in the row's context menu). Pinned items sit in their own region above the regular list, separated by a horizontal line. Each region scrolls on its own. The pinned region shows at most 3 rows; more pins scroll inside it, and the popup grows by that region's height so the regular list keeps its space. Selection follows the toggled item when it moves between regions, so pressing **Ctrl+P** again unpins the same item; pinning does not clear the search filter.
 - **Selection**: Only one row is active across both regions. Mouse movement/hover and Up/Down replace each other's selection; the latest input wins. Scrolling a row underneath a stationary cursor does not override arrow selection. Enter, Delete, and Ctrl+P target that one active row.
 - **Preview Panel**: Desktop Acrylic popup beside the list for clipboard Text/Html/RTF/Image and **file** items. File previews read the **current** local path (not a history snapshot): images (PNG/JPEG/BMP/GIF/TIFF/ICO/JXR) as static aspect-fit PNG ≤1024px long edge; text (UTF-8 or BOM UTF-16, ≤64 KiB prefix with truncation notice); video first decoded presentation frame via Media Foundation (H.264 MP4 baseline; OS codecs for others); audio as a music-note icon only. Mixed multi-file selections show an original-order selector (default first). UNC/remote/cloud/reparse paths keep name/status without hydration. Paste still uses original CF_HDROP paths.

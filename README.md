@@ -38,6 +38,7 @@ graph TD
 
 - Clipboard history with text, images, and files support
   - Image thumbnails displayed directly in the history list
+  - Pasted items move to the top of their pinned or regular history section
 - Global hotkey (default: `Alt+V`)
 - System tray integration with icon and context menu
 - SQLite storage

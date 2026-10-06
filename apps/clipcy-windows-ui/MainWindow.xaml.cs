@@ -141,8 +141,17 @@ public sealed partial class MainWindow : Window
             _syncingSelection = false;
             RootGrid.Focus(FocusState.Programmatic);
 
+            // ResetListScroll(PinnedListView);
+            // ResetListScroll(HistoryListView);
+
             _windowService.EnsureBackdropActive();
         }
+    }
+
+    private static void ResetListScroll(ListView list)
+    {
+        list.UpdateLayout();
+        FindScrollViewer(list)?.ChangeView(0, 0, null, disableAnimation: true);
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
