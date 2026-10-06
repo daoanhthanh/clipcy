@@ -141,8 +141,8 @@ public sealed partial class MainWindow : Window
             _syncingSelection = false;
             RootGrid.Focus(FocusState.Programmatic);
 
-            // ResetListScroll(PinnedListView);
-            // ResetListScroll(HistoryListView);
+            ResetListScroll(PinnedListView);
+            ResetListScroll(HistoryListView);
 
             _windowService.EnsureBackdropActive();
         }
