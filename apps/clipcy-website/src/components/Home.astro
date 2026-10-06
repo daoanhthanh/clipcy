@@ -43,7 +43,6 @@ const icons = ['M21 21l-5-5M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm16 3 5 5-4 2
     const header = document.querySelector<HTMLElement>('.site-header');
     if (header) new ResizeObserver(() => home.style.setProperty('--header-height', `${header.getBoundingClientRect().height}px`)).observe(header);
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
-    const panels = document.querySelectorAll<HTMLElement>('.page-panel');
     const elements = [...document.querySelectorAll<HTMLElement>(
       '.hero-copy > .eyebrow, .hero-copy > h1, .hero-description, .hero-platform-note, .hero-license, .hero-actions > .btn, .release-note, .product-scene, ' +
       '.intro-section > .eyebrow, .intro-section > h2, .intro-section > p:not(.eyebrow), .feature, ' +
@@ -66,29 +65,61 @@ const icons = ['M21 21l-5-5M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm16 3 5 5-4 2
       }
     };
     updateMotion();
-    let wheelTotal = 0, lockedUntil = 0, lastDirection = 0, destination = 0, lastWheelAt = 0;
-    const desktop = matchMedia('(min-width: 701px) and (min-height: 601px)');
+    let scrollFrame = 0;
+    let scrollTarget = scrollY;
+    let previousTime = 0;
+    let scrollDirection = 0;
+    const stopScroll = () => {
+      cancelAnimationFrame(scrollFrame);
+      scrollFrame = 0;
+      scrollTarget = scrollY;
+    };
+    const animateScroll = (time: number) => {
+      const elapsed = Math.min(32, time - previousTime);
+      previousTime = time;
+      scrollTarget = Math.min(scrollTarget, Math.max(0, home.scrollHeight - innerHeight));
+      const distance = scrollTarget - scrollY;
+      if (Math.abs(distance) < .75) {
+        window.scrollTo({ top: scrollTarget, behavior: 'instant' });
+        scrollFrame = 0;
+        return;
+      }
+      window.scrollTo({ top: scrollY + distance * (1 - Math.exp(-elapsed / 85)), behavior: 'instant' });
+      scrollFrame = requestAnimationFrame(animateScroll);
+    };
     window.addEventListener('wheel', event => {
-      if (!desktop.matches || motion.matches || event.ctrlKey || !event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-      const target = event.target as HTMLElement, direction = Math.sign(event.deltaY);
-      const nested = target.closest<HTMLElement>('.demo-rows, .demo-content, .language-options');
-      if (nested && nested.scrollHeight > nested.clientHeight+1 && (direction < 0 ? nested.scrollTop > 1 : nested.scrollTop+nested.clientHeight < nested.scrollHeight-1)) return;
-      const headerHeight = header?.getBoundingClientRect().height || 0, list = [...panels];
-      const current = list.reduce((best,panel,index) => Math.abs(panel.getBoundingClientRect().top-headerHeight) < Math.abs(list[best].getBoundingClientRect().top-headerHeight) ? index : best,0);
-      const rect = list[current].getBoundingClientRect();
-      if (rect.height > innerHeight-headerHeight+2 && (direction > 0 ? rect.bottom > innerHeight+2 : rect.top < headerHeight-2)) return;
-      if ((current === 0 && direction < 0 && scrollY <= 1) || (current === list.length-1 && direction > 0) || scrollY > list[list.length-1].offsetTop-headerHeight+20) return;
-      const now = performance.now(), reversing = direction !== lastDirection, moving = now < lockedUntil;
+      // Keep fine trackpad gestures and nested controls native.
+      if (motion.matches || event.ctrlKey || !event.cancelable || Math.abs(event.deltaX) > Math.abs(event.deltaY) || (event.deltaMode === 0 && Math.abs(event.deltaY) < 40)) {
+        stopScroll();
+        return;
+      }
+      let target = event.target instanceof Element ? event.target : null;
+      while (target && target !== document.body && target !== home) {
+        const style = getComputedStyle(target);
+        if (/auto|scroll/.test(style.overflowY) && target.scrollHeight > target.clientHeight + 1) {
+          stopScroll();
+          return;
+        }
+        target = target.parentElement;
+      }
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? innerHeight : 1);
+      if (!delta) return;
+      const direction = Math.sign(delta);
+      if (!scrollFrame || direction !== scrollDirection) scrollTarget = scrollY;
+      scrollDirection = direction;
+      const limit = Math.max(0, home.scrollHeight - innerHeight);
+      scrollTarget = Math.max(0, Math.min(limit, scrollTarget + delta));
       event.preventDefault();
-      if (moving && !reversing) return;
-      if (reversing || now-lastWheelAt > 180) wheelTotal = 0;
-      lastWheelAt = now;
-      wheelTotal += event.deltaY*(event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? innerHeight : 1);
-      if (Math.abs(wheelTotal) < 24) return;
-      destination = Math.max(0,Math.min(list.length-1,(moving && reversing ? destination : current)+direction));
-      lastDirection = direction; lockedUntil = now+600; wheelTotal = 0;
-      list[destination].scrollIntoView({behavior:'smooth',block:'start'});
-    },{passive:false});
-    motion.addEventListener('change',updateMotion);
+      if (!scrollFrame) {
+        previousTime = performance.now();
+        scrollFrame = requestAnimationFrame(animateScroll);
+      }
+    }, { passive: false });
+    window.addEventListener('pointerdown', stopScroll, { passive: true });
+    window.addEventListener('touchstart', stopScroll, { passive: true });
+    window.addEventListener('keydown', stopScroll);
+    window.addEventListener('resize', stopScroll);
+    document.addEventListener('visibilitychange', stopScroll);
+    motion.addEventListener('change', () => { stopScroll(); updateMotion(); });
   }
 </script>

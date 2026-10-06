@@ -845,10 +845,10 @@ main>section:not([class]) {
   }
 }
 
-/* Native scroll snapping keeps wheel, touch, and keyboard navigation lightweight. */
+/* Native scrolling preserves smooth anchor navigation without page snapping. */
 html.paged-home {
   --header-height: 89px;
-  scroll-snap-type: y mandatory;
+
   scroll-padding-top: var(--header-height);
   scroll-behavior: smooth;
 }
@@ -861,8 +861,8 @@ html.paged-home {
 
 .paged-home .page-panel {
   min-height: calc(100svh - var(--header-height));
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+
+
   padding-block: clamp(40px, 6vh, 80px);
   display: flex;
   flex-direction: column;
@@ -885,7 +885,7 @@ html.paged-home {
 }
 
 .paged-home .site-footer {
-  scroll-snap-align: end;
+
 }
 
 /* Each content element enters and exits independently; only transform/opacity animate. */
@@ -904,20 +904,9 @@ html.paged-home {
   transition-delay: var(--reveal-delay, 0ms);
 }
 
-@media (max-width: 700px),
-(max-height: 600px) {
-  html.paged-home {
-    scroll-snap-type: y proximity;
-  }
-
-  .paged-home .page-panel {
-    scroll-snap-stop: normal;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   html.paged-home {
-    scroll-snap-type: none;
+
     scroll-behavior: auto;
   }
 
@@ -1419,7 +1408,7 @@ html.paged-home {
   width: 100%;
   background: transparent;
   border: 0;
-  scroll-snap-align: none;
+
 }
 
 .comparison-table tbody td.comparison-pro {
