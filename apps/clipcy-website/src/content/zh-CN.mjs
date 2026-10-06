@@ -23,6 +23,8 @@ export default {
     eyebrow: '免费的 Windows 剪贴板管理器',
     title: '您的剪贴板，随时准备再次粘贴。',
     subtitle: '轻量，为速度而设计，采用原生 Windows 界面，响应快如光速',
+    windowsSupport: '支持 Windows 10 及以上版本',
+    freeOpenSource: '免费且开源',
     ctaPrimary: '下载 Windows 版',
     ctaSecondary: '查看构建说明',
     noReleaseNotice: '当前没有公开发布版本。请参阅下面的构建说明。',
@@ -129,13 +131,6 @@ export default {
       "windowsPro": false
     },
     {
-      "label": "同步",
-      "clipcy": "仅本地存储（云同步正在开发中）",
-      "windows": "可选的跨设备同步",
-      "clipcyPro": false,
-      "windowsPro": true
-    },
-    {
       "label": "速度",
       "clipcy": "与原生 Win+V 一样快",
       "windows": "快速",
@@ -143,15 +138,32 @@ export default {
       "windowsPro": true
     }
   ],
-  "source": "Microsoft 剪贴板文档"
+  "source": "Microsoft 剪贴板文档",
+  "benefits": [
+    {
+      "title": "专注于剪贴板",
+      "body": "轻松取用有用的复制内容，无需多余步骤。"
+    },
+    {
+      "title": "轻巧快速",
+      "body": "Rust 核心让历史记录触手可及。"
+    },
+    {
+      "title": "键盘优先",
+      "body": "按 Alt+V 打开，输入搜索，按 Enter 粘贴。"
+    },
+    {
+      "title": "原生 Windows 体验",
+      "body": "熟悉的 WinUI 控件和亚克力效果融入桌面。"
+    }
+  ]
 },
 
   finalCta: {
-    heading: '准备好保留剪贴板历史记录了吗？',
-    ctaPrimary: '下载 Windows 版',
-    ctaSecondary: '查看构建说明',
-    planned: '计划支持 macOS 和 Linux。'
-  },
+  "heading": "想参与功能开发？",
+  "body": "分享想法、报告问题，或一起开发新功能。让我们共同改进 Clipcy。",
+  "contribute": "在 GitHub 上贡献"
+},
   
   footer: {
     version: '版本',

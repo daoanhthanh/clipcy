@@ -1,0 +1,22 @@
+---
+const { catalog, locale } = Astro.props;
+---
+  <footer class="site-footer" role="contentinfo">
+    <div class="container footer-content">
+      <ul class="footer-links">
+        <li><a href={`/${locale}/`}>Home</a></li>
+        <li><a href={`/${locale}/download/`}>{catalog.nav.download}</a></li>
+        <li><a href={`/${locale}/privacy/`}>{catalog.nav.privacy}</a></li>
+        <li><a href="https://github.com/daoanhthanh/clipcy">GitHub</a></li>
+      </ul>
+      
+      <p class="muted">Version 0.4.2 • MIT License</p>
+      <p class="muted">Clipcy - Clipboard Manager for Windows</p>
+      
+      <div style="display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; margin-top: var(--space-4);">
+        <button onclick="navigator.clipboard.writeText(window.location.href)" class="btn btn-secondary" style="font-size: 0.875rem;">Copy link</button>
+        <button onclick="if(navigator.share)navigator.share({title:document.title,url:location.href})" class="btn btn-secondary" style="font-size: 0.875rem;">Share</button>
+        <a href={`${Astro.url.pathname.replace(/\/$/, '')}/index.md`} class="btn btn-secondary" style="font-size: 0.875rem;">Markdown</a>
+      </div>
+    </div>
+  </footer>

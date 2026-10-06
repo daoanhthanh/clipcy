@@ -23,6 +23,8 @@ export default {
     eyebrow: 'Windows 向けの無料クリップボードマネージャー',
     title: 'あなたのクリップボード、次の貼り付けの準備ができています。',
     subtitle: '軽量で、速さを重視した設計。Windows ネイティブの UI と光速のレスポンス',
+    windowsSupport: 'Windows 10 以降に対応',
+    freeOpenSource: '無料でオープンソース',
     ctaPrimary: 'Windows版をダウンロード',
     ctaSecondary: 'ビルド手順を見る',
     noReleaseNotice: '現在、公開リリースはありません。以下のビルド手順を参照してください。',
@@ -129,13 +131,6 @@ export default {
       "windowsPro": false
     },
     {
-      "label": "同期",
-      "clipcy": "ローカルのみ（クラウド同期は開発中）",
-      "windows": "デバイス間同期を選択可能",
-      "clipcyPro": false,
-      "windowsPro": true
-    },
-    {
       "label": "速度",
       "clipcy": "Windows 標準の Win+V と同じ速さ",
       "windows": "高速",
@@ -143,15 +138,32 @@ export default {
       "windowsPro": true
     }
   ],
-  "source": "Microsoft のクリップボード資料"
+  "source": "Microsoft のクリップボード資料",
+  "benefits": [
+    {
+      "title": "クリップボードに集中",
+      "body": "余計な手順なしで、便利なコピーを手元に。"
+    },
+    {
+      "title": "軽量で高速",
+      "body": "Rustのコアで履歴に手軽にアクセス。"
+    },
+    {
+      "title": "キーボード中心",
+      "body": "Alt+Vで開き、入力して検索し、Enterで貼り付け。"
+    },
+    {
+      "title": "WindowsになじむUI",
+      "body": "使い慣れたWinUIの操作とアクリル効果がデスクトップに調和。"
+    }
+  ]
 },
 
   finalCta: {
-    heading: 'クリップボード履歴を保持する準備はできましたか？',
-    ctaPrimary: 'Windows版をダウンロード',
-    ctaSecondary: 'ビルド手順を見る',
-    planned: 'macOSとLinuxのサポートが計画されています。'
-  },
+  "heading": "機能の開発に参加しませんか？",
+  "body": "アイデアの提案、不具合の報告、新機能の開発で、Clipcyを一緒に改善しましょう。",
+  "contribute": "GitHubで貢献する"
+},
   
   footer: {
     version: 'バージョン',

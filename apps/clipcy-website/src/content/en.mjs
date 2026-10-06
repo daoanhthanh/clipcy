@@ -23,6 +23,8 @@ export default {
     eyebrow: 'Free clipboard manager for Windows',
     title: 'Your clipboard, ready for another paste.',
     subtitle: 'Lightweight and built for speed, with a native Windows interface and a lightspeed response',
+    windowsSupport: 'Supports Windows 10+',
+    freeOpenSource: 'Free and open source',
     ctaPrimary: 'Download for Windows',
     ctaSecondary: 'See build instructions',
     noReleaseNotice: 'No public release is currently available. See build instructions below.',
@@ -129,13 +131,6 @@ export default {
       "windowsPro": false
     },
     {
-      "label": "Sync",
-      "clipcy": "Local only (cloud sync is being developed)",
-      "windows": "Optional sync across devices",
-      "clipcyPro": false,
-      "windowsPro": true
-    },
-    {
       "label": "Speed",
       "clipcy": "As fast as native Win+V",
       "windows": "Fast",
@@ -143,15 +138,32 @@ export default {
       "windowsPro": true
     }
   ],
-  "source": "Microsoft clipboard documentation"
+  "source": "Microsoft clipboard documentation",
+  "benefits": [
+    {
+      "title": "Focused on your clipboard",
+      "body": "Keep useful copies close, without extra steps."
+    },
+    {
+      "title": "Lightweight and fast",
+      "body": "A Rust-powered core keeps your history within easy reach."
+    },
+    {
+      "title": "Keyboard first",
+      "body": "Open with Alt+V, type to search, and press Enter to paste."
+    },
+    {
+      "title": "Native Windows feel",
+      "body": "Familiar WinUI controls and acrylic surfaces fit your desktop."
+    }
+  ]
 },
 
   finalCta: {
-    heading: 'Ready to keep your clipboard history?',
-    ctaPrimary: 'Download for Windows',
-    ctaSecondary: 'See build instructions',
-    planned: 'macOS and Linux support planned.'
-  },
+  "heading": "Want to contribute a feature?",
+  "body": "Share an idea, report a bug, or help build the next feature. Make Clipcy better with us.",
+  "contribute": "Contribute on GitHub"
+},
   
   footer: {
     version: 'Version',

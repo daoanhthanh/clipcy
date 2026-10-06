@@ -23,6 +23,8 @@ export default {
     eyebrow: 'Windows용 무료 클립보드 관리자',
     title: '클립보드, 다음 붙여넣기 준비 완료.',
     subtitle: '가볍고 빠른 동작을 위해 설계된 Windows 네이티브 인터페이스와 빛처럼 빠른 응답',
+    windowsSupport: 'Windows 10 이상 지원',
+    freeOpenSource: '무료 오픈 소스',
     ctaPrimary: 'Windows용 다운로드',
     ctaSecondary: '빌드 지침 보기',
     noReleaseNotice: '현재 공개 릴리스를 사용할 수 없습니다. 아래 빌드 지침을 참조하세요.',
@@ -129,13 +131,6 @@ export default {
       "windowsPro": false
     },
     {
-      "label": "동기화",
-      "clipcy": "로컬 저장만 지원 (클라우드 동기화 개발 중)",
-      "windows": "기기 간 동기화 선택 가능",
-      "clipcyPro": false,
-      "windowsPro": true
-    },
-    {
       "label": "속도",
       "clipcy": "Windows 기본 Win+V만큼 빠르게",
       "windows": "빠름",
@@ -143,15 +138,32 @@ export default {
       "windowsPro": true
     }
   ],
-  "source": "Microsoft 클립보드 문서"
+  "source": "Microsoft 클립보드 문서",
+  "benefits": [
+    {
+      "title": "클립보드에 집중",
+      "body": "추가 단계 없이 유용한 복사 내용을 가까이 두세요."
+    },
+    {
+      "title": "가볍고 빠르게",
+      "body": "Rust 기반 코어로 기록에 편리하게 접근하세요."
+    },
+    {
+      "title": "키보드 중심",
+      "body": "Alt+V로 열고, 입력하여 검색하고, Enter로 붙여넣으세요."
+    },
+    {
+      "title": "Windows 네이티브 UI",
+      "body": "익숙한 WinUI 컨트롤과 아크릴 효과가 데스크톱에 어울립니다."
+    }
+  ]
 },
 
   finalCta: {
-    heading: '클립보드 기록을 유지할 준비가 되셨나요?',
-    ctaPrimary: 'Windows용 다운로드',
-    ctaSecondary: '빌드 지침 보기',
-    planned: 'macOS 및 Linux 지원이 계획되어 있습니다.'
-  },
+  "heading": "기능 개발에 참여하고 싶으신가요?",
+  "body": "아이디어를 공유하고, 버그를 신고하거나 새 기능을 함께 개발하세요. Clipcy를 함께 개선해요.",
+  "contribute": "GitHub에서 기여하기"
+},
   
   footer: {
     version: '버전',
