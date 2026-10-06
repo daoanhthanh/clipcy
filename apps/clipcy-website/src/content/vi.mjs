@@ -6,7 +6,7 @@ export default {
   meta: {
     title: 'Clipcy - Trình quản lý clipboard cho Windows',
     description: 'Tìm văn bản, hình ảnh và tệp đã sao chép. Ghim những gì bạn sử dụng lại. Dán bằng Alt+V.',
-    ogTitle: 'Clipboard của bạn, sẵn sàng cho lần dán tiếp theo.',
+    ogTitle: 'Sao chép một lần. Dùng lại bất cứ lúc nào.',
     ogDescription: 'Trình quản lý clipboard cho Windows. Tìm kiếm lịch sử, ghim mục, xem trước trước khi dán.'
   },
   nav: {
@@ -19,10 +19,14 @@ export default {
   },
   hero: {
     eyebrow: 'Trình quản lý clipboard miễn phí cho Windows',
-    title: 'Clipboard của bạn, sẵn sàng cho lần dán tiếp theo.',
+    title: 'Sao chép một lần. Dùng lại bất cứ lúc nào.',
     subtitle: 'Làm đúng một việc: giữ nội dung bạn copy trong tầm tay. Chấm hết!',
+    demoPinHint: 'Nhấn Ctrl+P để ghim',
+    demoUnpinHint: 'Nhấn Ctrl+P để bỏ ghim',
     windowsSupport: 'Hỗ trợ Windows 10+',
     freeOpenSource: 'Miễn phí và mã nguồn mở',
+    ctaStore: 'Tải từ Microsoft Store',
+    ctaDownload: 'Tải xuống ngay',
     ctaPrimary: 'Tải xuống cho Windows',
     ctaSecondary: 'Xem hướng dẫn xây dựng',
     noReleaseNotice: 'Hiện không có bản phát hành công khai. Xem hướng dẫn xây dựng bên dưới.',
@@ -30,7 +34,7 @@ export default {
     imageCaption: 'Mở bằng Alt+V. Tìm kiếm, chọn, dán.'
   },
   problem: {
-    title: 'Giữ nội dung sao chép ngay trong tầm tay. Hỗ trợ file, ảnh, text,....',
+    title: 'Giữ nội dung sao chép ngay trong tầm tay. Hỗ trợ file, ảnh, text ...',
     body: 'Lấy các bản sao trước đó mà không cần chuyển cửa sổ hoặc mất vị trí làm việc.'
   },
   features: {

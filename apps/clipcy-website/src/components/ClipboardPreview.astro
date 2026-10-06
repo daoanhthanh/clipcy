@@ -13,17 +13,22 @@ const items = [
 ];
 ---
 <div class="clipboard-demo" data-clipboard-demo>
+  <svg class="demo-cursor" viewBox="0 0 24 28" aria-hidden="true" hidden><path d="M3 2v21l5-5 4 8 4-2-4-8h8Z" /></svg>
+  <span class="demo-shortcut-tip" data-pin-hint={catalog.hero.demoPinHint} data-unpin-hint={catalog.hero.demoUnpinHint} aria-hidden="true" hidden>{catalog.hero.demoPinHint}</span>
   <div class="demo-menu">
     <label class="visually-hidden" for="demo-search">{catalog.features.find.title}</label>
+    <div class="demo-search-wrap">
     <input id="demo-search" class="demo-search" type="search" placeholder={catalog.features.find.label} autocomplete="off" />
+    <span class="demo-caret" aria-hidden="true" hidden></span>
+    </div>
     <div class="demo-rows" aria-label={catalog.features.find.label}>
       <div class="demo-selection" aria-hidden="true" hidden></div>
-      {items.map((item, index) => <button type="button" class:list={['demo-row', { 'demo-pinned-end': index === 1 }]} data-content={item.content} data-kind={item.type} data-label={item.label} data-source={item.source} aria-controls="demo-pane" aria-expanded="false">
+      {items.map((item, index) => <button type="button" class:list={['demo-row', { 'demo-pinned-end': index === 1 }]} data-pinned={String(index < 2)} data-content={item.content} data-kind={item.type} data-label={item.label} data-source={item.source} aria-controls="demo-pane" aria-expanded="false">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           {item.type === 'text' ? <><rect x="8" y="3" width="12" height="14" rx="3"/><path d="M5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2"/></> : item.type === 'file' ? <path d="M6 2h8l4 4v16H6zM14 2v5h4M9 12h6M9 16h6"/> : <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/><circle cx="16" cy="7" r="1"/></>}
         </svg>
         <span>{item.label}</span>
-        {index < 2 && <svg class="demo-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5"/></svg>}
+        <svg hidden={index >= 2} class="demo-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5"/></svg>
       </button>)}
     </div>
     <div class="demo-footer"><span>{catalog.features.find.label}</span><kbd>Alt+V</kbd></div>
@@ -105,6 +110,28 @@ const items = [
         contentAnimation?.cancel();
       }
     });
+    const reorder = () => {
+      const ordered = [...rows.filter(row => row.dataset.pinned === 'true'), ...rows.filter(row => row.dataset.pinned !== 'true')];
+      ordered.forEach(row => {
+        row.classList.remove('demo-pinned-end');
+        demo.querySelector('.demo-rows')!.append(row);
+        row.querySelector<SVGElement>('.demo-pin')!.toggleAttribute('hidden', row.dataset.pinned !== 'true');
+      });
+      ordered.filter(row => row.dataset.pinned === 'true').at(-1)?.classList.add('demo-pinned-end');
+      const current = activeRow;
+      activeRow = undefined;
+      if (current && !current.hidden) show(current);
+    };
+    const togglePin = (row: HTMLButtonElement) => {
+      row.dataset.pinned = String(row.dataset.pinned !== 'true');
+      reorder();
+    };
+    demo.addEventListener('keydown', event => {
+      if (event.ctrlKey && event.key.toLowerCase() === 'p' && activeRow) {
+        event.preventDefault();
+        togglePin(activeRow);
+      }
+    });
     rows.forEach(row => {
       row.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') show(row); });
       row.addEventListener('focus', () => show(row));
@@ -112,7 +139,7 @@ const items = [
       row.addEventListener('keydown', event => {
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
         event.preventDefault();
-        const visible = rows.filter(item => !item.hidden);
+        const visible = [...demo.querySelectorAll<HTMLButtonElement>('.demo-row')].filter(item => !item.hidden);
         const next = visible.indexOf(row) + (event.key === 'ArrowDown' ? 1 : -1);
         visible[(next + visible.length) % visible.length]?.focus();
       });
@@ -132,6 +159,105 @@ const items = [
     search.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown') { event.preventDefault(); rows.find(row => !row.hidden)?.focus(); }
     });
+    const cursor = demo.querySelector<SVGElement>('.demo-cursor')!;
+    const shortcutTip = demo.querySelector<HTMLElement>('.demo-shortcut-tip')!;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    let visible = false;
+    let step = 0;
+    const move = (element: Element) => {
+      const target = element.getBoundingClientRect();
+      const bounds = demo.getBoundingClientRect();
+      const x = target.left - bounds.left + target.width * .65;
+      const y = target.top - bounds.top + target.height * .55;
+      cursor.style.transform = `translate(${x}px, ${y}px)`;
+      shortcutTip.style.transform = `translate(${x + 25}px, ${y + 28}px)`;
+    };
+    const caret = demo.querySelector<HTMLElement>('.demo-caret')!;
+    const measure = document.createElement('canvas').getContext('2d');
+    let actionDelay = 1400;
+    const updateCaret = () => {
+      const style = getComputedStyle(search);
+      if (measure) measure.font = `${style.fontSize} ${style.fontFamily}`;
+      const width = measure?.measureText(search.value).width || 0;
+      caret.style.left = `${Math.min(search.clientWidth - 15, parseFloat(style.paddingLeft) + width + 1)}px`;
+    };
+    const filter = (value: string) => {
+      search.value = value;
+      search.dispatchEvent(new Event('input'));
+      updateCaret();
+    };
+    const reset = () => {
+      shortcutTip.hidden = true;
+      caret.hidden = true;
+      filter('');
+      rows.forEach((row, index) => { row.dataset.pinned = String(index < 2); });
+      reorder();
+      close();
+    };
+    // One timer and transform-only cursor motion keep the tour inexpensive.
+    const actions = [
+      () => { move(rows[0]); show(rows[0]); },
+      () => { move(rows[3]); show(rows[3]); },
+      () => { move(rows[4]); show(rows[4]); },
+      () => { move(search); close(); caret.hidden = false; updateCaret(); },
+      ...[...'demo-notes'].map((_, index) => () => {
+        caret.hidden = false;
+        filter('demo-notes'.slice(0, index + 1));
+        actionDelay = index === 9 ? 1400 : 160;
+      }),
+      () => { caret.hidden = true; move(rows[3]); show(rows[3]); },
+      () => { filter(''); move(rows[5]); show(rows[5]); },
+      () => { shortcutTip.textContent = rows[5].dataset.pinned === 'true' ? shortcutTip.dataset.unpinHint! : shortcutTip.dataset.pinHint!; shortcutTip.hidden = false; move(rows[5]); },
+      () => { shortcutTip.hidden = true; togglePin(rows[5]); move(rows[5]); },
+      () => { shortcutTip.textContent = rows[5].dataset.pinned === 'true' ? shortcutTip.dataset.unpinHint! : shortcutTip.dataset.pinHint!; shortcutTip.hidden = false; move(rows[5]); },
+      () => { shortcutTip.hidden = true; togglePin(rows[5]); move(rows[5]); },
+      () => { reset(); }
+    ];
+    const run = () => {
+      if (stopped || !visible || document.hidden || reducedMotion.matches) return;
+      cursor.removeAttribute('hidden');
+      actionDelay = 1400;
+      actions[step]();
+      step = (step + 1) % actions.length;
+      timer = setTimeout(run, step === 0 ? 2400 : actionDelay);
+    };
+    const pause = () => {
+      clearTimeout(timer);
+      cursor.setAttribute('hidden', '');
+      shortcutTip.hidden = true;
+      caret.hidden = true;
+    };
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const takeOver = (event: Event) => {
+      // Automated search events must not interrupt their own demo sequence.
+      if (!event.isTrusted) return;
+      const wasRunning = !stopped;
+      stopped = true;
+      pause();
+      if (wasRunning) reset();
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        stopped = false;
+        step = 0;
+        reset();
+        run();
+      }, 1500);
+    };
+    ['pointerenter', 'pointermove', 'pointerdown', 'keydown', 'input', 'focusin', 'wheel'].forEach(type => {
+      demo.addEventListener(type, takeOver, { passive: true });
+    });
+    const observer = new IntersectionObserver(entries => {
+      visible = entries[0].isIntersecting;
+      pause();
+      if (visible) timer = setTimeout(run, 1200);
+    }, { threshold: .5 });
+    observer.observe(demo);
+    document.addEventListener('visibilitychange', () => {
+      pause();
+      if (!document.hidden) timer = setTimeout(run, 1200);
+    });
+    reducedMotion.addEventListener('change', () => { pause(); if (!reducedMotion.matches) run(); });
     document.addEventListener('pointerdown', event => { if (!demo.contains(event.target as Node)) close(); });
   });
 </script>

@@ -47,4 +47,3 @@ User interface available in: English, Simplified Chinese, Japanese, Russian, Kor
 - Website: https://clipcy.dev
 - Repository: https://github.com/daoanhthanh/clipcy
 - Download: https://clipcy.dev/en/download/
-- Privacy: https://clipcy.dev/en/privacy/
