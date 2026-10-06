@@ -27,6 +27,7 @@ export default {
     demoUnpinHint: 'Ctrl+P でピン留めを解除',
     windowsSupport: 'Windows 10 以降に対応',
     freeOpenSource: '無料でオープンソース',
+    ctaOr: 'または',
     ctaStore: 'Microsoft Store で入手',
     ctaDownload: '今すぐダウンロード',
     ctaPrimary: 'Windows版をダウンロード',

@@ -27,6 +27,7 @@ export default {
     demoUnpinHint: 'Нажмите Ctrl+P, чтобы открепить',
     windowsSupport: 'Поддерживает Windows 10 и новее',
     freeOpenSource: 'Бесплатно и с открытым исходным кодом',
+    ctaOr: 'или',
     ctaStore: 'Получить в Microsoft Store',
     ctaDownload: 'Скачать сейчас',
     ctaPrimary: 'Скачать для Windows',

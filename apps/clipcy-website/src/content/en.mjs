@@ -27,6 +27,7 @@ export default {
     demoUnpinHint: 'Press Ctrl+P to unpin',
     windowsSupport: 'Supports Windows 10+',
     freeOpenSource: 'Free and open source',
+    ctaOr: 'or',
     ctaStore: 'Get in Microsoft Store',
     ctaDownload: 'Download now',
     ctaPrimary: 'Download for Windows',

@@ -884,9 +884,7 @@ html.paged-home {
   width: 100%;
 }
 
-.paged-home .site-footer {
-
-}
+.paged-home .site-footer {}
 
 /* Each content element enters and exits independently; only transform/opacity animate. */
 .motion-ready .scroll-reveal {
@@ -1529,4 +1527,80 @@ html.paged-home {
   display: none;
 }
 
-.btn .microsoft-icon { width: 20px; height: 20px; flex-shrink: 0; fill: currentColor; stroke: none; }
+.btn .microsoft-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  fill: currentColor;
+  stroke: none;
+}
+
+.faq-section {
+  background: linear-gradient(135deg, #f4f9ff, #f4f2ff);
+}
+
+.faq-section h2 {
+  margin-bottom: 32px;
+}
+
+.faq-list {
+  max-width: 860px;
+}
+
+.faq-item {
+  border-top: 1px solid var(--color-line);
+}
+
+.faq-item:last-child {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.faq-item summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 22px 0;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary span {
+  color: var(--color-accent);
+  font-size: 24px;
+  line-height: 1;
+  transition: transform 200ms ease;
+}
+
+.faq-item[open] summary span {
+  transform: rotate(45deg);
+}
+
+.faq-item summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.faq-item p {
+  margin: 0;
+  padding: 0 36px 24px 0;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-item summary span {
+    transition: none;
+  }
+}
+
+.hero-action-separator {
+  align-self: center;
+  color: inherit;
+  font-size: 1rem;
+}

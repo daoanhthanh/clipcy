@@ -20,11 +20,12 @@ export default {
   hero: {
     eyebrow: 'Trình quản lý clipboard miễn phí cho Windows',
     title: 'Sao chép một lần. Dùng lại bất cứ lúc nào.',
-    subtitle: 'Làm đúng một việc: giữ nội dung bạn copy trong tầm tay. Chấm hết!',
+    subtitle: 'Làm đúng một việc: giữ nội dung bạn đã copy trong tầm tay. Chấm hết!',
     demoPinHint: 'Nhấn Ctrl+P để ghim',
     demoUnpinHint: 'Nhấn Ctrl+P để bỏ ghim',
     windowsSupport: 'Hỗ trợ Windows 10+',
     freeOpenSource: 'Miễn phí và mã nguồn mở',
+    ctaOr: 'hoặc',
     ctaStore: 'Tải từ Microsoft Store',
     ctaDownload: 'Tải xuống ngay',
     ctaPrimary: 'Tải xuống cho Windows',

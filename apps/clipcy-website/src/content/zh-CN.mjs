@@ -27,6 +27,7 @@ export default {
     demoUnpinHint: '按 Ctrl+P 取消固定',
     windowsSupport: '支持 Windows 10 及以上版本',
     freeOpenSource: '免费且开源',
+    ctaOr: '或',
     ctaStore: '从 Microsoft Store 获取',
     ctaDownload: '立即下载',
     ctaPrimary: '下载 Windows 版',

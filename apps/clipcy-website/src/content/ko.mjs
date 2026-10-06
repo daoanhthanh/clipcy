@@ -27,6 +27,7 @@ export default {
     demoUnpinHint: 'Ctrl+P를 눌러 고정 해제',
     windowsSupport: 'Windows 10 이상 지원',
     freeOpenSource: '무료 오픈 소스',
+    ctaOr: '또는',
     ctaStore: 'Microsoft Store에서 받기',
     ctaDownload: '지금 다운로드',
     ctaPrimary: 'Windows용 다운로드',
