@@ -45,7 +45,7 @@
 
 /** @type {ContentModel} */
 export const content = {
-  version: '0.4.2',
+  version: '0.5.1',
   repositoryUrl: 'https://github.com/daoanhthanh/clipcy',
   repositoryOwner: 'daoanhthanh/clipcy',
   siteUrl: 'https://clipcy.dev',
