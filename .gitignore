@@ -81,3 +81,7 @@ apps/clipcy-windows-ui/Bindings/*.cs
 tasks/
 .claude
 **/binTempVerify
+.idea
+.kilo
+.agents
+.obsidian
