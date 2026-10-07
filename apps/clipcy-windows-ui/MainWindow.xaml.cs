@@ -38,6 +38,9 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         this.InitializeComponent();
+        RootGrid.AddHandler(UIElement.CharacterReceivedEvent,
+            new Windows.Foundation.TypedEventHandler<UIElement, CharacterReceivedRoutedEventArgs>(
+                RootGrid_CharacterReceived), handledEventsToo: true);
 
         // Manual Dependency Injection
         _windowService = new WindowService(this);
@@ -249,7 +252,40 @@ public sealed partial class MainWindow : Window
             e.Handled = true;
             MoveSelection(-1);
         }
+        else if (CanStartTypingSearch())
+        {
+            int key = (int)e.Key;
+            // Letters, digits, numpad operators, space, OEM punctuation, and IME ProcessKey.
+            // Focus before composition starts; Windows performs keyboard-layout translation.
+            if (key is >= 0x30 and <= 0x5A or >= 0x60 and <= 0x6F
+                or 0x20 or >= 0xBA and <= 0xC0 or >= 0xDB and <= 0xDF or 0xE2 or 0xE5)
+            {
+                if (SearchBox.Focus(FocusState.Keyboard))
+                    SearchBox.Select(SearchBox.Text.Length, 0);
+            }
+        }
     }
+
+    private void RootGrid_CharacterReceived(UIElement sender, CharacterReceivedRoutedEventArgs e)
+    {
+        if (!CanStartTypingSearch() || char.IsControl(e.Character))
+            return;
+
+        if (!SearchBox.Focus(FocusState.Keyboard))
+            return;
+
+        SearchBox.Select(SearchBox.Text.Length, 0);
+        SearchBox.SelectedText = e.Character.ToString();
+        e.Handled = true;
+    }
+
+    private bool CanStartTypingSearch() =>
+        _windowService.IsVisible && !_quickPastePending && _pinnedShortcutInput == null
+        && SearchBox.FocusState == FocusState.Unfocused
+        && !IsKeyDown(Windows.System.VirtualKey.Control)
+        && !IsKeyDown(Windows.System.VirtualKey.Menu)
+        && !IsKeyDown(Windows.System.VirtualKey.LeftWindows)
+        && !IsKeyDown(Windows.System.VirtualKey.RightWindows);
 
     private ClipboardItemViewModel? GetPinTarget() => _focusedItem;
 
