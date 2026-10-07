@@ -3,10 +3,8 @@ import Base from '../layouts/Base.astro';
 import SiteFooter from './SiteFooter.astro';
 import WindowsShortcutText from './WindowsShortcutText.astro';
 import ClipboardPreview from './ClipboardPreview.astro';
+import FeatureSlideshow from './FeatureSlideshow.astro';
 const { catalog, locale } = Astro.props;
-const features = [catalog.features.find, catalog.features.pin, catalog.features.preview];
-const steps = [catalog.workflow.step1, catalog.workflow.step2, catalog.workflow.step3];
-const icons = ['M21 21l-5-5M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5', 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0'];
 ---
 <Base title={catalog.meta.title} description={catalog.meta.description} ogTitle={catalog.meta.ogTitle} ogDescription={catalog.meta.ogDescription} locale={locale} currentPath="/">
   <section class="hero page-panel"><div class="container hero-grid">
@@ -19,14 +17,7 @@ const icons = ['M21 21l-5-5M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm16 3 5 5-4 2
     </div>
     <figure class="product-scene"><ClipboardPreview catalog={catalog}/></figure>
   </div></section>
-  <section class="intro-section container page-panel">
-    <p class="eyebrow">{catalog.features.heading}</p><h2>{catalog.problem.title}</h2><p>{catalog.problem.body}</p>
-    <div class="features" id="features">{features.map((feature,index) => <article class="feature"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d={icons[index]}/></svg></span></div><p class="feature-label">{feature.label}</p><h3>{feature.title}</h3><p>{feature.body}</p></article>)}</div>
-  </section>
-  <section id="workflow" class="workflow-section page-panel"><div class="container workflow-grid">
-    <div><p class="eyebrow">{catalog.nav.howItWorks}</p><h2>{catalog.workflow.heading}</h2><div class="big-shortcut" aria-hidden="true"><kbd>Alt</kbd><span>+</span><kbd>V</kbd></div></div>
-    <div class="workflow-steps">{steps.map((step,index) => <article class="workflow-step"><span class="step-number">0{index+1}</span><div><h3>{step.title}</h3><p>{step.body}</p></div></article>)}<div class="shortcut-list">{Object.values(catalog.workflow.shortcuts).map(key => <kbd>{key}</kbd>)}</div></div>
-  </div></section>
+  <FeatureSlideshow catalog={catalog} locale={locale} />
   <section id="comparison" class="comparison-section page-panel"><div class="container">
     <p class="eyebrow">{catalog.comparison.eyebrow}</p><h2><WindowsShortcutText text={catalog.comparison.heading} /></h2><p class="comparison-description">{catalog.comparison.body}</p>
     <div class="comparison-table-wrap"><table class="comparison-table">
@@ -49,9 +40,9 @@ const icons = ['M21 21l-5-5M19 10a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'm16 3 5 5-4 2
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const elements = [...document.querySelectorAll<HTMLElement>(
       '.hero-copy > .eyebrow, .hero-copy > h1, .hero-description, .hero-platform-note, .hero-license, .hero-actions > .btn, .release-note, .product-scene, ' +
-      '.intro-section > .eyebrow, .intro-section > h2, .intro-section > p:not(.eyebrow), .feature, ' +
+      '.slide-copy > *, .slide-demo, ' +
       '.comparison-section .eyebrow, .comparison-section h2, .comparison-description, .comparison-table-wrap, .comparison-benefit, ' +
-      '.faq-section h2, .faq-item, .workflow-grid > div:first-child > *, .workflow-step, .shortcut-list > kbd, .final-cta > *')];
+      '.faq-section h2, .faq-item, .final-cta > *')];
     elements.forEach((element,index) => { element.classList.add('scroll-reveal'); element.style.setProperty('--reveal-delay', `${(index % 4)*45}ms`); });
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       const element = entry.target as HTMLElement;

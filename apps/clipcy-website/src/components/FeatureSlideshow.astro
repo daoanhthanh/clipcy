@@ -1,0 +1,147 @@
+---
+import { featureSlides } from '../content/feature-slides.mjs';
+const { catalog, locale } = Astro.props;
+const slides = featureSlides(locale);
+const items = ['clipcy.dev', 'Hello, clipboard.', 'Project checklist', 'demo-notes.txt', 'npm run dev'];
+---
+<div id="features" class="feature-slideshow">
+  {slides.map((slide, index) => <section id={index === 0 ? 'workflow' : `feature-${index + 1}`} class="feature-slide page-panel" data-feature-slide={index} aria-labelledby={`feature-title-${index}`}>
+    <div class="container feature-slide-grid">
+      <div class="slide-copy">
+        <p class="eyebrow">{catalog.features.heading} <span class="slide-count">0{index + 1} / 05</span></p>
+        <h2 id={`feature-title-${index}`}>{slide.title}</h2>
+        <p class="slide-description">{slide.body}</p>
+        <div class="slide-keys" aria-hidden="true">{slide.keys.map(key => <kbd>{key}</kbd>)}</div>
+        <nav class="slide-progress" aria-label={catalog.features.heading}>{slides.map((item, step) => <a href={step === 0 ? '#workflow' : `#feature-${step + 1}`} aria-label={item.title} aria-current={step === index ? 'step' : undefined}><span class="visually-hidden">{item.title}</span></a>)}</nav>
+      </div>
+      <figure class="slide-demo" aria-label={slide.title}>
+        <div class="slide-window">
+          <div class="slide-window-title"><img src="/assets/logo-192.png" width="20" height="20" alt=""/>Clipcy <kbd>Alt+V</kbd></div>
+          <div class="slide-search" aria-hidden="true"><span>⌕</span><span data-slide-query>{catalog.features.find.label}</span><span class="slide-caret"></span></div>
+          <div class="slide-rows">
+            {items.map((item, row) => <div class:list={['slide-row', { 'is-selected': row === (index >= 2 ? 2 : 0) }]} data-slide-row={row}><span class="slide-item-icon" aria-hidden="true">▤</span><span>{index === 4 && row === 2 ? <strong class="slide-rich-text">{item}</strong> : item}</span><span class="slide-pin" hidden={!(index === 2 && row === 2)} aria-hidden="true">⚑</span><kbd>{row + 1}</kbd></div>)}
+          </div>
+          <div class="slide-window-footer"><span>{catalog.features.find.label}</span><span data-demo-key>{slide.keys.join(' + ')}</span></div>
+        </div>
+        {index === 4 && <div class="slide-paste-target"><p class="eyebrow">{catalog.workflow.shortcuts.paste}</p><p data-paste-output>Project checklist</p></div>}
+        <figcaption>{index === 1 ? '↑ / ↓ → Enter' : slide.keys.join(' + ')}</figcaption>
+      </figure>
+    </div>
+  </section>)}
+</div>
+<script>
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  document.querySelectorAll<HTMLElement>('[data-feature-slide]').forEach(slide => {
+    const kind = Number(slide.dataset.featureSlide);
+    const rows = [...slide.querySelectorAll<HTMLElement>('[data-slide-row]')];
+    const query = slide.querySelector<HTMLElement>('[data-slide-query]')!;
+    const placeholder = query.textContent;
+    const key = slide.querySelector<HTMLElement>('[data-demo-key]')!;
+    const defaultKey = key.textContent;
+    const pin = rows[2].querySelector<HTMLElement>('.slide-pin')!;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let active = false;
+    let tick = 0;
+    const select = (index: number) => rows.forEach((row, i) => row.classList.toggle('is-selected', i === index));
+    const reset = () => {
+      clearTimeout(timer);
+      tick = 0;
+      const list = slide.querySelector('.slide-rows')!;
+      rows.forEach(row => { row.hidden = false; list.append(row); });
+      select(kind >= 2 ? 2 : 0);
+      query.textContent = placeholder;
+      key.textContent = defaultKey;
+      pin.hidden = kind !== 2;
+      if (kind === 2) list.prepend(rows[2]);
+      [...list.children].forEach((row, index) => { row.querySelector('kbd')!.textContent = String(index + 1); });
+      if (kind === 0 && reduced.matches) {
+        query.textContent = 'clipcy';
+        rows.forEach(row => row.hidden = !row.textContent?.toLowerCase().includes('clipcy'));
+      }
+      slide.querySelector<HTMLElement>('[data-paste-output]')?.style.removeProperty('opacity');
+      slide.querySelector('.slide-window')?.classList.remove('demo-pasted');
+    };
+    const frame = () => {
+      if (!active || reduced.matches || document.hidden) return;
+      const phase = tick++ % 8;
+      if (kind === 0) {
+        const text = 'clipcy'.slice(0, Math.min(phase, 6));
+        query.textContent = text || placeholder;
+        rows.forEach(row => row.hidden = !row.textContent?.toLowerCase().includes(text));
+      } else if (kind === 1) {
+        select(phase < 5 ? phase : 4);
+        key.textContent = phase < 5 ? '↓' : 'Enter';
+        slide.querySelector('.slide-window')?.classList.toggle('demo-pasted', phase >= 5);
+      } else if (kind === 2) {
+        pin.hidden = phase < 3;
+        const list = slide.querySelector('.slide-rows')!;
+        rows.forEach(row => list.append(row));
+        if (phase >= 3) list.prepend(rows[2]);
+        [...list.children].forEach((row, index) => { row.querySelector('kbd')!.textContent = String(index + 1); });
+        key.textContent = phase < 3 ? '↓' : 'Ctrl + P';
+      } else if (kind === 3) {
+        select(phase < 3 ? 0 : 2);
+        key.textContent = phase < 3 ? 'Ctrl' : 'Ctrl + 3';
+      } else {
+        slide.querySelector('.slide-window')?.classList.toggle('demo-pasted', phase >= 3);
+        const output = slide.querySelector<HTMLElement>('[data-paste-output]')!;
+        output.style.opacity = phase < 3 ? '.2' : '1';
+      }
+      timer = setTimeout(frame, kind === 0 ? 450 : 650);
+    };
+    const sync = () => { reset(); if (active && !reduced.matches && !document.hidden) frame(); };
+    new IntersectionObserver(entries => {
+      active = entries[0].isIntersecting;
+      sync();
+    }, { threshold: .35 }).observe(slide);
+    reduced.addEventListener('change', sync);
+    document.addEventListener('visibilitychange', sync);
+  });
+</script>
+<style>
+  .feature-slide { background: radial-gradient(ellipse at 85% 35%, #cec5ff66, transparent 55%), linear-gradient(135deg, #f6faff, #edf3ff 60%, #f8f5ff); }
+  .feature-slide:nth-child(even) { background: radial-gradient(ellipse at 20% 75%, #a3ccff80, transparent 55%), linear-gradient(135deg, #f8faff, #f0edff); }
+  .feature-slide-grid { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(32px, 6vw, 88px); width: 100%; }
+  .slide-copy h2 { max-width: 17ch; font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.13; }
+  .slide-count { margin-left: 20px; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+  .slide-description { margin-top: 24px; color: var(--color-muted); font-size: 1.1rem; line-height: 1.75; max-width: 42ch; }
+  .slide-keys { display: flex; gap: 10px; margin-top: 32px; }
+  .slide-keys kbd { padding: 10px 16px; font-size: 1rem; background: #ffffffa6; border-bottom-width: 3px; }
+  .slide-progress { display: flex; gap: 8px; margin-top: 36px; }
+  .slide-progress a { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 4px; }
+  .slide-progress a::after { content: ''; height: 3px; width: 32px; background: #b3c3dc; border-radius: 3px; }
+  .slide-progress a[aria-current]::after { background: var(--color-accent); }
+  .slide-progress a:focus-visible { outline: 2px solid var(--color-accent); }
+  .slide-demo { margin: 0; padding: clamp(20px, 4vw, 48px); border-radius: 12px; background: linear-gradient(140deg, #9ccdf180, #a9acdf66), url('/window-wallpaper.jpg') center / cover; }
+  .slide-window { background: #162a4be6; color: #fff; padding: 12px; border: 1px solid #ffffff44; border-radius: 8px; box-shadow: 0 16px 40px #10254340; backdrop-filter: blur(24px); transition: opacity 300ms, transform 300ms; }
+  .slide-window-title { display: flex; align-items: center; gap: 8px; font-size: .85rem; padding-bottom: 12px; }
+  .slide-window-title kbd { margin-left: auto; }
+  .slide-window kbd { background: transparent; color: #bfcee6; border: 0; font-size: .7rem; padding: 2px; }
+  .slide-search { display: flex; gap: 10px; align-items: center; min-height: 38px; padding: 8px 10px; background: #ffffff12; border: 1px solid #ffffff22; border-bottom: 2px solid #79caff; border-radius: 4px; font-size: .8rem; }
+  .slide-caret { width: 1px; height: 16px; background: #c0e4ff; }
+  .slide-rows { display: flex; flex-direction: column; gap: 4px; margin-block: 12px; min-height: 246px; counter-reset: item; }
+  .slide-row { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-right: 2px solid transparent; border-radius: 4px; font-size: .85rem; min-height: 46px; transition: background 200ms; }
+  .slide-row > span:nth-child(2) { flex: 1; overflow-wrap: anywhere; }
+  .slide-row[hidden], .slide-pin[hidden] { display: none; }
+  .slide-row.is-selected { background: #ffffff19; border-right-color: #79caff; }
+  .slide-item-icon, .slide-pin { color: #9cd8ff; }
+  .slide-window-footer { display: flex; justify-content: space-between; gap: 8px; color: #c2cde0; font-size: .65rem; padding: 10px 2px 2px; }
+  figcaption { margin-top: 20px; color: #fff; text-align: center; font-family: var(--font-mono); }
+  .slide-rich-text { font-style: italic; color: #9cd8ff; text-decoration: underline; }
+  .slide-paste-target { background: #fffffff0; padding: 16px; margin-top: 16px; border-radius: 4px; }
+  .slide-paste-target .eyebrow { font-size: .65rem; margin-bottom: 8px; }
+  .slide-paste-target > p:last-child { margin: 0; color: var(--color-ink); font-size: .85rem; transition: opacity 250ms; }
+  .demo-pasted { opacity: .65; transform: scale(.98); }
+  @media (max-width: 700px) {
+    .paged-home .feature-slide { padding-block: 24px; }
+    .feature-slide-grid { grid-template-columns: 1fr; gap: 24px; }
+    .slide-copy h2 { max-width: 24ch; }
+    .slide-description { margin-top: 16px; font-size: 1rem; }
+    .slide-keys { margin-top: 16px; }
+    .slide-progress { margin-top: 8px; }
+    .slide-demo { width: 100%; max-width: 460px; margin-inline: auto; padding: 20px; }
+    .slide-row { min-height: 34px; padding-block: 8px; font-size: .8rem; }
+    .slide-rows { min-height: 186px; }
+    .slide-demo figcaption { margin-top: 12px; font-size: .8rem; }
+  }
+</style>
