@@ -20,7 +20,7 @@ sequenceDiagram
     Repo->>Sqlite: get_all_metadata(limit)
     Sqlite->>DB: SELECT id, content_type, preview, thumbnail,
     Note right of Sqlite: source_app, created_at, pinned
-    Sqlite->>DB: ORDER BY pinned DESC, last_used_at DESC
+    Sqlite->>DB: ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC
     Sqlite->>DB: LIMIT ?
     DB-->>Sqlite: rows
     Sqlite-->>Repo: ClipboardItem summaries
@@ -73,14 +73,15 @@ flowchart LR
 
 ## Sorting Rules
 
-- History list uses metadata-only queries ordered by `pinned DESC, last_used_at DESC`.
-- Search uses the same pinned-first ordering.
-- Full-data `get_all` uses the same `pinned DESC, last_used_at DESC` ordering.
-- After a successful paste, the service updates `last_used_at` and invokes its history-change callback. The bridge sends `HistoryUpdated`, refreshing the popup so the pasted item moves to the top of its pinned or regular section. Failed pastes do not change the ordering.
+- History list uses metadata-only queries ordered by `pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC`.
+- Search orders pinned matches by pin time (newest first), then regular matches by relevance and last use.
+- Full-data `get_all` uses the same `pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC` ordering.
+- After a successful paste, the service updates `last_used_at` and invokes its history-change callback. The bridge sends `HistoryUpdated`, refreshing the popup so a pasted regular item moves to the top of its section; pinned items keep their position. Failed pastes do not change the ordering.
 - The popup partitions that list: pinned rows render in a region above unpinned rows. The regions scroll independently. Rows are 36 DIPs tall with zero item margins and compact padding. A local row template limits the gap between hover/selection backgrounds to 1 DIP. At most 3 pinned rows are visible; the popup height grows by the visible pinned region so the regular list does not shrink.
 
 ## Pinning Rules
 
+- `pinned_at` records the time an item becomes pinned. Repeated pin requests, copying, and pasting preserve it; unpinning clears it and repinning records a new time. Existing pins use their previous `last_used_at` as a fallback because historical pin times were not stored.
 - `pinned = true` prevents deletion by clear/prune (only non-pinned items are removed).
 - Text deduplication preserves pin state: if an existing duplicate is pinned, the new save inherits `pinned = true`.
 - Text deduplication also retains the existing pinned item's ID so its permanent quick-paste code remains valid.
