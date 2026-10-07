@@ -153,3 +153,71 @@ async fn test_pinned_status_preserved_on_dedup() {
     assert_eq!(items[0].id, pinned_item.id);
     assert!(repo.get_by_id(pinned_item.id).await.unwrap().is_some());
 }
+
+#[tokio::test]
+async fn test_pin_order_survives_copy_paste_and_restart() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+    let repo = SqliteClipboardRepository::new(db_path.clone())
+        .await
+        .unwrap();
+    let older = ClipboardItem::new_text("Shared older");
+    let newer = ClipboardItem::new_text("Shared newer");
+    repo.save(&older).await.unwrap();
+    repo.save(&newer).await.unwrap();
+    repo.set_pinned(newer.id, true).await.unwrap();
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    repo.set_pinned(older.id, true).await.unwrap();
+    repo.touch_last_used_at(newer.id).await.unwrap();
+    repo.save(&ClipboardItem::new_text("Shared newer"))
+        .await
+        .unwrap();
+    repo.set_pinned(newer.id, true).await.unwrap();
+    drop(repo);
+    let repo = SqliteClipboardRepository::new(db_path.clone())
+        .await
+        .unwrap();
+    for items in [
+        repo.get_all(10).await.unwrap(),
+        repo.get_all_metadata(10).await.unwrap(),
+        repo.search("Shared", 10).await.unwrap(),
+        repo.search_metadata("Shared", 10).await.unwrap(),
+    ] {
+        assert_eq!(
+            items.iter().map(|item| item.id).collect::<Vec<_>>(),
+            vec![older.id, newer.id]
+        );
+    }
+    repo.set_pinned(newer.id, false).await.unwrap();
+    repo.set_pinned(newer.id, true).await.unwrap();
+    assert_eq!(repo.get_all(10).await.unwrap()[0].id, newer.id);
+}
+
+#[tokio::test]
+async fn test_existing_database_backfills_pin_time() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("test.db");
+    let repo = SqliteClipboardRepository::new(db_path.clone())
+        .await
+        .unwrap();
+    let mut older = ClipboardItem::new_text("Older pin");
+    older.pinned = true;
+    older.last_used_at = chrono::Utc::now() - chrono::Duration::days(1);
+    let mut newer = ClipboardItem::new_text("Newer pin");
+    newer.pinned = true;
+    repo.save(&older).await.unwrap();
+    repo.save(&newer).await.unwrap();
+    drop(repo);
+    let pool = sqlx::SqlitePool::connect(&format!("sqlite:{}", db_path.display()))
+        .await
+        .unwrap();
+    sqlx::query("ALTER TABLE clipboard_items DROP COLUMN pinned_at")
+        .execute(&pool)
+        .await
+        .unwrap();
+    pool.close().await;
+    let repo = SqliteClipboardRepository::new(db_path).await.unwrap();
+    assert_eq!(repo.get_all(10).await.unwrap()[0].id, newer.id);
+    repo.touch_last_used_at(older.id).await.unwrap();
+    assert_eq!(repo.get_all_metadata(10).await.unwrap()[0].id, newer.id);
+}

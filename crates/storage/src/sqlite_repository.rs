@@ -200,6 +200,7 @@ impl SqliteClipboardRepository {
                 created_at TEXT NOT NULL,
                 last_used_at TEXT NOT NULL,
                 pinned INTEGER NOT NULL DEFAULT 0,
+                pinned_at TEXT,
                 content_hash TEXT
             )
             "#,
@@ -252,6 +253,25 @@ impl SqliteClipboardRepository {
         .execute(&self.pool)
         .await
         .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+
+        let columns = sqlx::query("PRAGMA table_info(clipboard_items)")
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        if !columns
+            .iter()
+            .any(|row| row.get::<String, _>("name") == "pinned_at")
+        {
+            sqlx::query("ALTER TABLE clipboard_items ADD COLUMN pinned_at TEXT")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| ClipboardError::Storage(e.to_string()))?;
+        }
+        // Older databases did not record pin time; retain their current order as a fallback.
+        sqlx::query("UPDATE clipboard_items SET pinned_at = last_used_at WHERE pinned != 0 AND pinned_at IS NULL")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| ClipboardError::Storage(e.to_string()))?;
 
         self.init_fts().await?;
         self.backfill_search_text().await?;
@@ -504,7 +524,7 @@ impl SqliteClipboardRepository {
 
     pub async fn get_all_metadata(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned FROM clipboard_items ORDER BY pinned DESC, last_used_at DESC LIMIT $1"
+            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned FROM clipboard_items ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC, id ASC LIMIT $1"
         )
             .bind(limit as i64)
             .fetch_all(&self.pool)
@@ -554,7 +574,7 @@ impl SqliteClipboardRepository {
                     FROM clipboard_items ci
                     JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
                     WHERE clipboard_items_fts MATCH $1
-                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts, $3, $4), ci.last_used_at DESC
+                    ORDER BY ci.pinned DESC, CASE WHEN ci.pinned != 0 THEN ci.pinned_at END DESC, bm25(clipboard_items_fts, $3, $4), CASE WHEN ci.pinned = 0 THEN ci.last_used_at END DESC, ci.id ASC
                     LIMIT $2
                     "#,
                 )
@@ -572,7 +592,7 @@ impl SqliteClipboardRepository {
                     FROM clipboard_items ci
                     JOIN clipboard_items_fts ON ci.rowid = clipboard_items_fts.rowid
                     WHERE clipboard_items_fts MATCH $1
-                    ORDER BY ci.pinned DESC, bm25(clipboard_items_fts, $3, $4), ci.last_used_at DESC
+                    ORDER BY ci.pinned DESC, CASE WHEN ci.pinned != 0 THEN ci.pinned_at END DESC, bm25(clipboard_items_fts, $3, $4), CASE WHEN ci.pinned = 0 THEN ci.last_used_at END DESC, ci.id ASC
                     LIMIT $2
                     "#,
                 )
@@ -664,8 +684,10 @@ impl ClipboardRepository for SqliteClipboardRepository {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO clipboard_items
-            (id, content_type, data, preview, search_text, search_text_norm, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned, content_hash)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            (id, content_type, data, preview, search_text, search_text_norm, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned, content_hash, pinned_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+                CASE WHEN $12 != 0 THEN COALESCE(
+                    (SELECT pinned_at FROM clipboard_items WHERE id = $1 AND pinned != 0), $14) END)
             "#,
         )
             .bind(&id_to_save)
@@ -681,6 +703,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             .bind(item.last_used_at.to_rfc3339())
             .bind(pinned_to_save as i32)
             .bind(&content_hash)
+            .bind(chrono::Utc::now().to_rfc3339())
             .execute(&self.pool)
             .await
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
@@ -705,7 +728,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
 
     async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT * FROM clipboard_items ORDER BY pinned DESC, last_used_at DESC LIMIT $1",
+            "SELECT * FROM clipboard_items ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC, id ASC LIMIT $1",
         )
         .bind(limit as i64)
         .fetch_all(&self.pool)
@@ -794,9 +817,10 @@ impl ClipboardRepository for SqliteClipboardRepository {
     }
 
     async fn set_pinned(&self, id: Uuid, pinned: bool) -> Result<()> {
-        sqlx::query("UPDATE clipboard_items SET pinned = $1 WHERE id = $2")
+        sqlx::query("UPDATE clipboard_items SET pinned_at = CASE WHEN $1 = 0 THEN NULL WHEN pinned = 0 THEN $3 ELSE pinned_at END, pinned = $1 WHERE id = $2")
             .bind(pinned as i32)
             .bind(id.to_string())
+            .bind(chrono::Utc::now().to_rfc3339())
             .execute(&self.pool)
             .await
             .map_err(|e| ClipboardError::Storage(e.to_string()))?;
