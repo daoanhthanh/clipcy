@@ -58,6 +58,9 @@ Debug UI builds load `target/debug/clipcy_core.dll`; Release UI builds load `tar
 For a release build, use `cargo build --release -p clipcy-bridge` followed by `dotnet build -c Release`.
 Restart Clipcy after rebuilding so it loads the updated backend.
 
+Shortcut persistence checks run without WinUI or additional test packages:
+`dotnet run --project tests/quick-paste/QuickPaste.Tests.csproj` from the repository root.
+
 ## Project Structure
 
 ```
@@ -87,7 +90,8 @@ apps/clipcy-windows-ui/
 - **Settings app branding**: The title bar and About tab display the Clipcy app logo from `Assets/Square44x44Logo.png`.
 - **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
-- **Quick paste**: Ctrl+1 through Ctrl+9, then Ctrl+0, paste the first ten displayed regular rows, including search results. Number-row and numpad digits work; shortcut hints appear on the right. Modifier keys must be released before Clipcy sends the paste.
+- **Quick paste**: With the popup open, **Ctrl+1…Ctrl+9, Ctrl+0** paste the first ten displayed regular rows, including filtered search results. Number-row and numpad digits work. Pinned shortcuts prioritize single keys on the left of the keyboard: **Ctrl+Alt+A**, **S**, **D**, **F**, **Q**, etc. Single-key shortcuts paste directly. **O** and **P** are reserved prefixes: **Ctrl+Alt+O, Enter** pastes the prefix's item; **Ctrl+Alt+O, A** pastes another item immediately on A. Hold Ctrl+Alt for the first key; subsequent keys work with or without the modifiers. Backspace edits a prefix; Escape cancels it. Only displayed pinned results can be pasted. Modifier keys must be released before Clipcy sends the paste.
+- **Permanent pinned codes**: Assign each new pinned item the greatest previously assigned number plus one, starting at 1. Save the mapping by item ID in `%LOCALAPPDATA%\clipcy\pinned-shortcuts.json` before displaying the shortcut. Numbers are never reused or renumbered, including after filtering, reorder, restart, deletion, or unpin/repin. Assign the first 34 numbers to **A S D F Q W E R Z X C V 1 2 3 4 5 T G B 6 Y H N 7 U J M 8 I K 9 L 0** in that order. Reserve right-side **O/P** as prefix branches. Assign remaining numbers breadth-first through the binary prefix tree: prefixes **O, P**, then **OO, OP, PO, PP**, etc. Each prefix has 35 terminal choices: **Enter** followed by the 34 direct keys in their priority order. The first 104 assignments take at most two keys; later assignments use longer sequences. Explicit Enter distinguishes a prefix's own item from its descendants, while direct terminal letters/digits always paste instantly. Reserving prefixes from the start prevents additions from changing existing shortcuts. Encoding supports all positive 64-bit assignments; saved numbers automatically use the current encoding. Copying pinned text again preserves its identity and code. Damaged/unwritable storage reports an error instead of generating unsaved codes; removing the file resets assignments.
 - **Popup scrolling**: Opening the popup resets both the pinned and regular lists to the top.
 - **Pinning**: Hover/focus a history row or select it with Up/Down, then press **Ctrl+P** to pin/unpin it (also available in the row's context menu). Pinned items sit in their own region above the regular list, separated by a horizontal line. Each region scrolls on its own. The pinned region shows at most 3 rows; more pins scroll inside it, and the popup grows by that region's height so the regular list keeps its space. Selection follows the toggled item when it moves between regions, so pressing **Ctrl+P** again unpins the same item; pinning does not clear the search filter.
 - **Selection**: Only one row is active across both regions. Mouse movement/hover and Up/Down replace each other's selection; the latest input wins. Scrolling a row underneath a stationary cursor does not override arrow selection. Enter, Delete, and Ctrl+P target that one active row.

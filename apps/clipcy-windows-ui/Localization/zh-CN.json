@@ -1,4 +1,5 @@
 {
+  "main.pinned_shortcut_input": "置顶快捷键：{0} — 下一个按键或 Enter 粘贴，Esc 取消",
   "content.image_placeholder": "[图像]",
   "content.one_folder": "1 个文件夹",
   "content.n_folders": "{0} 个文件夹",

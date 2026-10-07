@@ -31,6 +31,7 @@ public sealed partial class MainWindow : Window
     private int _activeIndex = -1;
     private ClipboardItemViewModel? _focusedItem;
     private Windows.Foundation.Point _lastPointer;
+    private string? _pinnedShortcutInput;
     private bool _quickPastePending;
     private int _popupGeneration;
 
@@ -267,17 +268,80 @@ public sealed partial class MainWindow : Window
             : key >= Windows.System.VirtualKey.NumberPad0 && key <= Windows.System.VirtualKey.NumberPad9
                 ? (int)key - (int)Windows.System.VirtualKey.NumberPad0
                 : -1;
-        if (digit < 0 || !IsKeyDown(Windows.System.VirtualKey.Control)
-            || IsKeyDown(Windows.System.VirtualKey.Menu) || IsKeyDown(Windows.System.VirtualKey.Shift))
+        bool control = IsKeyDown(Windows.System.VirtualKey.Control);
+        bool alt = IsKeyDown(Windows.System.VirtualKey.Menu);
+        bool shift = IsKeyDown(Windows.System.VirtualKey.Shift);
+        char? character = digit >= 0 ? (char)('0' + digit)
+            : key >= Windows.System.VirtualKey.A && key <= Windows.System.VirtualKey.Z
+                ? (char)('A' + (int)key - (int)Windows.System.VirtualKey.A) : null;
+
+        if (_pinnedShortcutInput != null)
+        {
+            e.Handled = true;
+            if (key == Windows.System.VirtualKey.Escape)
+            {
+                _pinnedShortcutInput = null;
+                ViewModel.ShowShortcutInput(null);
+            }
+            else if (key == Windows.System.VirtualKey.Back)
+            {
+                if (_pinnedShortcutInput.Length > 0)
+                    _pinnedShortcutInput = _pinnedShortcutInput[..^1];
+                ViewModel.ShowShortcutInput(_pinnedShortcutInput);
+            }
+            else if (key == Windows.System.VirtualKey.Enter)
+            {
+                if (!e.KeyStatus.WasKeyDown)
+                    AppendPinnedShortcutCharacter('\n');
+            }
+            else if (character != null && !shift && !e.KeyStatus.WasKeyDown)
+            {
+                AppendPinnedShortcutCharacter(character.Value);
+            }
+            return true;
+        }
+
+        if (!control || shift || (alt ? character == null : digit < 0))
             return false;
 
         e.Handled = true;
         if (e.KeyStatus.WasKeyDown)
             return true;
-        int index = digit == 0 ? 9 : digit - 1;
-        if (index < ViewModel.RegularItems.Count)
-            QuickPasteItem(ViewModel.RegularItems[index]);
+        if (alt)
+        {
+            _pinnedShortcutInput = string.Empty;
+            AppendPinnedShortcutCharacter(character!.Value);
+        }
+        else
+        {
+            int index = digit == 0 ? 9 : digit - 1;
+            if (index < ViewModel.RegularItems.Count)
+                QuickPasteItem(ViewModel.RegularItems[index]);
+        }
         return true;
+    }
+
+    private void AppendPinnedShortcutCharacter(char character)
+    {
+        _pinnedShortcutInput += character;
+        if (PinnedShortcutStore.TryReadSequence(_pinnedShortcutInput, out long code))
+        {
+            _pinnedShortcutInput = null;
+            ViewModel.ShowShortcutInput(null);
+            if (ViewModel.PinnedItems.FirstOrDefault(item => item.PinnedShortcutCode == code) is { } item)
+                QuickPasteItem(item);
+        }
+        else if (!ViewModel.PinnedItems.Any(item => item.PinnedShortcutCode is long assigned
+            && PinnedShortcutStore.Sequence(assigned).StartsWith(_pinnedShortcutInput, StringComparison.Ordinal)))
+        {
+            _pinnedShortcutInput = null;
+            ViewModel.ShowShortcutInput(null);
+        }
+        else
+        {
+            ViewModel.ShowShortcutInput(string.Join(
+                ", ", _pinnedShortcutInput.Select(value => value.ToString())));
+        }
     }
 
     private async void QuickPasteItem(ClipboardItemViewModel item)
@@ -480,6 +544,8 @@ public sealed partial class MainWindow : Window
     public void HidePopup()
     {
         _popupGeneration++;
+        _pinnedShortcutInput = null;
+        ViewModel.ShowShortcutInput(null);
         _previewService.Hide();
         _windowService.Hide();
     }

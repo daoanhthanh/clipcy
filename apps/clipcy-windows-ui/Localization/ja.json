@@ -1,4 +1,5 @@
 {
+  "main.pinned_shortcut_input": "固定ショートカット: {0} — 次のキーまたは Enter で貼り付け、Esc でキャンセル",
   "content.image_placeholder": "[画像]",
   "content.one_folder": "1 個のフォルダー",
   "content.n_folders": "{0} 個のフォルダー",

@@ -83,6 +83,8 @@ flowchart LR
 
 - `pinned = true` prevents deletion by clear/prune (only non-pinned items are removed).
 - Text deduplication preserves pin state: if an existing duplicate is pinned, the new save inherits `pinned = true`.
+- Text deduplication also retains the existing pinned item's ID so its permanent quick-paste code remains valid.
+- The Windows UI stores a permanent item-ID-to-numeric-code mapping in `%LOCALAPPDATA%\clipcy\pinned-shortcuts.json`. New IDs receive the greatest saved code plus one; old assignments are retained, never renumbered or recycled. The first 34 assignments use single Ctrl+Alt keys in left-hand priority order. O/P are reserved prefix branches: Enter selects a prefix's own item and a terminal letter/digit pastes its item immediately. Allocate additional codes breadth-first through O/P branches; the first 104 assignments use at most two keys. Reserving prefixes prevents new pins from delaying or changing direct shortcuts. See the Windows UI README for the complete algorithm. Ctrl+1…Ctrl+0 still paste the first ten regular rows; labels use the same mapping as keyboard lookup.
 
 ## Key Code References
 

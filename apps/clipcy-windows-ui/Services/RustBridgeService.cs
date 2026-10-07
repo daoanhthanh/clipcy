@@ -404,6 +404,7 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
             RaisePropertyChanged(nameof(ShortcutLabel));
         }
     }
+    public long? PinnedShortcutCode { get; set; }
     public string ContentType { get; init; } = "Text";
     public string Preview { get; init; } = string.Empty;
     public byte[]? Thumbnail { get; init; }

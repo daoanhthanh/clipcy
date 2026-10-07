@@ -141,7 +141,7 @@
             VerticalAlignment="Center"
           />
 
-          <Grid Grid.Column="1" ColumnSpacing="0">
+          <Grid Grid.Column="1" ColumnSpacing="0" HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
@@ -171,6 +171,7 @@
               TextTrimming="CharacterEllipsis"
               MaxLines="1"
               MaxWidth="280"
+              HorizontalAlignment="Left"
               VerticalAlignment="Center"
               FontSize="13"
             />

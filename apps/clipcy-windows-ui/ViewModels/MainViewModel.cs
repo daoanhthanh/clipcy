@@ -23,6 +23,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
 #pragma warning restore MVVMTK0045
 
     private string _statusKey = "main.ready";
+    private string? _shortcutInput;
+    private readonly PinnedShortcutStore _shortcuts = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "clipcy", "pinned-shortcuts.json"));
     private object[] _statusArguments = Array.Empty<object>();
 
     public MainViewModel()
@@ -32,6 +36,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void SetStatus(string key, params object[] arguments)
     {
+        if (_shortcutInput != null && key is "main.n_items" or "main.n_results")
+        {
+            key = "main.pinned_shortcut_input";
+            arguments = new object[] { _shortcutInput };
+        }
         _statusKey = key;
         _statusArguments = arguments;
         StatusText = LocalizationService.Format(key, arguments);
@@ -242,12 +251,31 @@ public partial class MainViewModel : ObservableObject, IDisposable
         UpdateShortcutLabels();
     }
 
+    public void ShowShortcutInput(string? input)
+    {
+        _shortcutInput = input;
+        if (input == null)
+            SetStatus(string.IsNullOrWhiteSpace(SearchQuery) ? "main.n_items" : "main.n_results", Items.Count);
+        else
+            SetStatus("main.pinned_shortcut_input", input);
+    }
+
     private void UpdateShortcutLabels()
     {
         foreach (var item in Items)
+        {
             item.ShortcutLabel = string.Empty;
+            item.PinnedShortcutCode = null;
+        }
         for (int i = 0; i < Math.Min(10, RegularItems.Count); i++)
             RegularItems[i].ShortcutLabel = $"Ctrl+{(i + 1) % 10}";
+
+        var codes = _shortcuts.EnsureCodes(PinnedItems.Select(item => item.Id));
+        foreach (var item in PinnedItems)
+        {
+            item.PinnedShortcutCode = codes[item.Id];
+            item.ShortcutLabel = PinnedShortcutStore.Label(codes[item.Id]);
+        }
     }
 
     private static void RemoveMissing(

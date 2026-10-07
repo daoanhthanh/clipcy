@@ -1,4 +1,5 @@
 {
+  "main.pinned_shortcut_input": "Pinned shortcut: {0} — next key or Enter to paste, Esc to cancel",
   "content.image_placeholder": "[Image]",
   "content.one_folder": "1 folder",
   "content.n_folders": "{0} folders",
