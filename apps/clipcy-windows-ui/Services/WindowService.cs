@@ -20,7 +20,22 @@ public class WindowService : IWindowService
 
     private int _extraHeightDip;
 
+    // LoadCursor returns a shared system cursor; it must not be destroyed.
+    private static readonly IntPtr ArrowCursor = LoadCursor(IntPtr.Zero, new IntPtr(32512));
+
+    public static void RestoreArrowCursor()
+    {
+        if (ArrowCursor != IntPtr.Zero)
+            SetCursor(ArrowCursor);
+    }
+
     #region Native Methods
+
+    [DllImport("user32.dll", EntryPoint = "LoadCursorW", ExactSpelling = true)]
+    private static extern IntPtr LoadCursor(IntPtr hInstance, IntPtr cursorName);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern IntPtr SetCursor(IntPtr cursor);
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out POINT lpPoint);

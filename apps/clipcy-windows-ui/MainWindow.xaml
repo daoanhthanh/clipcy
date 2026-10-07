@@ -6,6 +6,7 @@
   xmlns:local="using:Clipcy"
   xmlns:services="using:Clipcy.Services"
   xmlns:vm="using:Clipcy.ViewModels"
+  xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives"
 >
   <Grid
     x:Name="RootGrid"
@@ -114,7 +115,7 @@
         </Setter>
       </Style>
       <DataTemplate x:Key="ClipboardItemTemplate" x:DataType="services:ClipboardItemViewModel">
-        <Grid ColumnSpacing="10">
+        <Grid ColumnSpacing="10" Background="Transparent">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
@@ -122,8 +123,8 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
-          <Grid.ContextFlyout>
-            <MenuFlyout>
+          <primitives:FlyoutBase.AttachedFlyout>
+            <MenuFlyout Opened="ClipboardItemMenu_Opened" Closed="ClipboardItemMenu_Closed">
               <MenuFlyoutItem
                 Text="{x:Bind PinUnpinText, Mode=OneWay}"
                 Click="PinUnpinMenuItem_Click"
@@ -131,7 +132,7 @@
               <MenuFlyoutSeparator />
               <MenuFlyoutItem services:Localization.Text="common.delete" Click="DeleteMenuItem_Click" />
             </MenuFlyout>
-          </Grid.ContextFlyout>
+          </primitives:FlyoutBase.AttachedFlyout>
 
           <FontIcon
             Grid.Column="0"

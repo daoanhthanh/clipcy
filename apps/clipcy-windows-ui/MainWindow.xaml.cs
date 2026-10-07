@@ -34,6 +34,7 @@ public sealed partial class MainWindow : Window
     private string? _pinnedShortcutInput;
     private bool _quickPastePending;
     private int _popupGeneration;
+    private MenuFlyout? _itemContextMenu;
 
     public MainWindow()
     {
@@ -194,6 +195,9 @@ public sealed partial class MainWindow : Window
 
     private async void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (_itemContextMenu != null)
+            return;
+
         if (HandleQuickPaste(e))
             return;
 
@@ -280,7 +284,8 @@ public sealed partial class MainWindow : Window
     }
 
     private bool CanStartTypingSearch() =>
-        _windowService.IsVisible && !_quickPastePending && _pinnedShortcutInput == null
+        _windowService.IsVisible && _itemContextMenu == null
+        && !_quickPastePending && _pinnedShortcutInput == null
         && SearchBox.FocusState == FocusState.Unfocused
         && !IsKeyDown(Windows.System.VirtualKey.Control)
         && !IsKeyDown(Windows.System.VirtualKey.Menu)
@@ -492,7 +497,8 @@ public sealed partial class MainWindow : Window
             _returningFocus = true;
             container.Focus(FocusState.Programmatic);
             _returningFocus = false;
-            _previewService.ScheduleShow(MapToPreviewData(item), container);
+            if (_itemContextMenu == null)
+                _previewService.ScheduleShow(MapToPreviewData(item), container);
         }
 
         return true;
@@ -579,6 +585,8 @@ public sealed partial class MainWindow : Window
 
     public void HidePopup()
     {
+        _itemContextMenu?.Hide();
+        _itemContextMenu = null;
         _popupGeneration++;
         _pinnedShortcutInput = null;
         ViewModel.ShowShortcutInput(null);
@@ -599,11 +607,18 @@ public sealed partial class MainWindow : Window
             item.PointerMoved -= ListViewItem_PointerMoved;
             item.PointerExited -= ListViewItem_PointerExited;
             item.GotFocus -= ListViewItem_GotFocus;
+            item.RemoveHandler(UIElement.ContextRequestedEvent,
+                new Windows.Foundation.TypedEventHandler<UIElement, ContextRequestedEventArgs>(
+                    ClipboardItem_ContextRequested));
 
             item.PointerEntered += ListViewItem_PointerEntered;
             item.PointerMoved += ListViewItem_PointerMoved;
             item.PointerExited += ListViewItem_PointerExited;
             item.GotFocus += ListViewItem_GotFocus;
+            // Include row padding and context requests handled by ListViewItem itself.
+            item.AddHandler(UIElement.ContextRequestedEvent,
+                new Windows.Foundation.TypedEventHandler<UIElement, ContextRequestedEventArgs>(
+                    ClipboardItem_ContextRequested), handledEventsToo: true);
         }
 
         if (args.Item is ClipboardItemViewModel vm)
@@ -636,6 +651,9 @@ public sealed partial class MainWindow : Window
 
     private void TryPointerTakeover(ListViewItem item, PointerRoutedEventArgs e)
     {
+        if (_itemContextMenu != null)
+            return;
+
         if (!PointerMovedSince(e) && _owner == SelectionOwner.Keyboard)
             return;
 
@@ -884,6 +902,57 @@ public sealed partial class MainWindow : Window
                 _previewService?.Hide();
             };
         }
+    }
+
+    private void ClipboardItem_ContextRequested(UIElement sender, ContextRequestedEventArgs e)
+    {
+        if (sender is not ListViewItem container || FindItemMenuRow(container) is not FrameworkElement row
+            || Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase.GetAttachedFlyout(row) is not MenuFlyout menu)
+            return;
+
+        e.Handled = true;
+        if (ReferenceEquals(_itemContextMenu, menu) && menu.IsOpen)
+            return;
+
+        _itemContextMenu?.Hide();
+        _itemContextMenu = menu;
+        _previewService.Hide();
+        if (e.TryGetPosition(row, out var position))
+            menu.ShowAt(row, position);
+        else
+            menu.ShowAt(row);
+    }
+
+    private static FrameworkElement? FindItemMenuRow(ListViewItem container)
+    {
+        var pending = new Queue<DependencyObject>();
+        pending.Enqueue(container);
+        while (pending.Count > 0)
+        {
+            var element = pending.Dequeue();
+            if (element is FrameworkElement row
+                && Microsoft.UI.Xaml.Controls.Primitives.FlyoutBase.GetAttachedFlyout(row) is MenuFlyout)
+                return row;
+
+            int count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(element);
+            for (int i = 0; i < count; i++)
+                pending.Enqueue(Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(element, i));
+        }
+        return null;
+    }
+
+    private void ClipboardItemMenu_Opened(object sender, object e)
+    {
+        // WinUI popup opening can leave a stale busy/resize cursor until pointer movement.
+        // Restore it after popup creation, rather than changing cursor state during hover.
+        if (ReferenceEquals(_itemContextMenu, sender))
+            WindowService.RestoreArrowCursor();
+    }
+
+    private void ClipboardItemMenu_Closed(object sender, object e)
+    {
+        if (ReferenceEquals(_itemContextMenu, sender))
+            _itemContextMenu = null;
     }
 
     private async void PinUnpinMenuItem_Click(object sender, RoutedEventArgs e)

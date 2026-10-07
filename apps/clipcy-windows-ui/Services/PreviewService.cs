@@ -24,6 +24,7 @@ public class PreviewService : IPreviewService
     private FrameworkElement? _previewTarget;
     private long _pendingShowGeneration;
     private long _scheduledShowGeneration;
+    private long _hideGeneration;
 
     private Popup? _previewPopup;
     private PreviewControl? _previewControl;
@@ -173,9 +174,10 @@ public class PreviewService : IPreviewService
         if (_disposed)
             return;
 
+        long hideGeneration = _hideGeneration;
         _dispatcherQueue.TryEnqueue(() =>
         {
-            if (_disposed)
+            if (_disposed || hideGeneration != _hideGeneration)
                 return;
 
             if (!_showPreviewPanel)
@@ -241,6 +243,11 @@ public class PreviewService : IPreviewService
     {
         if (_disposed)
             return;
+        if (_dispatcherQueue.HasThreadAccess)
+        {
+            HidePreviewInternal();
+            return;
+        }
         _dispatcherQueue.TryEnqueue(() =>
         {
             if (_disposed)
@@ -251,6 +258,7 @@ public class PreviewService : IPreviewService
 
     private void HidePreviewInternal()
     {
+        _hideGeneration++;
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
         _pendingPreviewData = null;
@@ -463,16 +471,24 @@ public class PreviewService : IPreviewService
         if (cts is null)
             return;
 
+        // Request cancellation without running I/O cancellation callbacks on the UI thread.
+        _ = CancelAndDisposeAsync(cts);
+    }
+
+    private static async Task CancelAndDisposeAsync(CancellationTokenSource cts)
+    {
         try
         {
-            cts.Cancel();
+            await cts.CancelAsync().ConfigureAwait(false);
         }
         catch
         {
-            // ignore
+            // Cleanup must still release the source if a cancellation callback fails.
         }
-
-        cts.Dispose();
+        finally
+        {
+            cts.Dispose();
+        }
     }
 
     private async Task LoadFullDataAsync(PreviewData data, long popupId)
@@ -593,6 +609,7 @@ public class PreviewService : IPreviewService
         var fileReq = _fileRequestId;
         var cts = new CancellationTokenSource();
         _fileLoadCts = cts;
+        var token = cts.Token;
 
         try
         {
@@ -613,7 +630,9 @@ public class PreviewService : IPreviewService
             FilePreviewResult result;
             try
             {
-                result = await FilePreviewLoader.LoadAsync(path, cts.Token).ConfigureAwait(false);
+                // Path admission and codec setup perform synchronous I/O before their first await.
+                result = await Task.Run(() => FilePreviewLoader.LoadAsync(path, token), token)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
