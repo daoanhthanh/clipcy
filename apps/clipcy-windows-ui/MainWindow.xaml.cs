@@ -31,6 +31,8 @@ public sealed partial class MainWindow : Window
     private int _activeIndex = -1;
     private ClipboardItemViewModel? _focusedItem;
     private Windows.Foundation.Point _lastPointer;
+    private bool _quickPastePending;
+    private int _popupGeneration;
 
     public MainWindow()
     {
@@ -188,6 +190,9 @@ public sealed partial class MainWindow : Window
 
     private async void RootGrid_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (HandleQuickPaste(e))
+            return;
+
         if (e.Key == Windows.System.VirtualKey.Escape)
         {
             e.Handled = true;
@@ -246,6 +251,53 @@ public sealed partial class MainWindow : Window
     }
 
     private ClipboardItemViewModel? GetPinTarget() => _focusedItem;
+
+    private bool HandleQuickPaste(KeyRoutedEventArgs e)
+    {
+        if (_quickPastePending)
+        {
+            e.Handled = true;
+            if (e.Key == Windows.System.VirtualKey.Escape)
+                HidePopup();
+            return true;
+        }
+        var key = e.Key;
+        int digit = key >= Windows.System.VirtualKey.Number0 && key <= Windows.System.VirtualKey.Number9
+            ? (int)key - (int)Windows.System.VirtualKey.Number0
+            : key >= Windows.System.VirtualKey.NumberPad0 && key <= Windows.System.VirtualKey.NumberPad9
+                ? (int)key - (int)Windows.System.VirtualKey.NumberPad0
+                : -1;
+        if (digit < 0 || !IsKeyDown(Windows.System.VirtualKey.Control)
+            || IsKeyDown(Windows.System.VirtualKey.Menu) || IsKeyDown(Windows.System.VirtualKey.Shift))
+            return false;
+
+        e.Handled = true;
+        if (e.KeyStatus.WasKeyDown)
+            return true;
+        int index = digit == 0 ? 9 : digit - 1;
+        if (index < ViewModel.RegularItems.Count)
+            QuickPasteItem(ViewModel.RegularItems[index]);
+        return true;
+    }
+
+    private async void QuickPasteItem(ClipboardItemViewModel item)
+    {
+        _quickPastePending = true;
+        int generation = _popupGeneration;
+        try
+        {
+            while (generation == _popupGeneration && _windowService.IsVisible
+                && (IsKeyDown(Windows.System.VirtualKey.Control)
+                || IsKeyDown(Windows.System.VirtualKey.Menu) || IsKeyDown(Windows.System.VirtualKey.Shift)))
+                await Task.Delay(15);
+            if (generation == _popupGeneration && _windowService.IsVisible && ViewModel.Items.Contains(item))
+                PasteSelectedItem(item);
+        }
+        finally
+        {
+            _quickPastePending = false;
+        }
+    }
 
     private async Task TogglePinAsync(ClipboardItemViewModel item)
     {
@@ -427,6 +479,7 @@ public sealed partial class MainWindow : Window
 
     public void HidePopup()
     {
+        _popupGeneration++;
         _previewService.Hide();
         _windowService.Hide();
     }

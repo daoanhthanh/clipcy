@@ -239,6 +239,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         Align(PinnedItems, pinned);
         Align(RegularItems, regular);
         HasPinnedItems = PinnedItems.Count > 0;
+        UpdateShortcutLabels();
+    }
+
+    private void UpdateShortcutLabels()
+    {
+        foreach (var item in Items)
+            item.ShortcutLabel = string.Empty;
+        for (int i = 0; i < Math.Min(10, RegularItems.Count); i++)
+            RegularItems[i].ShortcutLabel = $"Ctrl+{(i + 1) % 10}";
     }
 
     private static void RemoveMissing(

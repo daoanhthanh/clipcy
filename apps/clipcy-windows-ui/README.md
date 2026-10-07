@@ -87,6 +87,7 @@ apps/clipcy-windows-ui/
 - **Settings app branding**: The title bar and About tab display the Clipcy app logo from `Assets/Square44x44Logo.png`.
 - **Global Hotkey**: Alt+V (configurable)
 - **Search**: Fuzzy search through clipboard history
+- **Quick paste**: Ctrl+1 through Ctrl+9, then Ctrl+0, paste the first ten displayed regular rows, including search results. Number-row and numpad digits work; shortcut hints appear on the right. Modifier keys must be released before Clipcy sends the paste.
 - **Popup scrolling**: Opening the popup resets both the pinned and regular lists to the top.
 - **Pinning**: Hover/focus a history row or select it with Up/Down, then press **Ctrl+P** to pin/unpin it (also available in the row's context menu). Pinned items sit in their own region above the regular list, separated by a horizontal line. Each region scrolls on its own. The pinned region shows at most 3 rows; more pins scroll inside it, and the popup grows by that region's height so the regular list keeps its space. Selection follows the toggled item when it moves between regions, so pressing **Ctrl+P** again unpins the same item; pinning does not clear the search filter.
 - **Selection**: Only one row is active across both regions. Mouse movement/hover and Up/Down replace each other's selection; the latest input wins. Scrolling a row underneath a stationary cursor does not override arrow selection. Enter, Delete, and Ctrl+P target that one active row.

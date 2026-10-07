@@ -52,6 +52,7 @@ graph TD
   - First item auto-selected on open
   - Up/Down arrows to navigate
   - Enter to paste selected item
+  - Ctrl+1 through Ctrl+0 to paste the first ten displayed regular items
   - Escape to close
   - Auto-focus search on typing
 - Auto-hide on click outside or focus loss

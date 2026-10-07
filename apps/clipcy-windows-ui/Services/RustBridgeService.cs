@@ -392,6 +392,18 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string Id { get; init; } = string.Empty;
+    private string _shortcutLabel = string.Empty;
+    public string ShortcutLabel
+    {
+        get => _shortcutLabel;
+        set
+        {
+            if (_shortcutLabel == value)
+                return;
+            _shortcutLabel = value;
+            RaisePropertyChanged(nameof(ShortcutLabel));
+        }
+    }
     public string ContentType { get; init; } = "Text";
     public string Preview { get; init; } = string.Empty;
     public byte[]? Thumbnail { get; init; }

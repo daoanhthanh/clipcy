@@ -119,6 +119,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
           <Grid.ContextFlyout>
@@ -143,7 +144,7 @@
           <Grid Grid.Column="1" ColumnSpacing="0">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
@@ -192,6 +193,14 @@
             Visibility="{x:Bind PinnedVisibility, Mode=OneWay}"
             Foreground="{ThemeResource AccentTextFillColorTertiaryBrush}"
             VerticalAlignment="Center"
+          />
+          <TextBlock
+            Grid.Column="3"
+            Text="{x:Bind ShortcutLabel, Mode=OneWay}"
+            FontSize="11"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Right"
           />
         </Grid>
       </DataTemplate>
