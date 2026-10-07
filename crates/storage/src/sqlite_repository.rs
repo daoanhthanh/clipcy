@@ -627,11 +627,12 @@ impl ClipboardRepository for SqliteClipboardRepository {
         let content_hash = calculate_content_hash(&item.data);
         let (search_text, search_text_norm) = item.searchable_texts();
         let mut pinned_to_save = item.pinned;
+        let mut id_to_save = item.id.to_string();
 
         // Only deduplicate text content - images should always be kept as separate entries
         if item.content_type == ContentType::Text {
             if let Some(row) = sqlx::query(
-                "SELECT pinned FROM clipboard_items WHERE content_hash = $1 ORDER BY pinned DESC LIMIT 1",
+                "SELECT id, pinned FROM clipboard_items WHERE content_hash = $1 ORDER BY pinned DESC LIMIT 1",
             )
             .bind(&content_hash)
             .fetch_optional(&self.pool)
@@ -643,6 +644,10 @@ impl ClipboardRepository for SqliteClipboardRepository {
                     .map_err(|e| ClipboardError::Storage(e.to_string()))?;
                 if existing_pinned != 0 {
                     pinned_to_save = true;
+                    // Pinned shortcuts refer to identity, even when the text is copied again.
+                    id_to_save = row
+                        .try_get("id")
+                        .map_err(|e| ClipboardError::Storage(e.to_string()))?;
                 }
             }
 
@@ -650,7 +655,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             // This removes the old entry so the new one will be at the top when sorted by last_used_at
             sqlx::query("DELETE FROM clipboard_items WHERE content_hash = $1 AND id != $2")
                 .bind(&content_hash)
-                .bind(item.id.to_string())
+                .bind(&id_to_save)
                 .execute(&self.pool)
                 .await
                 .map_err(|e| ClipboardError::Storage(e.to_string()))?;
@@ -663,7 +668,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             "#,
         )
-            .bind(item.id.to_string())
+            .bind(&id_to_save)
             .bind(content_type)
             .bind(&item.data)
             .bind(&item.preview)

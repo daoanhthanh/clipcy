@@ -150,4 +150,6 @@ async fn test_pinned_status_preserved_on_dedup() {
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].as_text(), Some("Duplicate"));
     assert!(items[0].pinned);
+    assert_eq!(items[0].id, pinned_item.id);
+    assert!(repo.get_by_id(pinned_item.id).await.unwrap().is_some());
 }
