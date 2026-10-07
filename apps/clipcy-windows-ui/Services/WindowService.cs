@@ -13,7 +13,7 @@ public class WindowService : IWindowService
     private SystemBackdropConfiguration? _configurationSource;
     public const int PopupWidthDip = 400;
     public const int PopupBaseHeightDip = 500;
-    public const int PinnedRowHeightDip = 44;
+    public const int PinnedRowHeightDip = 36;
     public const int PinnedMaxVisibleRows = 3;
     // Pinned list top margin (4) + separator top margin (4) + separator (1).
     public const int PinnedSectionChromeDip = 9;
@@ -140,15 +140,6 @@ public class WindowService : IWindowService
         var pos = _window.AppWindow.Position;
         if (IsVisible && pos.X > -2000 && pos.Y > -2000)
             ClampToWorkArea(width, height);
-    }
-
-    public static int ExtraHeightForPinnedCount(int pinnedCount)
-    {
-        if (pinnedCount <= 0)
-            return 0;
-
-        int visible = Math.Min(pinnedCount, PinnedMaxVisibleRows);
-        return PinnedSectionChromeDip + visible * PinnedRowHeightDip;
     }
 
     private (int Width, int Height) ApplyPopupSize()

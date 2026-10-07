@@ -44,7 +44,6 @@ public sealed partial class MainWindow : Window
 
         ViewModel = new MainViewModel();
         ((FrameworkElement)this.Content).DataContext = this;
-        PinnedListView.MaxHeight = WindowService.PinnedRowHeightDip * WindowService.PinnedMaxVisibleRows;
         DisableListFocus(PinnedListView);
         DisableListFocus(HistoryListView);
         ViewModel.PinnedItems.CollectionChanged += (_, _) => QueuePinnedChrome();
@@ -405,15 +404,19 @@ public sealed partial class MainWindow : Window
             PinnedListView.SelectedIndex = -1;
 
         int visible = Math.Min(count, WindowService.PinnedMaxVisibleRows);
+        int pinnedHeight = visible * WindowService.PinnedRowHeightDip;
+
         PinnedListView.Height = count == 0
             ? double.NaN
-            : visible * WindowService.PinnedRowHeightDip;
+            : pinnedHeight;
         ScrollViewer.SetVerticalScrollBarVisibility(
             PinnedListView,
             count > WindowService.PinnedMaxVisibleRows
                 ? ScrollBarVisibility.Auto
                 : ScrollBarVisibility.Disabled);
-        _windowService.SetExtraHeightDip(WindowService.ExtraHeightForPinnedCount(count));
+        _windowService.SetExtraHeightDip(count == 0
+            ? 0
+            : WindowService.PinnedSectionChromeDip + pinnedHeight);
     }
 
     public void ShowAtCursor()

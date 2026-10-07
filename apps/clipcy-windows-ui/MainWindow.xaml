@@ -15,15 +15,103 @@
     IsTabStop="True"
   >
     <Grid.Resources>
+      <ResourceDictionary>
+        <ResourceDictionary.ThemeDictionaries>
+          <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="FocusedRowBrush" Color="Black" Opacity="0.10" />
+            <SolidColorBrush x:Key="FocusedRowPointerOverBrush" Color="Black" Opacity="0.14" />
+            <SolidColorBrush x:Key="FocusedRowPressedBrush" Color="Black" Opacity="0.18" />
+          </ResourceDictionary>
+          <ResourceDictionary x:Key="Default">
+            <SolidColorBrush x:Key="FocusedRowBrush" Color="White" Opacity="0.12" />
+            <SolidColorBrush x:Key="FocusedRowPointerOverBrush" Color="White" Opacity="0.16" />
+            <SolidColorBrush x:Key="FocusedRowPressedBrush" Color="White" Opacity="0.20" />
+          </ResourceDictionary>
+          <ResourceDictionary x:Key="HighContrast">
+            <SolidColorBrush x:Key="FocusedRowBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="FocusedRowPointerOverBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+            <SolidColorBrush x:Key="FocusedRowPressedBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+          </ResourceDictionary>
+        </ResourceDictionary.ThemeDictionaries>
       <!-- Row height matches WindowService.PinnedRowHeightDip. -->
       <Style x:Key="ClipboardRowStyle" TargetType="ListViewItem">
-        <Setter Property="Padding" Value="8,4" />
-        <Setter Property="Margin" Value="4,0" />
-        <Setter Property="MinHeight" Value="44" />
-        <Setter Property="Height" Value="44" />
+        <Setter Property="Padding" Value="4,2" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Height" Value="36" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="ListViewItem">
+              <!-- Keep highlight spacing explicit; native presenter chrome adds its own inset. -->
+              <Grid x:Name="RowRoot" Background="Transparent">
+                <VisualStateManager.VisualStateGroups>
+                  <VisualStateGroup x:Name="CommonStates">
+                    <VisualState x:Name="Normal" />
+                    <VisualState x:Name="PointerOver">
+                      <VisualState.Setters>
+                        <Setter Target="RowBackground.Background"
+                                Value="{ThemeResource ListViewItemBackgroundPointerOver}" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Pressed">
+                      <VisualState.Setters>
+                        <Setter Target="RowBackground.Background"
+                                Value="{ThemeResource ListViewItemBackgroundPressed}" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Selected">
+                      <VisualState.Setters>
+                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
+                        <Setter Target="RowBackground.Background"
+                                Value="{ThemeResource FocusedRowBrush}" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="PointerOverSelected">
+                      <VisualState.Setters>
+                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
+                        <Setter Target="RowBackground.Background"
+                                Value="{ThemeResource FocusedRowPointerOverBrush}" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="PressedSelected">
+                      <VisualState.Setters>
+                        <Setter Target="SelectionIndicator.Visibility" Value="Visible" />
+                        <Setter Target="RowBackground.Background"
+                                Value="{ThemeResource FocusedRowPressedBrush}" />
+                      </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="Disabled">
+                      <VisualState.Setters>
+                        <Setter Target="RowRoot.Opacity"
+                                Value="{ThemeResource ListViewItemDisabledThemeOpacity}" />
+                      </VisualState.Setters>
+                    </VisualState>
+                  </VisualStateGroup>
+                </VisualStateManager.VisualStateGroups>
+                <Border x:Name="RowBackground"
+                        Margin="0,0,0,1"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="6" />
+                <Border x:Name="SelectionIndicator"
+                        Margin="0,0,0,1"
+                        BorderThickness="0,0,2,0"
+                        BorderBrush="{ThemeResource ListViewItemSelectionIndicatorBrush}"
+                        CornerRadius="6"
+                        IsHitTestVisible="False"
+                        Visibility="Collapsed" />
+                <ContentPresenter Content="{TemplateBinding Content}"
+                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                  ContentTransitions="{TemplateBinding ContentTransitions}"
+                                  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                  VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                  Margin="{TemplateBinding Padding}" />
+              </Grid>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
       </Style>
       <DataTemplate x:Key="ClipboardItemTemplate" x:DataType="services:ClipboardItemViewModel">
         <Grid ColumnSpacing="10">
@@ -70,8 +158,8 @@
             >
               <Image
                 Source="{x:Bind ThumbnailImage, Mode=OneWay}"
-                Width="32"
-                Height="32"
+                Width="30"
+                Height="30"
                 Stretch="UniformToFill"
               />
             </Border>
@@ -107,6 +195,7 @@
           />
         </Grid>
       </DataTemplate>
+      </ResourceDictionary>
     </Grid.Resources>
 
     <Grid.RowDefinitions>
@@ -134,7 +223,7 @@
       x:Name="PinnedListView"
       Grid.Row="1"
       Margin="0,4,0,0"
-      Padding="0"
+      Padding="0,0,8,0"
       ItemsSource="{Binding ViewModel.PinnedItems}"
       ItemTemplate="{StaticResource ClipboardItemTemplate}"
       ItemContainerStyle="{StaticResource ClipboardRowStyle}"
@@ -167,7 +256,7 @@
       x:Name="HistoryListView"
       Grid.Row="3"
       Margin="0,4,0,0"
-      Padding="0"
+      Padding="0,0,8,0"
       ItemsSource="{Binding ViewModel.RegularItems}"
       ItemTemplate="{StaticResource ClipboardItemTemplate}"
       ItemContainerStyle="{StaticResource ClipboardRowStyle}"
