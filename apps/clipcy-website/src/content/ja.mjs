@@ -6,7 +6,7 @@ export default {
   meta: {
     title: 'Clipcy - Windows用クリップボードマネージャー',
     description: 'コピーしたテキスト、画像、ファイルを検索。よく使うものをピン留め。Alt+Vで貼り付け。',
-    ogTitle: 'あなたのクリップボード、次の貼り付けの準備ができています。',
+    ogTitle: '一度コピーすれば、いつでも使える。',
     ogDescription: 'Windows用クリップボードマネージャー。履歴を検索、アイテムをピン留め、貼り付け前にプレビュー。'
   },
   
@@ -21,8 +21,8 @@ export default {
   
   hero: {
     eyebrow: 'Windows 向けの無料クリップボードマネージャー',
-    title: 'あなたのクリップボード、次の貼り付けの準備ができています。',
-    subtitle: '軽量で、速さを重視した設計。Windows ネイティブの UI と光速のレスポンス',
+    title: '一度コピーすれば、いつでも使える。',
+    subtitle: 'コピーした内容をいつでも手元に。Clipcyはそれだけをシンプルに実現します。',
     demoPinHint: 'Ctrl+P でピン留め',
     demoUnpinHint: 'Ctrl+P でピン留めを解除',
     windowsSupport: 'Windows 10 以降に対応',
@@ -38,8 +38,8 @@ export default {
   },
   
   problem: {
-    title: '便利なものをコピーしましたか？すぐに使えるように保管。',
-    body: 'ウィンドウを切り替えたり、作業位置を失ったりすることなく、以前のコピーを取得します。'
+    title: 'コピーしたテキストや画像、ファイルをいつでも手元に。',
+    body: 'ウィンドウを切り替えたり作業を中断したりせずに、前にコピーした内容を取り出せます。'
   },
   
   features: {
@@ -116,53 +116,53 @@ export default {
   },
   
   comparison: {
-  "heading": "理想的な代替アプリ：Win+V",
-  "body": "Windows のクリップボード履歴は基本をカバー。Clipcy は検索と専用プレビューを追加し、データを PC 内に保存します。",
-  "eyebrow": "比較",
-  "windows": "Windows クリップボード",
-  "rows": [
-    {
-      "label": "履歴",
-      "clipcy": "最大 1,000 件。必要なときにいつでも。",
-      "windows": "直近 25 件まで。ピン留めしていない項目は再起動時に削除。",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "専用プレビュー",
-      "clipcy": "テキスト・画像・ファイルの専用プレビュー",
-      "windows": "なし",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "速度",
-      "clipcy": "Windows 標準の Win+V と同じ速さ",
-      "windows": "高速",
-      "clipcyPro": true,
-      "windowsPro": true
-    }
-  ],
-  "source": "Microsoft のクリップボード資料",
-  "benefits": [
-    {
-      "title": "クリップボードに集中",
-      "body": "余計な手順なしで、便利なコピーを手元に。"
-    },
-    {
-      "title": "軽量で高速",
-      "body": "Rustのコアで履歴に手軽にアクセス。"
-    },
-    {
-      "title": "キーボード中心",
-      "body": "Alt+Vで開き、入力して検索し、Enterで貼り付け。"
-    },
-    {
-      "title": "WindowsになじむUI",
-      "body": "使い慣れたWinUIの操作とアクリル効果がデスクトップに調和。"
-    }
-  ]
-},
+    heading: 'Win+Vに代わる、もうひとつの選択肢',
+    body: 'クリップボード管理に必要な機能を、シンプルに。',
+    eyebrow: '比較',
+    windows: 'Windowsのクリップボード',
+    rows: [
+      {
+        label: '履歴',
+        clipcy: '最大1,000件まで保存。必要なときにいつでも使えます。',
+        windows: '直近25件まで。ピン留めしていない項目は再起動すると消えます。',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: '内容のプレビュー',
+        clipcy: 'テキスト、画像、ファイルを確認してから貼り付け。何を貼り付けるか、いつも分かります。',
+        windows: 'なし',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: '速度',
+        clipcy: 'ネイティブ。とにかく速い。',
+        windows: '十分速い',
+        clipcyPro: true,
+        windowsPro: true
+      }
+    ],
+    source: 'Microsoftのクリップボード資料',
+    benefits: [
+      {
+        title: '余計な機能なし',
+        body: 'コピーした内容を管理することに集中。余計な機能で邪魔しません。'
+      },
+      {
+        title: 'プライバシーを大切に',
+        body: 'Clipcyはプライバシーを大切にします。パスワード管理アプリがパスワードをクリップボードから消せば、Clipcyも履歴から削除します。データはすべてPC内に保存されます。'
+      },
+      {
+        title: 'キーボードだけで操作',
+        body: 'すべてキーボードで操作できます。マウスに手を伸ばす必要はありません。'
+      },
+      {
+        title: 'オープンソース',
+        body: 'ClipcyはMITライセンスのオープンソースソフトウェア。ずっと無料です。'
+      }
+    ]
+  },
 
   finalCta: {
   "heading": "機能の開発に参加しませんか？",

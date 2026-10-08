@@ -6,7 +6,7 @@ export default {
   meta: {
     title: 'Clipcy - Windows 剪贴板管理器',
     description: '查找复制的文本、图片和文件。固定常用项。使用 Alt+V 粘贴。',
-    ogTitle: '您的剪贴板，随时准备再次粘贴。',
+    ogTitle: '复制一次，随时再用。',
     ogDescription: 'Windows 剪贴板管理器。搜索历史记录，固定项目，粘贴前预览。'
   },
   
@@ -21,8 +21,8 @@ export default {
   
   hero: {
     eyebrow: '免费的 Windows 剪贴板管理器',
-    title: '您的剪贴板，随时准备再次粘贴。',
-    subtitle: '轻量，为速度而设计，采用原生 Windows 界面，响应快如光速',
+    title: '复制一次，随时再用。',
+    subtitle: '只做好一件事：把复制过的内容留在手边。就这么简单！',
     demoPinHint: '按 Ctrl+P 固定',
     demoUnpinHint: '按 Ctrl+P 取消固定',
     windowsSupport: '支持 Windows 10 及以上版本',
@@ -38,8 +38,8 @@ export default {
   },
   
   problem: {
-    title: '复制了有用的内容？随时访问。',
-    body: '无需切换窗口或失去工作位置即可检索早期副本。'
+    title: '复制过的文字、图片和文件，随时都能找回来。',
+    body: '不用切换窗口，也不会打断手头的工作，就能找回之前复制的内容。'
   },
   
   features: {
@@ -116,53 +116,53 @@ export default {
   },
   
   comparison: {
-  "heading": "完美替代方案：Win+V",
-  "body": "Windows 剪贴板历史满足基本需求。Clipcy 添加搜索和独立预览，内容始终保存在你的电脑上。",
-  "eyebrow": "对比",
-  "windows": "Windows 剪贴板",
-  "rows": [
-    {
-      "label": "历史记录",
-      "clipcy": "最多 1,000 条，随时可用。",
-      "windows": "最多 25 条近期记录；未固定的内容在重启后清除。",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "独立预览",
-      "clipcy": "独立预览文本、图片和文件",
-      "windows": "无",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "速度",
-      "clipcy": "与原生 Win+V 一样快",
-      "windows": "快速",
-      "clipcyPro": true,
-      "windowsPro": true
-    }
-  ],
-  "source": "Microsoft 剪贴板文档",
-  "benefits": [
-    {
-      "title": "专注于剪贴板",
-      "body": "轻松取用有用的复制内容，无需多余步骤。"
-    },
-    {
-      "title": "轻巧快速",
-      "body": "Rust 核心让历史记录触手可及。"
-    },
-    {
-      "title": "键盘优先",
-      "body": "按 Alt+V 打开，输入搜索，按 Enter 粘贴。"
-    },
-    {
-      "title": "原生 Windows 体验",
-      "body": "熟悉的 WinUI 控件和亚克力效果融入桌面。"
-    }
-  ]
-},
+    heading: '比 Win+V 更顺手的选择',
+    body: '剪贴板管理，该有的功能都有。',
+    eyebrow: '对比',
+    windows: 'Windows 剪贴板',
+    rows: [
+      {
+        label: '历史记录',
+        clipcy: '最多保存 1,000 条。需要时随时可用。',
+        windows: '最多保存最近 25 条；未固定的内容重启后就会消失。',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: '内容预览',
+        clipcy: '粘贴前先预览文本、图片和文件。你总是知道自己要粘贴什么。',
+        windows: '无',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: '速度',
+        clipcy: '原生。真的很快。',
+        windows: '不错',
+        clipcyPro: true,
+        windowsPro: true
+      }
+    ],
+    source: 'Microsoft 剪贴板文档',
+    benefits: [
+      {
+        title: '简单不折腾',
+        body: '专心管理复制内容。不塞一堆用不上的功能进来。'
+      },
+      {
+        title: '隐私优先',
+        body: 'Clipcy 尊重你的隐私。如果密码管理器从剪贴板里清除了密码，Clipcy 也会同步清除。所有内容都保存在你的电脑上。'
+      },
+      {
+        title: '键盘优先',
+        body: '全程用键盘就能完成操作。不用伸手去够鼠标。'
+      },
+      {
+        title: '开源免费',
+        body: 'Clipcy 采用 MIT 开源许可证。永久免费。'
+      }
+    ]
+  },
 
   finalCta: {
   "heading": "想参与功能开发？",

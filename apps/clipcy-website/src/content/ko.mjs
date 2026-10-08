@@ -6,7 +6,7 @@ export default {
   meta: {
     title: 'Clipcy - Windows용 클립보드 관리자',
     description: '복사한 텍스트, 이미지, 파일을 찾으세요. 자주 사용하는 항목을 고정하세요. Alt+V로 붙여넣기.',
-    ogTitle: '클립보드, 다음 붙여넣기 준비 완료.',
+    ogTitle: '한 번 복사해 두면, 언제든 다시 쓸 수 있어요.',
     ogDescription: 'Windows용 클립보드 관리자. 기록 검색, 항목 고정, 붙여넣기 전 미리보기.'
   },
   
@@ -21,8 +21,8 @@ export default {
   
   hero: {
     eyebrow: 'Windows용 무료 클립보드 관리자',
-    title: '클립보드, 다음 붙여넣기 준비 완료.',
-    subtitle: '가볍고 빠른 동작을 위해 설계된 Windows 네이티브 인터페이스와 빛처럼 빠른 응답',
+    title: '한 번 복사해 두면, 언제든 다시 쓸 수 있어요.',
+    subtitle: '복사한 내용을 언제든 꺼내 쓸 수 있게 보관해요. 딱 그 일만 합니다!',
     demoPinHint: 'Ctrl+P를 눌러 고정',
     demoUnpinHint: 'Ctrl+P를 눌러 고정 해제',
     windowsSupport: 'Windows 10 이상 지원',
@@ -38,8 +38,8 @@ export default {
   },
   
   problem: {
-    title: '유용한 것을 복사했나요? 가까이 두세요.',
-    body: '창을 전환하거나 작업 위치를 잃지 않고 이전 복사본을 검색합니다.'
+    title: '복사한 텍스트, 이미지, 파일을 바로 꺼내 쓸 수 있어요.',
+    body: '창을 전환하거나 작업을 멈추지 않고 이전에 복사한 내용을 다시 찾아보세요.'
   },
   
   features: {
@@ -116,53 +116,53 @@ export default {
   },
   
   comparison: {
-  "heading": "완벽한 대안: Win+V",
-  "body": "Windows 클립보드 기록은 기본 기능을 제공합니다. Clipcy는 검색과 전용 미리보기를 더하고 데이터를 PC에 저장합니다.",
-  "eyebrow": "비교",
-  "windows": "Windows 클립보드",
-  "rows": [
-    {
-      "label": "기록",
-      "clipcy": "최대 1,000개. 필요할 때 언제든 사용할 수 있습니다.",
-      "windows": "최근 항목 최대 25개; 고정하지 않은 항목은 재시작 시 삭제됩니다.",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "전용 미리보기",
-      "clipcy": "텍스트, 이미지, 파일 전용 미리보기",
-      "windows": "없음",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "속도",
-      "clipcy": "Windows 기본 Win+V만큼 빠르게",
-      "windows": "빠름",
-      "clipcyPro": true,
-      "windowsPro": true
-    }
-  ],
-  "source": "Microsoft 클립보드 문서",
-  "benefits": [
-    {
-      "title": "클립보드에 집중",
-      "body": "추가 단계 없이 유용한 복사 내용을 가까이 두세요."
-    },
-    {
-      "title": "가볍고 빠르게",
-      "body": "Rust 기반 코어로 기록에 편리하게 접근하세요."
-    },
-    {
-      "title": "키보드 중심",
-      "body": "Alt+V로 열고, 입력하여 검색하고, Enter로 붙여넣으세요."
-    },
-    {
-      "title": "Windows 네이티브 UI",
-      "body": "익숙한 WinUI 컨트롤과 아크릴 효과가 데스크톱에 어울립니다."
-    }
-  ]
-},
+    heading: 'Win+V 대신 써볼 만한 클립보드 관리자',
+    body: '클립보드 관리에 꼭 필요한 기능만 담았어요.',
+    eyebrow: '비교',
+    windows: 'Windows 클립보드',
+    rows: [
+      {
+        label: '기록',
+        clipcy: '최대 1,000개까지 저장. 필요할 때 바로 꺼내 쓸 수 있어요.',
+        windows: '최근 항목 최대 25개. 고정하지 않은 항목은 다시 시작하면 사라져요.',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: '내용 미리보기',
+        clipcy: '텍스트, 이미지, 파일을 미리 보고 붙여넣기. 무엇을 붙여넣을지 항상 알 수 있어요.',
+        windows: '없음',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: '속도',
+        clipcy: '네이티브. 정말 빨라요.',
+        windows: '빠름',
+        clipcyPro: true,
+        windowsPro: true
+      }
+    ],
+    source: 'Microsoft 클립보드 문서',
+    benefits: [
+      {
+        title: '군더더기 없이 딱 필요한 것만',
+        body: '복사한 내용을 관리하는 일에 집중해요. 불필요한 기능으로 복잡하게 만들지 않아요.'
+      },
+      {
+        title: '개인정보를 소중하게',
+        body: 'Clipcy는 개인정보를 중요하게 생각해요. 비밀번호 관리 앱이 클립보드에서 비밀번호를 지우면 Clipcy도 기록에서 지워요. 모든 내용은 내 PC에 저장돼요.'
+      },
+      {
+        title: '키보드만으로 간편하게',
+        body: '모든 작업을 키보드로 할 수 있어요. 마우스로 손을 뻗을 필요가 없어요.'
+      },
+      {
+        title: '오픈 소스',
+        body: 'Clipcy는 MIT 라이선스 오픈 소스 앱이에요. 계속 무료로 사용할 수 있어요.'
+      }
+    ]
+  },
 
   finalCta: {
   "heading": "기능 개발에 참여하고 싶으신가요?",

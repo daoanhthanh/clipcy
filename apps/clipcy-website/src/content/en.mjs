@@ -6,10 +6,10 @@ export default {
   meta: {
     title: 'Clipcy - Clipboard Manager for Windows',
     description: 'Find copied text, images, and files. Pin what you reuse. Paste with Alt+V.',
-    ogTitle: 'Your clipboard, ready for another paste.',
-    ogDescription: 'Clipboard manager for Windows. Search history, pin items, preview before pasting.'
+    ogTitle: 'Copy once. Use it again anytime.',
+    ogDescription: 'Clipboard manager for Windows. Search your history, pin items, and preview before you paste.'
   },
-  
+
   nav: {
     features: 'Features',
     howItWorks: 'How it works',
@@ -18,11 +18,11 @@ export default {
     chooseLanguage: 'Choose language',
     useBrowserLanguage: 'Use browser language'
   },
-  
+
   hero: {
     eyebrow: 'Free clipboard manager for Windows',
-    title: 'Your clipboard, ready for another paste.',
-    subtitle: 'Lightweight and built for speed, with a native Windows interface and a lightspeed response',
+    title: 'Copy once. Use it again anytime.',
+    subtitle: "Does one thing well: keeps what you copied close at hand. That's it!",
     demoPinHint: 'Press Ctrl+P to pin',
     demoUnpinHint: 'Press Ctrl+P to unpin',
     windowsSupport: 'Supports Windows 10+',
@@ -36,12 +36,12 @@ export default {
     imageAlt: 'Clipcy popup showing pinned items, search field, history list, and preview panel',
     imageCaption: 'Open with Alt+V. Search, choose, paste.'
   },
-  
+
   problem: {
-    title: 'Copied something useful? Keep it within reach.',
-    body: 'Retrieve earlier copies without switching windows or losing your place.'
+    title: 'Your copied text, images, and files—right at your fingertips.',
+    body: 'Pull up earlier copies without switching windows or losing your place.'
   },
-  
+
   features: {
     heading: 'Features',
     find: {
@@ -60,7 +60,7 @@ export default {
       label: 'Text, images, files'
     }
   },
-  
+
   workflow: {
     heading: 'Copy. Find. Paste.',
     step1: {
@@ -83,7 +83,7 @@ export default {
       pin: 'Ctrl+P'
     }
   },
-  
+
   trust: {
     heading: 'Your history is stored on this PC.',
     storage: 'Clipboard history is saved locally in a SQLite database at %LOCALAPPDATA%\\clipcy\\clipcy.db.',
@@ -94,7 +94,7 @@ export default {
     },
     privacyLink: 'Read our privacy policy'
   },
-  
+
   faq: {
     heading: 'Frequently asked questions',
     q1: {
@@ -114,69 +114,69 @@ export default {
       answer: 'No. File previews read the current file path. If you move or delete a file, the preview will no longer work.'
     }
   },
-  
+
   comparison: {
-  "heading": "Perfect alternative for Win+V",
-  "body": "Windows clipboard history covers the basics. Clipcy adds search and a dedicated preview, while keeping everything on your PC.",
-  "eyebrow": "Compare",
-  "windows": "Windows clipboard",
-  "rows": [
-    {
-      "label": "History",
-      "clipcy": "Up to 1,000 items. Always there when you need it.",
-      "windows": "Up to 25 recent items; unpinned items are lost on restart.",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "Dedicated preview",
-      "clipcy": "Dedicated text, image, and file preview",
-      "windows": "None",
-      "clipcyPro": true,
-      "windowsPro": false
-    },
-    {
-      "label": "Speed",
-      "clipcy": "As fast as native Win+V",
-      "windows": "Fast",
-      "clipcyPro": true,
-      "windowsPro": true
-    }
-  ],
-  "source": "Microsoft clipboard documentation",
-  "benefits": [
-    {
-      "title": "Focused on your clipboard",
-      "body": "Keep useful copies close, without extra steps."
-    },
-    {
-      "title": "Lightweight and fast",
-      "body": "A Rust-powered core keeps your history within easy reach."
-    },
-    {
-      "title": "Keyboard first",
-      "body": "Open with Alt+V, type to search, and press Enter to paste."
-    },
-    {
-      "title": "Native Windows feel",
-      "body": "Familiar WinUI controls and acrylic surfaces fit your desktop."
-    }
-  ]
-},
+    heading: 'A better alternative to Win+V',
+    body: 'Everything you need in a clipboard manager.',
+    eyebrow: 'Compare',
+    windows: 'Windows clipboard',
+    rows: [
+      {
+        label: 'History',
+        clipcy: 'Up to 1,000 items—ready whenever you need them.',
+        windows: 'Up to 25 recent items; unpinned items disappear when you restart.',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: 'Content preview',
+        clipcy: "Preview text, images, and files before pasting—so you know exactly what you're getting.",
+        windows: 'None',
+        clipcyPro: true,
+        windowsPro: false
+      },
+      {
+        label: 'Speed',
+        clipcy: 'Native. Really, really fast.',
+        windows: 'Good',
+        clipcyPro: true,
+        windowsPro: true
+      }
+    ],
+    source: 'Microsoft clipboard documentation',
+    benefits: [
+      {
+        title: 'No clutter',
+        body: 'Does one thing well: manages what you copy. No extras cluttering things up.'
+      },
+      {
+        title: 'Privacy first',
+        body: 'Clipcy respects your privacy. If your password manager clears a password from the clipboard, Clipcy removes it from history too. Everything stays on your PC.'
+      },
+      {
+        title: 'Keyboard first',
+        body: 'Do everything with your keyboard. No need to reach for the mouse.'
+      },
+      {
+        title: 'Open source',
+        body: 'Clipcy is open source under the MIT license. Always free.'
+      }
+    ]
+  },
 
   finalCta: {
-  "heading": "Want to contribute a feature?",
-  "body": "Share an idea, report a bug, or help build the next feature. Make Clipcy better with us.",
-  "contribute": "Contribute on GitHub"
-},
-  
+    "heading": "Want to contribute a feature?",
+    "body": "Share an idea, report a bug, or help build the next feature. Make Clipcy better with us.",
+    "contribute": "Contribute on GitHub"
+  },
+
   footer: {
     version: 'Version',
     repository: 'Repository',
     privacy: 'Privacy',
     license: 'MIT License'
   },
-  
+
   download: {
     heading: 'Get Clipcy for Windows',
     noRelease: {
@@ -217,7 +217,7 @@ export default {
       step5: 'Right-click tray icon for Settings, Clear History, or Exit'
     }
   },
-  
+
   privacy: {
     heading: 'Privacy Policy',
     effectiveDate: 'Effective date',
@@ -242,7 +242,7 @@ export default {
       body: 'Privacy policy updates will be posted on this page with a new effective date.'
     }
   },
-  
+
   actions: {
     copy: 'Copy',
     copied: 'Copied!',
@@ -262,7 +262,7 @@ export default {
     fallbackInstructions: 'Select and copy the text below:',
     close: 'Close'
   },
-  
+
   a11y: {
     skipToMain: 'Skip to main content',
     logo: 'Clipcy home',
