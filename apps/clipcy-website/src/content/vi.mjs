@@ -92,7 +92,7 @@ export default {
     heading: 'Câu hỏi thường gặp',
     q1: {
       question: 'Những nền tảng nào được hỗ trợ?',
-      answer: 'Windows đã được triển khai. macOS và Linux được lên kế hoạch nhưng chưa có sẵn.'
+      answer: 'Sẵn có cho Windows 10, 11. MacOS và Linux đang trong kế hoạch phát triển'
     },
     q2: {
       question: 'Làm thế nào để mở Clipcy?',
@@ -103,8 +103,8 @@ export default {
       answer: 'Cục bộ trên PC của bạn tại %LOCALAPPDATA%\\clipcy\\clipcy.db. Không có đồng bộ đám mây hoặc lưu trữ từ xa.'
     },
     q4: {
-      question: 'Các tệp đã sao chép có được lưu trữ không?',
-      answer: 'Không. Xem trước tệp đọc đường dẫn tệp hiện tại. Nếu bạn di chuyển hoặc xóa tệp, xem trước sẽ không còn hoạt động.'
+      question: 'Clipcy có lưu tệp khi được sao chép không?',
+      answer: 'Không. Tính năng xem trước tệp đọc đường dẫn của tệp hiện tại. Nếu bạn di chuyển hoặc xóa tệp, xem trước sẽ không còn hoạt động.'
     }
   },
   comparison: {
@@ -130,7 +130,7 @@ export default {
       {
         "label": "Tốc độ",
         "clipcy": "Native, rất rất nhanh",
-        "windows": "Nhanh",
+        "windows": "Ổn",
         "clipcyPro": true,
         "windowsPro": true
       }

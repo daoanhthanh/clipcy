@@ -40,7 +40,7 @@ const { catalog, locale } = Astro.props;
     const motion = matchMedia('(prefers-reduced-motion: reduce)');
     const elements = [...document.querySelectorAll<HTMLElement>(
       '.hero-copy > .eyebrow, .hero-copy > h1, .hero-description, .hero-platform-note, .hero-license, .hero-actions > .btn, .release-note, .product-scene, ' +
-      '.slide-copy > *, .slide-demo, ' +
+      '.slide-copy > :not(.eyebrow), .slide-demo, ' +
       '.comparison-section .eyebrow, .comparison-section h2, .comparison-description, .comparison-table-wrap, .comparison-benefit, ' +
       '.faq-section h2, .faq-item, .final-cta > *')];
     elements.forEach((element,index) => { element.classList.add('scroll-reveal'); element.style.setProperty('--reveal-delay', `${(index % 4)*45}ms`); });
