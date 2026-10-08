@@ -35,6 +35,8 @@ public sealed partial class MainWindow : Window
     private bool _quickPastePending;
     private int _popupGeneration;
     private MenuFlyout? _itemContextMenu;
+    private ClipboardItemViewModel? _requestedPreviewItem;
+    private bool _windowActive;
 
     public MainWindow()
     {
@@ -48,6 +50,7 @@ public sealed partial class MainWindow : Window
         _windowService.Initialize();
 
         _previewService = new PreviewService(this, RootGrid, _windowService);
+        _previewService.ManualPreviewDismissed += OnManualPreviewDismissed;
 
         ViewModel = new MainViewModel();
         ((FrameworkElement)this.Content).DataContext = this;
@@ -115,11 +118,21 @@ public sealed partial class MainWindow : Window
             App.Bridge.OnReady -= RefreshHistory;
         }
         ViewModel.Dispose();
+        _previewService.ManualPreviewDismissed -= OnManualPreviewDismissed;
         _previewService.Dispose();
+    }
+
+    private void OnManualPreviewDismissed()
+    {
+        if (!_windowActive)
+            HidePopup();
     }
 
     private void MainWindow_Activated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
     {
+        _windowActive = args.WindowActivationState != WindowActivationState.Deactivated;
+        if (_previewService.IsManualPreviewOpen)
+            return;
         if (args.WindowActivationState == WindowActivationState.Deactivated)
         {
             if (_windowService.IsVisible)
@@ -585,6 +598,7 @@ public sealed partial class MainWindow : Window
 
     public void HidePopup()
     {
+        _requestedPreviewItem = null;
         _itemContextMenu?.Hide();
         _itemContextMenu = null;
         _popupGeneration++;
@@ -899,7 +913,8 @@ public sealed partial class MainWindow : Window
         {
             scrollViewer.ViewChanging += (_, _) =>
             {
-                _previewService?.Hide();
+                if (!_previewService.IsManualPreviewOpen)
+                    _previewService.Hide();
             };
         }
     }
@@ -914,8 +929,15 @@ public sealed partial class MainWindow : Window
         if (ReferenceEquals(_itemContextMenu, menu) && menu.IsOpen)
             return;
 
+        _requestedPreviewItem = null;
         _itemContextMenu?.Hide();
         _itemContextMenu = menu;
+        foreach (var entry in menu.Items.OfType<MenuFlyoutItem>())
+        {
+            if (Equals(entry.Tag, "ManualPreview"))
+                entry.Visibility = _previewService.AutomaticPreviewsEnabled
+                    ? Visibility.Collapsed : Visibility.Visible;
+        }
         _previewService.Hide();
         if (e.TryGetPosition(row, out var position))
             menu.ShowAt(row, position);
@@ -951,8 +973,40 @@ public sealed partial class MainWindow : Window
 
     private void ClipboardItemMenu_Closed(object sender, object e)
     {
-        if (ReferenceEquals(_itemContextMenu, sender))
-            _itemContextMenu = null;
+        if (!ReferenceEquals(_itemContextMenu, sender))
+            return;
+
+        _itemContextMenu = null;
+        var requestedItem = _requestedPreviewItem;
+        _requestedPreviewItem = null;
+        if (requestedItem == null)
+            return;
+
+        // Wait for menu dismissal and focus restoration before showing the requested preview.
+        int generation = _popupGeneration;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (generation != _popupGeneration || !_windowService.IsVisible || _itemContextMenu != null)
+                return;
+
+            var list = ViewModel.PinnedItems.Contains(requestedItem) ? PinnedListView : HistoryListView;
+            int index = list.Items.IndexOf(requestedItem);
+            if (index < 0)
+                return;
+
+            SetFocusedItem(list, index, SelectionOwner.Keyboard);
+            if (list.ContainerFromItem(requestedItem) is ListViewItem target)
+                _previewService.ShowManual(MapToPreviewData(requestedItem), target);
+        });
+    }
+
+    private void PreviewMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuFlyoutItem item && item.DataContext is ClipboardItemViewModel vm)
+        {
+            _requestedPreviewItem = vm;
+            _itemContextMenu?.Hide();
+        }
     }
 
     private async void PinUnpinMenuItem_Click(object sender, RoutedEventArgs e)

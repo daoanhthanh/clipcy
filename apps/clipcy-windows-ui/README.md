@@ -60,6 +60,8 @@ Restart Clipcy after rebuilding so it loads the updated backend.
 
 Shortcut persistence checks run without WinUI or additional test packages:
 `dotnet run --project tests/quick-paste/QuickPaste.Tests.csproj` from the repository root.
+Manual preview input and native listener lifecycle checks:
+`dotnet run --project tests/manual-preview/ManualPreview.Tests.csproj`.
 
 ## Project Structure
 
@@ -97,7 +99,7 @@ apps/clipcy-windows-ui/
 - **Selection**: Only one row is active across both regions. Mouse movement/hover and Up/Down replace each other's selection; the latest input wins. Scrolling a row underneath a stationary cursor does not override arrow selection. Enter, Delete, and Ctrl+P target that one active row.
 - **Preview Panel**: Desktop Acrylic popup beside the list for clipboard Text/Html/RTF/Image and **file** items. File previews read the **current** local path (not a history snapshot): images (PNG/JPEG/BMP/GIF/TIFF/ICO/JXR) as static aspect-fit PNG ≤1024px long edge; text (UTF-8 or BOM UTF-16, ≤64 KiB prefix with truncation notice); video first decoded presentation frame via Media Foundation (H.264 MP4 baseline; OS codecs for others); audio as a music-note icon only. Mixed multi-file selections show an original-order selector (default first). UNC/remote/cloud/reparse paths keep name/status without hydration. Paste still uses original CF_HDROP paths.
 - **Item action menu**: Right-click a pinned or regular row to open its pin/unpin and delete actions, including while its preview is visible. Opening the menu closes the preview and pauses hover previews until the menu closes. The menu restores the normal pointer on open to work around the stale busy cursor in [WinUI popup handling](https://github.com/microsoft/microsoft-ui-xaml/issues/8829).
-- **Preview setting**: Hover previews obey **Show preview panel**, including the saved value at startup. Turning it off closes an open preview and cancels pending hover previews; turning it back on enables previews on subsequent hovers without restarting.
+- **Preview setting**: Hover previews obey **Show preview panel**, including the saved value at startup. When disabled, the item action menu offers **Preview this item** to open that item manually without changing the setting. Manual previews stay open through mouse movement and focus changes; the next click, scroll, or key press dismisses them. Turning it off closes an open preview and cancels pending hover previews; turning it back on enables previews on subsequent hovers without restarting.
 - **Theming**: Follows system light/dark theme
 - **Languages**: English, Simplified Chinese, Japanese, Russian, Korean, and Vietnamese. Change language in **Settings → General → Language**; open windows, dialogs, previews, and the tray menu update without restarting.
 

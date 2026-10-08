@@ -130,6 +130,12 @@
                 Click="PinUnpinMenuItem_Click"
               />
               <MenuFlyoutSeparator />
+              <MenuFlyoutItem
+                Tag="ManualPreview"
+                services:Localization.Text="main.preview_item"
+                Visibility="Collapsed"
+                Click="PreviewMenuItem_Click"
+              />
               <MenuFlyoutItem services:Localization.Text="common.delete" Click="DeleteMenuItem_Click" />
             </MenuFlyout>
           </primitives:FlyoutBase.AttachedFlyout>

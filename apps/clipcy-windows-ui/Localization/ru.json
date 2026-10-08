@@ -1,4 +1,5 @@
 {
+  "main.preview_item": "Предпросмотр этого элемента",
   "main.pinned_shortcut_input": "Код закреплённого элемента: {0} — следующая клавиша или Enter для вставки, Esc отменить",
   "content.image_placeholder": "[Изображение]",
   "content.one_folder": "1 папка",

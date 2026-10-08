@@ -36,6 +36,10 @@ public class PreviewService : IPreviewService
     private long _fileRequestId;
     private CancellationTokenSource? _fileLoadCts;
     private bool _positioningPreview;
+    private PreviewInputMonitor? _manualInputMonitor;
+    private bool _manualPreview;
+    public bool IsManualPreviewOpen => _manualPreview && _previewPopup is { IsOpen: true };
+    public event Action? ManualPreviewDismissed;
 
     public PreviewService(Window window, Grid rootGrid, IWindowService windowService)
     {
@@ -56,6 +60,8 @@ public class PreviewService : IPreviewService
             return;
 
         _disposed = true;
+        _manualInputMonitor?.Dispose();
+        _manualInputMonitor = null;
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
         _pendingPreviewData = null;
@@ -169,6 +175,49 @@ public class PreviewService : IPreviewService
         return popup;
     }
 
+    public bool AutomaticPreviewsEnabled => _showPreviewPanel;
+
+    public void ShowManual(PreviewData data, FrameworkElement target)
+    {
+        if (_disposed)
+            return;
+
+        void Show()
+        {
+            if (_disposed || !_windowService.IsVisible || target.XamlRoot != _rootGrid.XamlRoot)
+                return;
+
+            HidePreviewInternal();
+            _previewTarget = target;
+            ShowPreviewInternal(data, manual: true);
+            if (_previewPopup is not { IsOpen: true })
+                return;
+
+            _manualPreview = true;
+            long generation = _hideGeneration;
+            try
+            {
+                _manualInputMonitor = new PreviewInputMonitor(() => _dispatcherQueue.TryEnqueue(() =>
+                {
+                    if (_disposed || generation != _hideGeneration || !_manualPreview)
+                        return;
+                    HidePreviewInternal();
+                    ManualPreviewDismissed?.Invoke();
+                }));
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Manual preview input monitor error: {ex.Message}");
+                HidePreviewInternal();
+            }
+        }
+
+        if (_dispatcherQueue.HasThreadAccess)
+            Show();
+        else
+            _dispatcherQueue.TryEnqueue(Show);
+    }
+
     public void ScheduleShow(PreviewData data, FrameworkElement target)
     {
         if (_disposed)
@@ -180,11 +229,9 @@ public class PreviewService : IPreviewService
             if (_disposed || hideGeneration != _hideGeneration)
                 return;
 
-            if (!_showPreviewPanel)
-            {
-                HidePreviewInternal();
+            // Movement must neither replace nor dismiss an explicitly requested preview.
+            if (_manualPreview || !_showPreviewPanel)
                 return;
-            }
 
             _hideTimer?.Stop();
 
@@ -213,12 +260,12 @@ public class PreviewService : IPreviewService
 
     public void ScheduleHide()
     {
-        if (_disposed)
+        if (_disposed || _manualPreview)
             return;
 
         _dispatcherQueue.TryEnqueue(() =>
         {
-            if (_disposed)
+            if (_disposed || _manualPreview)
                 return;
 
             if (_hideTimer == null)
@@ -227,7 +274,7 @@ public class PreviewService : IPreviewService
                 _hideTimer.Tick += (s, e) =>
                 {
                     _hideTimer?.Stop();
-                    if (_disposed)
+                    if (_disposed || _manualPreview)
                         return;
                     if (!_isPointerOverPreview)
                         HidePreviewInternal();
@@ -259,6 +306,9 @@ public class PreviewService : IPreviewService
     private void HidePreviewInternal()
     {
         _hideGeneration++;
+        _manualPreview = false;
+        _manualInputMonitor?.Dispose();
+        _manualInputMonitor = null;
         _previewDelayTimer?.Stop();
         _hideTimer?.Stop();
         _pendingPreviewData = null;
@@ -288,12 +338,12 @@ public class PreviewService : IPreviewService
         }
     }
 
-    private void ShowPreviewInternal(PreviewData data)
+    private void ShowPreviewInternal(PreviewData data, bool manual = false)
     {
         if (_disposed)
             return;
 
-        if (!_showPreviewPanel)
+        if (!manual && !_showPreviewPanel)
         {
             HidePreviewInternal();
             return;

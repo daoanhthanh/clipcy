@@ -12,6 +12,15 @@ public interface IPreviewService : IDisposable
     /// <param name="target">The UI element that triggered the preview (used for positioning).</param>
     void ScheduleShow(PreviewData data, FrameworkElement target);
 
+    /// <summary>Whether automatic hover/focus previews are enabled.</summary>
+    bool AutomaticPreviewsEnabled { get; }
+
+    bool IsManualPreviewOpen { get; }
+    event Action? ManualPreviewDismissed;
+
+    /// <summary>Opens a requested preview immediately, even when automatic previews are disabled.</summary>
+    void ShowManual(PreviewData data, FrameworkElement target);
+
     /// <summary>
     /// Schedules the preview to be hidden after a delay.
     /// </summary>
