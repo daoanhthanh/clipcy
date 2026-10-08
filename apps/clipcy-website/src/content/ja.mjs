@@ -3,6 +3,27 @@
  */
 
 export default {
+  demo: {
+    "search": "クリップボード履歴を検索...",
+    "settings": "設定",
+    "text": "テキスト",
+    "pin": "Ctrl+Pでピン留め",
+    "unpin": "Ctrl+Pでピン留めを解除",
+    "copied": "たった今コピー",
+    "delete": "Delで削除",
+    "greeting": "こんにちは、クリップボード。",
+    "speed": "とても、とても速い。",
+    "checklist": "プロジェクトのチェックリスト",
+    "steps": "ビルド → テスト → リリース",
+    "nativeHistory": "ネイティブのクリップボード履歴",
+    "reuse": "一度コピー。何度でも使える。",
+    "windowsClipboard": "Windowsのクリップボード",
+    "fileContent": "デモのメモ\nテキスト、画像、ファイルをコピー。",
+    "itemCount": {
+        "one": "{count} 件",
+        "other": "{count} 件"
+    }
+},
   meta: {
     title: 'Clipcy - Windows用クリップボードマネージャー',
     description: 'コピーしたテキスト、画像、ファイルを検索。よく使うものをピン留め。Alt+Vで貼り付け。',

@@ -3,6 +3,27 @@
  */
 
 export default {
+  demo: {
+    "search": "Tìm kiếm lịch sử clipboard...",
+    "settings": "Cài đặt",
+    "text": "Văn bản",
+    "pin": "Ctrl+P để ghim",
+    "unpin": "Ctrl+P để bỏ ghim",
+    "copied": "Vừa sao chép",
+    "delete": "Del để xóa",
+    "greeting": "Xin chào, clipboard.",
+    "speed": "Nhanh, rất rất nhanh",
+    "checklist": "Danh sách công việc",
+    "steps": "Xây dựng → Kiểm thử → Phát hành",
+    "nativeHistory": "Lịch sử clipboard gốc",
+    "reuse": "Sao chép một lần. Dùng lại.",
+    "windowsClipboard": "Clipboard Windows",
+    "fileContent": "Ghi chú minh họa\nSao chép văn bản, hình ảnh và tệp.",
+    "itemCount": {
+        "one": "{count} mục",
+        "other": "{count} mục"
+    }
+},
   meta: {
     title: 'Clipcy - Trình quản lý clipboard cho Windows',
     description: 'Tìm văn bản, hình ảnh và tệp đã sao chép. Ghim những gì bạn sử dụng lại. Dán bằng Alt+V.',

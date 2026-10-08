@@ -15,7 +15,7 @@ const { catalog, locale } = Astro.props;
       <p class="hero-platform-note">{catalog.hero.windowsSupport}</p>
       <p class="release-note hero-license">{catalog.hero.freeOpenSource}</p>
     </div>
-    <figure class="product-scene"><ClipboardPreview catalog={catalog}/></figure>
+    <figure class="product-scene"><ClipboardPreview catalog={catalog} locale={locale}/></figure>
   </div></section>
   <FeatureSlideshow catalog={catalog} locale={locale} />
   <section id="comparison" class="comparison-section page-panel"><div class="container">

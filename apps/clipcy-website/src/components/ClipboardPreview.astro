@@ -1,24 +1,30 @@
 ---
-import fileContent from '../../public/assets/demo-notes.txt?raw';
-const { catalog } = Astro.props;
+const { catalog, locale } = Astro.props;
+const copy = catalog.demo;
+const pluralRules = new Intl.PluralRules(locale);
 const items = [
   { type: 'text', label: 'clipcy.dev', content: 'clipcy.dev' },
-  { type: 'text', label: 'Hello, clipboard.', content: 'Hello, clipboard.' },
-  { type: 'text', label: catalog.hero.title, content: catalog.hero.title },
-  { type: 'file', label: 'demo-notes.txt', content: fileContent.trim(), source: '/assets/demo-notes.txt' },
+  { type: 'text', label: copy.greeting, content: copy.greeting },
+  { type: 'text', label: copy.speed, content: copy.speed },
+  { type: 'file', label: 'demo-notes.txt', content: copy.fileContent, source: '/assets/demo-notes.txt' },
   { type: 'image', label: 'window-wallpaper.jpg', content: 'window-wallpaper.jpg', source: '/window-wallpaper.jpg' },
-  { type: 'text', label: 'Project checklist', content: 'Project checklist\nBuild → Test → Ship' },
+  { type: 'text', label: copy.checklist, content: `${copy.checklist}\n${copy.steps}` },
   { type: 'text', label: 'npm run dev', content: 'npm run dev' },
-  { type: 'text', label: 'Alt + V', content: 'Alt + V' }
+  { type: 'text', label: 'Alt + V', content: 'Alt + V' },
+  { type: 'text', label: copy.nativeHistory, content: copy.nativeHistory },
+  { type: 'text', label: copy.reuse, content: copy.reuse },
+  { type: 'text', label: copy.windowsClipboard, content: copy.windowsClipboard },
+  { type: 'text', label: copy.steps, content: copy.steps }
 ];
+const initialCount = copy.itemCount[pluralRules.select(items.length)] || copy.itemCount.other;
 ---
-<div class="clipboard-demo" data-clipboard-demo>
+<div class="clipboard-demo" data-clipboard-demo data-locale={locale} data-count-forms={JSON.stringify(copy.itemCount)} data-pin-action={copy.pin} data-unpin-action={copy.unpin}>
   <svg class="demo-cursor" viewBox="0 0 24 28" aria-hidden="true" hidden><path d="M3 2v21l5-5 4 8 4-2-4-8h8Z" /></svg>
   <span class="demo-shortcut-tip" data-pin-hint={catalog.hero.demoPinHint} data-unpin-hint={catalog.hero.demoUnpinHint} aria-hidden="true" hidden>{catalog.hero.demoPinHint}</span>
   <div class="demo-menu">
     <label class="visually-hidden" for="demo-search">{catalog.features.find.title}</label>
     <div class="demo-search-wrap">
-    <input id="demo-search" class="demo-search" type="search" placeholder={catalog.features.find.label} autocomplete="off" />
+    <input id="demo-search" class="demo-search" type="search" placeholder={copy.search} autocomplete="off" />
     <span class="demo-caret" aria-hidden="true" hidden></span>
     </div>
     <div class="demo-rows" aria-label={catalog.features.find.label}>
@@ -29,21 +35,24 @@ const items = [
         </svg>
         <span>{item.label}</span>
         <svg hidden={index >= 2} class="demo-pin" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5"/></svg>
+        <kbd class="demo-row-shortcut">{index < 2 ? `Ctrl+Alt+${index === 0 ? "F" : "Z"}` : `Ctrl+${(index - 1) % 10}`}</kbd>
       </button>)}
     </div>
-    <div class="demo-footer"><span>{catalog.features.find.label}</span><kbd>Alt+V</kbd></div>
+    <div class="demo-footer"><span class="demo-item-count" aria-live="polite">{initialCount.replace("{count}", String(items.length))}</span><span>{copy.settings}</span></div>
   </div>
   <aside id="demo-pane" class="demo-pane" aria-label={catalog.features.preview.title} hidden>
-    <strong class="demo-preview-title">{catalog.features.preview.label}</strong>
+    <strong class="demo-preview-title">{copy.text}</strong>
     <div class="demo-preview-body">
       <p class="demo-content"></p>
       <img class="demo-image" src="/window-wallpaper.jpg" alt="" width="2560" height="1600" hidden />
     </div>
-    <div class="demo-meta"><span>Clipcy</span><kbd>Ctrl+P</kbd></div>
+    <div class="demo-meta"><span class="demo-source"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#0098db" d="m17 2 6 3v14l-6 3-11-8-4 3-2-1V8l2-1 4 3Zm0 5-7 5 7 5ZM2 9v6l3-3Z"/></svg>Visual Studio Code</span><span class="demo-pin-action">{copy.pin}</span><span>{copy.copied}</span><span>{copy.delete}</span></div>
   </aside>
 </div>
 <script>
   document.querySelectorAll<HTMLElement>('[data-clipboard-demo]').forEach(demo => {
+    const countForms = JSON.parse(demo.dataset.countForms!);
+    const pluralRules = new Intl.PluralRules(demo.dataset.locale);
     const pane = demo.querySelector<HTMLElement>('.demo-pane')!;
     const previewTitle = demo.querySelector<HTMLElement>('.demo-preview-title')!;
     const textPreviewTitle = previewTitle.textContent;
@@ -72,6 +81,7 @@ const items = [
       paneAnimation?.cancel();
       contentAnimation?.cancel();
       activeRow = row;
+      demo.querySelector('.demo-pin-action')!.textContent = row.dataset.pinned === 'true' ? demo.dataset.unpinAction! : demo.dataset.pinAction!;
       rows.forEach(item => item.setAttribute('aria-expanded', String(item === row)));
       const isImage = row.dataset.kind === 'image';
       previewTitle.textContent = row.dataset.kind === 'text' ? textPreviewTitle : row.dataset.label || '';
@@ -110,6 +120,20 @@ const items = [
         contentAnimation?.cancel();
       }
     });
+    const updateShortcuts = () => {
+      let regularIndex = 0;
+      let pinnedIndex = 0;
+      demo.querySelectorAll<HTMLButtonElement>('.demo-row').forEach(row => {
+        let shortcut = '';
+        if (row.dataset.pinned === 'true') {
+          const index = pinnedIndex++;
+          shortcut = `Ctrl+Alt+${index === 0 ? 'F' : index === 1 ? 'Z' : index + 1}`;
+        } else if (!row.hidden && ++regularIndex <= 10) {
+          shortcut = `Ctrl+${regularIndex % 10}`;
+        }
+        row.querySelector('.demo-row-shortcut')!.textContent = shortcut;
+      });
+    };
     const reorder = () => {
       const ordered = [...rows.filter(row => row.dataset.pinned === 'true'), ...rows.filter(row => row.dataset.pinned !== 'true')];
       ordered.forEach(row => {
@@ -118,6 +142,7 @@ const items = [
         row.querySelector<SVGElement>('.demo-pin')!.toggleAttribute('hidden', row.dataset.pinned !== 'true');
       });
       ordered.filter(row => row.dataset.pinned === 'true').at(-1)?.classList.add('demo-pinned-end');
+      updateShortcuts();
       const current = activeRow;
       activeRow = undefined;
       if (current && !current.hidden) show(current);
@@ -155,6 +180,9 @@ const items = [
       close();
       const query = search.value.trim().toLocaleLowerCase();
       rows.forEach(row => { row.hidden = !`${row.dataset.label} ${row.dataset.content}`.toLocaleLowerCase().includes(query); });
+      updateShortcuts();
+      const count = rows.filter(row => !row.hidden).length;
+      demo.querySelector('.demo-item-count')!.textContent = (countForms[pluralRules.select(count)] || countForms.other).replace('{count}', String(count));
     });
     search.addEventListener('keydown', event => {
       if (event.key === 'ArrowDown') { event.preventDefault(); rows.find(row => !row.hidden)?.focus(); }
@@ -195,9 +223,10 @@ const items = [
       reorder();
       close();
     };
+    show(rows[2]);
     // One timer and transform-only cursor motion keep the tour inexpensive.
     const actions = [
-      () => { move(rows[0]); show(rows[0]); },
+      () => { move(rows[2]); show(rows[2]); },
       () => { move(rows[3]); show(rows[3]); },
       () => { move(rows[4]); show(rows[4]); },
       () => { move(search); close(); caret.hidden = false; updateCaret(); },

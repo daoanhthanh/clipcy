@@ -3,6 +3,27 @@
  */
 
 export default {
+  demo: {
+    "search": "클립보드 기록 검색...",
+    "settings": "설정",
+    "text": "텍스트",
+    "pin": "Ctrl+P로 고정",
+    "unpin": "Ctrl+P로 고정 해제",
+    "copied": "방금 복사됨",
+    "delete": "Del로 삭제",
+    "greeting": "안녕, 클립보드.",
+    "speed": "정말, 정말 빠릅니다.",
+    "checklist": "프로젝트 체크리스트",
+    "steps": "빌드 → 테스트 → 출시",
+    "nativeHistory": "네이티브 클립보드 기록",
+    "reuse": "한 번 복사하고 다시 사용하세요.",
+    "windowsClipboard": "Windows 클립보드",
+    "fileContent": "데모 메모\n텍스트, 이미지, 파일을 복사하세요.",
+    "itemCount": {
+        "one": "{count}개 항목",
+        "other": "{count}개 항목"
+    }
+},
   meta: {
     title: 'Clipcy - Windows용 클립보드 관리자',
     description: '복사한 텍스트, 이미지, 파일을 찾으세요. 자주 사용하는 항목을 고정하세요. Alt+V로 붙여넣기.',

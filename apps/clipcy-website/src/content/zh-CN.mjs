@@ -3,6 +3,27 @@
  */
 
 export default {
+  demo: {
+    "search": "搜索剪贴板历史记录...",
+    "settings": "设置",
+    "text": "文本",
+    "pin": "Ctrl+P 固定",
+    "unpin": "Ctrl+P 取消固定",
+    "copied": "刚刚复制",
+    "delete": "Del 删除",
+    "greeting": "你好，剪贴板。",
+    "speed": "真的，真的很快。",
+    "checklist": "项目清单",
+    "steps": "构建 → 测试 → 发布",
+    "nativeHistory": "原生剪贴板历史记录",
+    "reuse": "复制一次。反复使用。",
+    "windowsClipboard": "Windows 剪贴板",
+    "fileContent": "演示笔记\n复制文本、图像和文件。",
+    "itemCount": {
+        "one": "{count} 项",
+        "other": "{count} 项"
+    }
+},
   meta: {
     title: 'Clipcy - Windows 剪贴板管理器',
     description: '查找复制的文本、图片和文件。固定常用项。使用 Alt+V 粘贴。',

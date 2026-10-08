@@ -29,3 +29,18 @@ anchors still lead to the slideshow.
 
 `npm run test` currently discovers no tests. Use the production build plus
 browser checks of desktop/mobile layouts and demo states for website changes.
+
+The hero demo in `src/components/ClipboardPreview.astro` follows the Windows
+light acrylic popup: compact rows, pinned-item shortcuts, numbered history
+shortcuts, item count, and a selected-item preview with source and action hints.
+Search, arrow-key navigation, and Ctrl+P pinning remain interactive. Preview
+panels sit beside the list on desktop and below it on narrow screens.
+
+Hero demo labels, sample text, preview hints, and filtered item counts are
+localized through each catalog’s `demo` section. Counts use the page locale’s
+plural rules; filenames, commands, shortcuts, and application names stay literal.
+
+Feature slideshow demos share the hero’s light acrylic popup styles and locale
+catalog. Their search, selection, pinning, and paste states are automatic,
+display-only animations; users can still navigate the carousel. Filtered counts
+and regular-item shortcuts update together during the search animation.

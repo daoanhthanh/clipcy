@@ -3,6 +3,27 @@
  */
 
 export default {
+  demo: {
+    "search": "Search clipboard history...",
+    "settings": "Settings",
+    "text": "Text",
+    "pin": "Ctrl+P to pin",
+    "unpin": "Ctrl+P to unpin",
+    "copied": "Copied just now",
+    "delete": "Del to delete",
+    "greeting": "Hello, clipboard.",
+    "speed": "Really, really fast.",
+    "checklist": "Project checklist",
+    "steps": "Build → Test → Ship",
+    "nativeHistory": "Native clipboard history",
+    "reuse": "Copy once. Use it again.",
+    "windowsClipboard": "Windows clipboard",
+    "fileContent": "Demo notes\nCopy text, images, and files.",
+    "itemCount": {
+        "one": "{count} item",
+        "other": "{count} items"
+    }
+},
   meta: {
     title: 'Clipcy - Clipboard Manager for Windows',
     description: 'Find copied text, images, and files. Pin what you reuse. Paste with Alt+V.',

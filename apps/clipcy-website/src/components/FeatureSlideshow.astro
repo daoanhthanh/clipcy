@@ -10,7 +10,10 @@ const controls = ({
   ru: ['Предыдущая функция', 'Следующая функция'],
   'zh-CN': ['上一个功能', '下一个功能'],
 } as Record<string, string[]>)[locale] || ['Previous feature', 'Next feature'];
-const items = ['clipcy.dev', 'Hello, clipboard.', 'Project checklist', 'demo-notes.txt', 'npm run dev'];
+const copy = catalog.demo;
+const items = ['clipcy.dev', copy.greeting, copy.speed, 'demo-notes.txt', 'window-wallpaper.jpg', copy.checklist, 'npm run dev', 'Alt + V', copy.nativeHistory, copy.reuse, copy.windowsClipboard, copy.steps];
+const countForms = copy.itemCount;
+const countLabel = countForms[new Intl.PluralRules(locale).select(items.length)] || countForms.other;
 ---
 <div id="features" class="feature-slideshow" role="region" aria-label={catalog.features.heading} tabindex="0">
   <p class="visually-hidden" data-carousel-status aria-live="polite" aria-atomic="true"></p>
@@ -28,16 +31,28 @@ const items = ['clipcy.dev', 'Hello, clipboard.', 'Project checklist', 'demo-not
       <figure class="slide-demo" aria-label={slide.title}>
         <button type="button" class="slide-arrow" data-slide-direction="-1" aria-label={controls[0]} hidden><span aria-hidden="true">←</span></button>
         <button type="button" class="slide-arrow" data-slide-direction="1" aria-label={controls[1]} hidden><span aria-hidden="true">→</span></button>
-        <div class="slide-window">
-          <div class="slide-window-title"><img src="/assets/logo-192.png" width="20" height="20" alt=""/>Clipcy <kbd>Alt+V</kbd></div>
-          <div class="slide-search" aria-hidden="true"><span>⌕</span><span data-slide-query>{catalog.features.find.label}</span><span class="slide-caret"></span></div>
-          <div class="slide-rows">
-            {items.map((item, row) => <div class:list={['slide-row', { 'is-selected': row === (index >= 2 ? 2 : 0) }]} data-slide-row={row}><span class="slide-item-icon" aria-hidden="true">▤</span><span>{index === 4 && row === 2 ? <strong class="slide-rich-text">{item}</strong> : item}</span><span class="slide-pin" hidden={!(index === 2 && row === 2)} aria-hidden="true">⚑</span><kbd>{row + 1}</kbd></div>)}
+        <div class="slide-window clipboard-demo" data-locale={locale} data-count-forms={JSON.stringify(countForms)} data-pin-action={copy.pin} data-unpin-action={copy.unpin} data-file-content={copy.fileContent}>
+          <div class="demo-menu">
+            <div class="slide-search demo-search" aria-hidden="true"><span data-slide-query>{copy.search}</span><span class="slide-caret"></span></div>
+            <div class="slide-rows demo-rows">
+              {items.map((item, row) => <div class:list={['slide-row', 'demo-row', { 'is-selected': row === 2, 'demo-pinned-end': row === 1 }]} data-slide-row={row} data-label={item} data-pinned={String(row < 2)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">{row === 3 ? <path d="M6 2h8l4 4v16H6zM14 2v5h4M9 12h6M9 16h6"/> : row === 4 ? <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/><circle cx="16" cy="7" r="1"/></> : <><rect x="8" y="3" width="12" height="14" rx="3"/><path d="M5 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2"/></>}</svg>
+                <span>{index === 4 && row === 2 ? <strong class="slide-rich-text">{item}</strong> : item}</span>
+                <svg class="slide-pin demo-pin" hidden={row >= 2} viewBox="0 0 24 24" aria-hidden="true"><path d="m16 3 5 5-4 2-3 6-3-3-7 7m4-9 6-3 2-5"/></svg>
+                <kbd class="demo-row-shortcut">{row < 2 ? `Ctrl+Alt+${row === 0 ? 'F' : 'Z'}` : `Ctrl+${(row - 1) % 10}`}</kbd>
+              </div>)}
+            </div>
+            <div class="demo-footer"><span data-slide-item-count>{countLabel.replace('{count}', String(items.length))}</span><span>{copy.settings}</span></div>
           </div>
-          <div class="slide-window-footer"><span>{catalog.features.find.label}</span><span data-demo-key>{slide.keys.join(' + ')}</span></div>
+          <aside class="demo-pane">
+            <strong class="demo-preview-title">{copy.text}</strong>
+            <p class="demo-content" data-slide-preview>{copy.speed}</p>
+            <img class="demo-image" src="/window-wallpaper.jpg" alt="" width="2560" height="1600" hidden />
+            <div class="demo-meta"><span class="demo-source"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#0098db" d="m17 2 6 3v14l-6 3-11-8-4 3-2-1V8l2-1 4 3Zm0 5-7 5 7 5ZM2 9v6l3-3Z"/></svg>Visual Studio Code</span><span data-slide-pin-action>{copy.pin}</span><span>{copy.copied}</span><span>{copy.delete}</span></div>
+          </aside>
         </div>
-        {index === 4 && <div class="slide-paste-target"><p class="eyebrow">{catalog.workflow.shortcuts.paste}</p><p data-paste-output>Project checklist</p></div>}
-        <figcaption>{index === 1 ? '↑ / ↓ → Enter' : slide.keys.join(' + ')}</figcaption>
+        {index === 4 && <div class="slide-paste-target"><p class="eyebrow">{catalog.workflow.shortcuts.paste}</p><p data-paste-output>{copy.speed}</p></div>}
+        <figcaption data-demo-key>{index === 1 ? '↑ / ↓ → Enter' : slide.keys.join(' + ')}</figcaption>
       </figure>
     </div>
   </section>)}
@@ -152,50 +167,87 @@ const items = ['clipcy.dev', 'Hello, clipboard.', 'Project checklist', 'demo-not
     const placeholder = query.textContent;
     const key = slide.querySelector<HTMLElement>('[data-demo-key]')!;
     const defaultKey = key.textContent;
-    const pin = rows[2].querySelector<HTMLElement>('.slide-pin')!;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let active = false;
     let inView = false;
     let tick = 0;
-    const select = (index: number) => rows.forEach((row, i) => row.classList.toggle('is-selected', i === index));
+    const window = slide.querySelector<HTMLElement>('.slide-window')!;
+    const pane = slide.querySelector<HTMLElement>('.demo-pane')!;
+    const previewTitle = pane.querySelector<HTMLElement>('.demo-preview-title')!;
+    const textTitle = previewTitle.textContent;
+    const countForms = JSON.parse(window.dataset.countForms!);
+    const pluralRules = new Intl.PluralRules(window.dataset.locale);
+    const updateRows = () => {
+      let regularIndex = 0;
+      let pinnedIndex = 0;
+      const ordered = [...slide.querySelectorAll<HTMLElement>('[data-slide-row]')];
+      ordered.forEach(row => {
+        const pinned = row.dataset.pinned === 'true';
+        row.querySelector<SVGElement>('.slide-pin')!.toggleAttribute('hidden', !pinned);
+        row.classList.remove('demo-pinned-end');
+        const index = pinnedIndex;
+        row.querySelector('kbd')!.textContent = pinned
+          ? `Ctrl+Alt+${pinnedIndex++ === 0 ? 'F' : index === 1 ? 'Z' : index + 1}`
+          : !row.hidden && ++regularIndex <= 10 ? `Ctrl+${regularIndex % 10}` : '';
+      });
+      ordered.filter(row => row.dataset.pinned === 'true' && !row.hidden).at(-1)?.classList.add('demo-pinned-end');
+      const count = ordered.filter(row => !row.hidden).length;
+      slide.querySelector('[data-slide-item-count]')!.textContent = (countForms[pluralRules.select(count)] || countForms.other).replace('{count}', String(count));
+    };
+    const select = (index: number) => {
+      rows.forEach((row, i) => row.classList.toggle('is-selected', i === index && !row.hidden));
+      const row = rows[index];
+      pane.hidden = !row || row.hidden;
+      if (pane.hidden) return;
+      const content = slide.querySelector<HTMLElement>('[data-slide-preview]')!;
+      content.textContent = index === 3 ? window.dataset.fileContent! : row.dataset.label || '';
+      content.hidden = index === 4;
+      pane.querySelector<HTMLImageElement>('.demo-image')!.hidden = index !== 4;
+      previewTitle.textContent = index === 3 || index === 4 ? row.dataset.label || '' : textTitle;
+      slide.querySelector('[data-slide-pin-action]')!.textContent = row.dataset.pinned === 'true' ? window.dataset.unpinAction! : window.dataset.pinAction!;
+      const top = row.getBoundingClientRect().top - window.getBoundingClientRect().top;
+      pane.style.setProperty('--preview-top', `${Math.min(top, Math.max(0, window.clientHeight - pane.offsetHeight))}px`);
+    };
     const reset = () => {
       clearTimeout(timer);
       tick = 0;
       const list = slide.querySelector('.slide-rows')!;
-      rows.forEach(row => { row.hidden = false; list.append(row); });
-      select(kind >= 2 ? 2 : 0);
+      rows.forEach((row, index) => { row.hidden = false; row.dataset.pinned = String(index < 2); list.append(row); });
       query.textContent = placeholder;
       key.textContent = defaultKey;
-      pin.hidden = kind !== 2;
-      if (kind === 2) list.prepend(rows[2]);
-      [...list.children].forEach((row, index) => { row.querySelector('kbd')!.textContent = String(index + 1); });
+      if (kind === 2 && reduced.matches) { rows[2].dataset.pinned = 'true'; list.prepend(rows[2]); }
       if (kind === 0 && reduced.matches) {
-        query.textContent = 'clipcy';
-        rows.forEach(row => row.hidden = !row.textContent?.toLowerCase().includes('clipcy'));
+        query.textContent = 'demo-notes';
+        rows.forEach(row => row.hidden = !row.dataset.label?.toLowerCase().includes('demo-notes'));
       }
+      updateRows();
+      select(kind === 0 && reduced.matches ? 3 : 2);
       slide.querySelector<HTMLElement>('[data-paste-output]')?.style.removeProperty('opacity');
       slide.querySelector('.slide-window')?.classList.remove('demo-pasted');
     };
     const frame = () => {
       if (!active || reduced.matches || document.hidden) return;
-      const phase = tick++ % 8;
+      const phase = tick++ % (kind === 0 ? 12 : 8);
       if (kind === 0) {
-        const text = 'clipcy'.slice(0, Math.min(phase, 6));
+        const text = 'demo-notes'.slice(0, Math.min(phase, 10));
         query.textContent = text || placeholder;
-        rows.forEach(row => row.hidden = !row.textContent?.toLowerCase().includes(text));
+        rows.forEach(row => row.hidden = !row.dataset.label?.toLowerCase().includes(text));
+        updateRows();
+        select(rows.findIndex(row => !row.hidden && row.dataset.pinned !== 'true'));
       } else if (kind === 1) {
-        select(phase < 5 ? phase : 4);
+        select(phase < 5 ? phase + 2 : 6);
         key.textContent = phase < 5 ? '↓' : 'Enter';
         slide.querySelector('.slide-window')?.classList.toggle('demo-pasted', phase >= 5);
       } else if (kind === 2) {
-        pin.hidden = phase < 3;
+        rows[2].dataset.pinned = String(phase >= 3);
         const list = slide.querySelector('.slide-rows')!;
         rows.forEach(row => list.append(row));
         if (phase >= 3) list.prepend(rows[2]);
-        [...list.children].forEach((row, index) => { row.querySelector('kbd')!.textContent = String(index + 1); });
+        updateRows();
+        select(2);
         key.textContent = phase < 3 ? '↓' : 'Ctrl + P';
       } else if (kind === 3) {
-        select(phase < 3 ? 0 : 2);
+        select(phase < 3 ? 2 : 4);
         key.textContent = phase < 3 ? 'Ctrl' : 'Ctrl + 3';
       } else {
         slide.querySelector('.slide-window')?.classList.toggle('demo-pasted', phase >= 3);
@@ -246,22 +298,15 @@ const items = ['clipcy.dev', 'Hello, clipboard.', 'Project checklist', 'demo-not
   .slide-progress a::after { content: ''; height: 3px; width: 32px; background: #b3c3dc; border-radius: 3px; }
   .slide-progress a[aria-current]::after { background: var(--color-accent); }
   .slide-progress a:focus-visible { outline: 2px solid var(--color-accent); }
-  .slide-demo { position: relative; margin: 0; padding: clamp(20px, 4vw, 48px); border-radius: 12px; background: linear-gradient(140deg, #9ccdf180, #a9acdf66), url('/window-wallpaper.jpg') center / cover; }
-  .slide-window { background: #162a4be6; color: #fff; padding: 12px; border: 1px solid #ffffff44; border-radius: 8px; box-shadow: 0 16px 40px #10254340; backdrop-filter: blur(24px); transition: opacity 300ms, transform 300ms; }
-  .slide-window-title { display: flex; align-items: center; gap: 8px; font-size: .85rem; padding-bottom: 12px; }
-  .slide-window-title kbd { margin-left: auto; }
-  .slide-window kbd { background: transparent; color: #bfcee6; border: 0; font-size: .7rem; padding: 2px; }
-  .slide-search { display: flex; gap: 10px; align-items: center; min-height: 38px; padding: 8px 10px; background: #ffffff12; border: 1px solid #ffffff22; border-bottom: 2px solid #79caff; border-radius: 4px; font-size: .8rem; }
-  .slide-caret { width: 1px; height: 16px; background: #c0e4ff; }
-  .slide-rows { display: flex; flex-direction: column; gap: 4px; margin-block: 12px; min-height: 246px; counter-reset: item; }
-  .slide-row { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-right: 2px solid transparent; border-radius: 4px; font-size: .85rem; min-height: 46px; transition: background 200ms; }
-  .slide-row > span:nth-child(2) { flex: 1; overflow-wrap: anywhere; }
-  .slide-row[hidden], .slide-pin[hidden] { display: none; }
-  .slide-row.is-selected { background: #ffffff19; border-right-color: #79caff; }
-  .slide-item-icon, .slide-pin { color: #9cd8ff; }
-  .slide-window-footer { display: flex; justify-content: space-between; gap: 8px; color: #c2cde0; font-size: .65rem; padding: 10px 2px 2px; }
+  .slide-demo { position: relative; margin: 0; padding: 12px; border-radius: 12px; background: linear-gradient(140deg, #9ccdf180, #a9acdf66), url('/window-wallpaper.jpg') center / cover; }
+  .slide-window { transition: opacity 300ms, transform 300ms; pointer-events: none; user-select: none; }
+  .slide-search { display: flex; align-items: center; gap: 2px; overflow: hidden; white-space: nowrap; }
+  .slide-search > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+  .slide-caret { width: 1px; height: 16px; flex-shrink: 0; background: #191919; }
+  .slide-row.is-selected { background: #b9c0d4; border-right-color: #0078d4; }
+  .slide-pin[hidden] { display: none; }
   figcaption { margin-top: 20px; color: #fff; text-align: center; font-family: var(--font-mono); }
-  .slide-rich-text { font-style: italic; color: #9cd8ff; text-decoration: underline; }
+  .slide-rich-text { font-style: italic; color: #191919; text-decoration: underline; }
   .slide-paste-target { background: #fffffff0; padding: 16px; margin-top: 16px; border-radius: 4px; }
   .slide-paste-target .eyebrow { font-size: .65rem; margin-bottom: 8px; }
   .slide-paste-target > p:last-child { margin: 0; color: var(--color-ink); font-size: .85rem; transition: opacity 250ms; }
@@ -276,8 +321,6 @@ const items = ['clipcy.dev', 'Hello, clipboard.', 'Project checklist', 'demo-not
     .slide-progress { gap: 2px; }
     .slide-progress a { width: 36px; }
     .slide-demo { width: 100%; max-width: 460px; margin-inline: auto; padding: 20px; }
-    .slide-row { min-height: 34px; padding-block: 8px; font-size: .8rem; }
-    .slide-rows { min-height: 186px; }
     .slide-demo figcaption { margin-top: 12px; font-size: .8rem; }
   }
 </style>
