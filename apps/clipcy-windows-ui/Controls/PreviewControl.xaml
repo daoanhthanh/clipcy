@@ -212,6 +212,7 @@
               FontSize="11"
               LineHeight="16"
               Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+              x:Name="PinHintText"
               services:Localization.Text="preview.hint_pin"
             />
             <TextBlock

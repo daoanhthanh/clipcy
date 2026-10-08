@@ -58,6 +58,13 @@ pub struct Settings {
     pub first_run: bool,
 }
 
+pub const MIN_MAX_HISTORY_ITEMS: usize = 25;
+
+fn normalize_settings(mut settings: Settings) -> Settings {
+    settings.max_history_items = settings.max_history_items.max(MIN_MAX_HISTORY_ITEMS);
+    settings
+}
+
 fn default_max_history() -> usize {
     210
 }
@@ -124,7 +131,7 @@ impl SettingsManager {
         let content = fs::read_to_string(&self.path)?;
         let settings: Settings = serde_json::from_str(&content)?;
         tracing::debug!("Loaded settings from {:?}", self.path);
-        Ok(settings)
+        Ok(normalize_settings(settings))
     }
 
     /// Save settings to file (atomic write)
@@ -175,10 +182,28 @@ mod tests {
     #[test]
     fn test_settings_default() {
         let settings = Settings::default();
-        assert_eq!(settings.max_history_items, 250);
+        assert_eq!(settings.max_history_items, 210);
         assert_eq!(settings.hotkey, "Alt+V");
         assert!(settings.start_on_boot);
         assert!(settings.show_preview_panel);
+    }
+
+    #[test]
+    fn test_settings_minimum_history_items() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let manager = SettingsManager::with_path(path.clone());
+        fs::write(&path, r#"{"max_history_items":10}"#).unwrap();
+
+        assert_eq!(manager.load().unwrap().max_history_items, MIN_MAX_HISTORY_ITEMS);
+
+        let cached = CachedSettingsManager::with_path(path);
+        assert_eq!(cached.load_now().unwrap().max_history_items, MIN_MAX_HISTORY_ITEMS);
+
+        let mut settings = Settings::default();
+        settings.max_history_items = 10;
+        cached.save(&settings).unwrap();
+        assert_eq!(cached.get().max_history_items, MIN_MAX_HISTORY_ITEMS);
     }
 
     #[test]
@@ -262,6 +287,7 @@ impl CachedSettingsManager {
             tracing::debug!("Loaded settings from {:?}", self.path);
             settings
         };
+        let settings = normalize_settings(settings);
 
         *self.cache.write() = settings.clone();
         self.loaded.store(true, Ordering::Release);
@@ -289,7 +315,7 @@ impl CachedSettingsManager {
                     Ok(content) => match serde_json::from_str(&content) {
                         Ok(settings) => {
                             tracing::debug!("Loaded settings asynchronously from {:?}", path);
-                            Ok(settings)
+                            Ok(normalize_settings(settings))
                         }
                         Err(e) => Err(SettingsError::Json(e)),
                     },
@@ -308,6 +334,7 @@ impl CachedSettingsManager {
 
     /// Save settings to file (atomic write)
     pub fn save(&self, settings: &Settings) -> Result<()> {
+        let settings = normalize_settings(settings.clone());
         // Update cache first
         *self.cache.write() = settings.clone();
 
@@ -318,7 +345,7 @@ impl CachedSettingsManager {
 
         // Write to temp file first for atomic operation
         let temp_path = self.path.with_extension("json.tmp");
-        let content = serde_json::to_string_pretty(settings)?;
+        let content = serde_json::to_string_pretty(&settings)?;
 
         {
             let mut file = fs::File::create(&temp_path)?;

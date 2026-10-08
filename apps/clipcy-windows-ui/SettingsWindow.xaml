@@ -116,7 +116,7 @@
                   <NumberBox
                     x:Name="MaxHistoryBox"
                     MinWidth="120"
-                    Minimum="10"
+                    Minimum="25"
                     Maximum="1000"
                     SpinButtonPlacementMode="Hidden"
                     ValueChanged="MaxHistoryBox_ValueChanged"

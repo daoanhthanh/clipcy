@@ -668,6 +668,7 @@ public sealed partial class PreviewControl : UserControl
 
     private void UpdateMetadata(PreviewData data)
     {
+        Localization.SetText(PinHintText, data.IsPinned ? "preview.hint_unpin" : "preview.hint_pin");
         UpdateSourceApp(data);
         var metadata = new System.Text.StringBuilder();
 
