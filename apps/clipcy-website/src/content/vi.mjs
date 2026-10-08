@@ -3,6 +3,11 @@
  */
 
 export default {
+  theme: {
+    "label": "Bật hoặc tắt giao diện tối",
+    "light": "Sáng",
+    "dark": "Tối"
+},
   demo: {
     "search": "Tìm kiếm lịch sử clipboard...",
     "settings": "Cài đặt",

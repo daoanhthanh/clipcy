@@ -3,6 +3,11 @@
  */
 
 export default {
+  theme: {
+    "label": "ダークテーマを切り替え",
+    "light": "ライト",
+    "dark": "ダーク"
+},
   demo: {
     "search": "クリップボード履歴を検索...",
     "settings": "設定",

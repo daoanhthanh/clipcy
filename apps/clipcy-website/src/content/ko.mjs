@@ -3,6 +3,11 @@
  */
 
 export default {
+  theme: {
+    "label": "다크 테마 전환",
+    "light": "라이트",
+    "dark": "다크"
+},
   demo: {
     "search": "클립보드 기록 검색...",
     "settings": "설정",

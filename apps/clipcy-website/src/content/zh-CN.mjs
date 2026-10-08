@@ -3,6 +3,11 @@
  */
 
 export default {
+  theme: {
+    "label": "切换深色主题",
+    "light": "浅色",
+    "dark": "深色"
+},
   demo: {
     "search": "搜索剪贴板历史记录...",
     "settings": "设置",

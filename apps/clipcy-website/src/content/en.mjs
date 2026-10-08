@@ -3,6 +3,11 @@
  */
 
 export default {
+  theme: {
+    "label": "Toggle dark theme",
+    "light": "Light",
+    "dark": "Dark"
+},
   demo: {
     "search": "Search clipboard history...",
     "settings": "Settings",
