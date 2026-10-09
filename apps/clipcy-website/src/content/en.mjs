@@ -31,7 +31,7 @@ export default {
 },
   meta: {
     title: 'Clipcy - Clipboard Manager for Windows',
-    description: 'Find copied text, images, and files. Pin what you reuse. Paste with Alt+V.',
+    description: 'Clipcy is a free, open-source clipboard manager for Windows. Search copied text, images, and files, pin favorites, and paste from your history with Alt+V.',
     ogTitle: 'Copy once. Use it again anytime.',
     ogDescription: 'Clipboard manager for Windows. Search your history, pin items, and preview before you paste.'
   },
@@ -47,8 +47,8 @@ export default {
 
   hero: {
     eyebrow: 'Free clipboard manager for Windows',
-    title: 'Copy once. Use it again anytime.',
-    subtitle: "Does one thing well: keeps what you copied close at hand. That's it!",
+    title: 'Your clipboard manager for Windows',
+    subtitle: 'Clipcy is your clipboard manager for Windows, keeping copied text, images, and files in a searchable history on your PC so you can reuse them anytime. Open your history with Alt+V, preview the copy you need, and paste it into your current application without switching windows.',
     demoPinHint: 'Press Ctrl+P to pin',
     demoUnpinHint: 'Press Ctrl+P to unpin',
     windowsSupport: 'Supports Windows 10+',
@@ -125,25 +125,25 @@ export default {
     heading: 'Frequently asked questions',
     q1: {
       question: 'Which platforms are supported?',
-      answer: 'Windows is implemented. macOS and Linux are planned but not yet available.'
+      answer: 'Clipcy is available for Windows 10 version 1809 or later and Windows 11, while macOS and Linux versions are planned but not yet available.'
     },
     q2: {
       question: 'How do I open Clipcy?',
-      answer: 'Press Alt+V (default). You can change the hotkey in Settings.'
+      answer: 'Press Alt+V to open your clipboard history from the application you are using, or choose a different global hotkey in Settings.'
     },
     q3: {
       question: 'Where is clipboard history stored?',
-      answer: 'Locally on your PC at %LOCALAPPDATA%\\clipcy\\clipcy.db. No cloud sync or remote storage.'
+      answer: 'Clipcy stores clipboard history locally on your PC in %LOCALAPPDATA%\\clipcy\\clipcy.db, without cloud synchronization or remote storage. The local database is not encrypted, so consider what sensitive content you keep in your history.'
     },
     q4: {
       question: 'Are copied files archived?',
-      answer: 'No. File previews read the current file path. If you move or delete a file, the preview will no longer work.'
+      answer: 'Clipcy saves copied file paths rather than archiving the files themselves, and its preview reads the file at its current location. If you move or delete the original file, the saved path can no longer provide a working preview.'
     }
   },
 
   comparison: {
     heading: 'A better alternative to Win+V',
-    body: 'Everything you need in a clipboard manager.',
+    body: 'Clipcy gives you a searchable clipboard history for everyday work on Windows, with pinned copies and content previews to help you find the right item before pasting. Compare its history and preview features with the built-in Windows clipboard, then choose the workflow that fits how you copy and reuse content.',
     eyebrow: 'Compare',
     windows: 'Windows clipboard',
     rows: [
@@ -173,19 +173,19 @@ export default {
     benefits: [
       {
         title: 'No clutter',
-        body: 'Does one thing well: manages what you copy. No extras cluttering things up.'
+        body: 'Clipcy keeps the clipboard workflow in a compact popup, with search, pinned items, and previews close to the copies you need. Open it from your current application, find an earlier copy, and paste it back into your work without opening a separate window to manage your history.'
       },
       {
         title: 'Privacy first',
-        body: 'Clipcy respects your privacy. If your password manager clears a password from the clipboard, Clipcy removes it from history too. Everything stays on your PC.'
+        body: 'Your clipboard history stays on your PC instead of being synchronized to a cloud account, and file previews read the original files without archiving them. If your password manager clears a password from the clipboard, Clipcy removes it from history too; the local history database itself is not encrypted.'
       },
       {
         title: 'Keyboard first',
-        body: 'Do everything with your keyboard. No need to reach for the mouse.'
+        body: 'Use Alt+V to open your history, type to search, and move through the results with the arrow keys before pressing Enter to paste. Pin frequently used items with Ctrl+P or paste text without formatting with Shift+Enter, keeping these everyday actions available without reaching for the mouse.'
       },
       {
         title: 'Open source',
-        body: 'Clipcy is open source under the MIT license. Always free.'
+        body: 'Clipcy is free and open source under the MIT license, so you can inspect the code and build the Windows application from source. The GitHub repository includes setup instructions and the implementation, giving you a place to report bugs, suggest improvements, or contribute changes to the clipboard manager.'
       }
     ]
   },

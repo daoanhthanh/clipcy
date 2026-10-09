@@ -1,5 +1,5 @@
 ---
-import { featureSlides } from "../content/feature-slides.mjs";
+import { featureSlides, wallpaperAlt } from "../content/feature-slides.mjs";
 const { catalog, locale } = Astro.props;
 const slides = featureSlides(locale);
 const controls = (
@@ -188,7 +188,7 @@ const countLabel =
 								<img
 									class="demo-image" data-theme-wallpaper
 									src="/window-wallpaper-light.jpg"
-									alt=""
+									alt={wallpaperAlt(locale)}
 									width="2560"
 									height="1600"
 									hidden

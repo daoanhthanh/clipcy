@@ -1,4 +1,5 @@
 ---
+import { wallpaperAlt } from '../content/feature-slides.mjs';
 const { catalog, locale } = Astro.props;
 const copy = catalog.demo;
 const pluralRules = new Intl.PluralRules(locale);
@@ -137,7 +138,7 @@ const initialCount =
 			<img
 				class="demo-image" data-theme-wallpaper
 				src="/window-wallpaper-light.jpg"
-				alt=""
+				alt={wallpaperAlt(locale)}
 				width="2560"
 				height="1600"
 				hidden
@@ -214,7 +215,6 @@ const initialCount =
 				previewImage.hidden = !isImage;
 				if (isImage) {
 					previewImage.src = `/window-wallpaper-${document.documentElement.dataset.theme === "dark" ? "dark" : "light"}.jpg`;
-					previewImage.alt = row.dataset.label || "";
 				}
 				pane.hidden = false;
 				selection.hidden = false;

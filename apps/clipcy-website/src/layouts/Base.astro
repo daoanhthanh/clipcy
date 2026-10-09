@@ -20,6 +20,7 @@ const { title, description, ogTitle, ogDescription, locale, currentPath } = Astr
 const catalog = catalogs[locale === 'zh-CN' ? 'zhCN' : locale];
 const siteUrl = 'https://clipcy.dev';
 const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+const ogLocales = { en: 'en_US', vi: 'vi_VN', 'zh-CN': 'zh_CN', ja: 'ja_JP', ko: 'ko_KR', ru: 'ru_RU' };
 ---
 
 <!DOCTYPE html>
@@ -39,7 +40,10 @@ const canonicalURL = new URL(Astro.url.pathname, siteUrl);
   <meta property="og:image" content={`${siteUrl}/assets/logo-512.png`}>
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
-  <meta property="og:locale" content={locale.replace('-', '_')}>
+  <meta property="og:locale" content={ogLocales[locale]}>
+  {locales.filter(language => language.code !== locale).map(language => (
+    <meta property="og:locale:alternate" content={ogLocales[language.code]} />
+  ))}
   
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary">
@@ -48,6 +52,10 @@ const canonicalURL = new URL(Astro.url.pathname, siteUrl);
   <meta name="twitter:image" content={`${siteUrl}/assets/logo-512.png`}>
   
   <link rel="canonical" href={canonicalURL}>
+  {locales.map(language => (
+    <link rel="alternate" hreflang={language.code} href={new URL(`/${language.code}${currentPath}`, siteUrl)} />
+  ))}
+  <link rel="alternate" hreflang="x-default" href={new URL(`/en${currentPath}`, siteUrl)}>
   <link rel="icon" href="/assets/favicon.ico">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
   

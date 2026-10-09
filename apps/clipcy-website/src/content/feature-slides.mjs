@@ -1,10 +1,10 @@
 const copy = {
   en: [
-    ['Start typing to search', 'Open Clipcy with Alt+V, then start typing. Your history narrows down as you type.'],
-    ['Use shortcuts to select faster', 'Move through your history with the arrow keys. Press Enter to paste the selected item.'],
-    ['Pin items with Ctrl+P', 'Keep your frequently used copies at the top. Select an item and press Ctrl+P to pin it.'],
+    ['Search your clipboard history', 'Open Clipcy with Alt+V, then start typing to find an earlier copy. Your clipboard history narrows down as you type, so you can reuse a saved snippet or file path without copying it again from the original application.'],
+    ['Use shortcuts to select faster', 'Move through your clipboard history with the arrow keys. Preview the selected text, image, or file before you paste it, then press Enter to insert it into the application you were using. Press Escape to close the popup.'],
+    ['Pin clipboard items with Ctrl+P', 'Keep frequently used copies at the top of your clipboard history. Select an item and press Ctrl+P to pin it, making reusable text and file paths easier to find. Press Ctrl+P again when you no longer need that item pinned.'],
     ['Select an item with Ctrl + its number', 'Jump straight to an item by its position. Ctrl+3 selects the third item.'],
-    ['Paste as plain text with Shift+Enter', 'Paste the selected item without formatting. Keep the words and leave the styles behind.']
+    ['Paste as plain text with Shift+Enter', 'Paste the selected text item without formatting by pressing Shift+Enter. Keep the words and leave the styles behind when moving text between documents, emails, or other applications. Use Enter for the regular paste action.']
   ],
   vi: [
     ['Gõ để tìm kiếm', 'Mở Clipcy bằng Alt+V rồi bắt đầu gõ. Lịch sử được lọc ngay khi bạn nhập.'],
@@ -46,4 +46,15 @@ const copy = {
 const keys = [['Alt', 'V'], ['↑', '↓', 'Enter'], ['Ctrl', 'P'], ['Ctrl', '3'], ['Shift', 'Enter']];
 export function featureSlides(locale) {
   return (copy[locale] || copy.en).map(([title, body], index) => ({ title, body, keys: keys[index] }));
+}
+
+export function wallpaperAlt(locale) {
+  return ({
+    en: 'Windows 11 wallpaper with a folded blue ribbon',
+    vi: 'Hình nền Windows 11 với dải lụa xanh uốn nếp',
+    'zh-CN': 'Windows 11 壁纸，展示折叠的蓝色丝带',
+    ja: '折り重なる青いリボンを描いた Windows 11 の壁紙',
+    ko: '접힌 파란 리본 모양의 Windows 11 배경 화면',
+    ru: 'Обои Windows 11 со складками синей ленты'
+  })[locale] || 'Windows 11 wallpaper with a folded blue ribbon';
 }

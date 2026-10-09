@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://clipcy.dev/sitemap.xml
+Sitemap: https://clipcy.dev/sitemap-index.xml
 
 # LLM-friendly content
 # Full documentation at https://clipcy.dev/llms.txt
