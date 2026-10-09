@@ -1,10 +1,12 @@
 # Clipcy
 
-> Clipboard manager for Windows. Search history, pin items, preview before pasting.
+> Clipcy is a free, open-source clipboard manager for Windows. Search clipboard history, pin reusable items, and preview copied text, images, and files before pasting.
+
+Author: Đào Anh Thành, identified in the website footer. Source code and issue tracking are available at https://github.com/daoanhthanh/clipcy.
 
 ## What it does
 
-- **Search**: Find copied text, images, and files with Ctrl+F
+- **Search**: Open with Alt+V and start typing to filter clipboard history
 - **Pin**: Keep frequently used items at the top
 - **Preview**: See content before pasting
 - **Keyboard-first**: Alt+V to open, arrow keys to navigate, Enter to paste
@@ -17,6 +19,7 @@
 ## Storage
 
 All clipboard history stored locally at `%LOCALAPPDATA%\clipcy\clipcy.db`. No cloud sync, no analytics, no remote storage.
+The local database is not encrypted. Copied files are stored as paths rather than archived copies; moving or deleting the original file breaks its preview.
 
 ## Build from source
 

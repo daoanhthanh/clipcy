@@ -1,6 +1,6 @@
 const copy = {
   en: [
-    ['Search your clipboard history', 'Open Clipcy with Alt+V, then start typing to find an earlier copy. Your clipboard history narrows down as you type, so you can reuse a saved snippet or file path without copying it again from the original application.'],
+    ['Search clipboard history for text, images, and files', 'Open Clipcy with Alt+V, then start typing to find an earlier copy. Your clipboard history narrows down as you type, so you can reuse a saved snippet or file path without copying it again from the original application.'],
     ['Use shortcuts to select faster', 'Move through your clipboard history with the arrow keys. Preview the selected text, image, or file before you paste it, then press Enter to insert it into the application you were using. Press Escape to close the popup.'],
     ['Pin clipboard items with Ctrl+P', 'Keep frequently used copies at the top of your clipboard history. Select an item and press Ctrl+P to pin it, making reusable text and file paths easier to find. Press Ctrl+P again when you no longer need that item pinned.'],
     ['Select an item with Ctrl + its number', 'Jump straight to an item by its position. Ctrl+3 selects the third item.'],

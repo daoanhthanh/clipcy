@@ -1,70 +1,11 @@
 ---
-const supportedLocales = ['en', 'zh-CN', 'ja', 'ru', 'ko', 'vi'];
-const defaultLocale = 'en';
+import Home from '../components/Home.astro';
+import catalog from '../content/en.mjs';
 ---
+<Home catalog={catalog} locale="en" />
+<script>
+  import { detectLocale, buildPath } from '../locales.mjs';
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clipcy - Clipboard Manager</title>
-  <meta name="description" content="Clipboard Manager for Windows">
-  <script>
-    const supported = ['en', 'zh-CN', 'ja', 'ru', 'ko', 'vi'];
-    const defaultLoc = 'en';
-    
-    // Check stored preference
-    const stored = localStorage.getItem('clipcy-locale');
-    if (stored && supported.includes(stored)) {
-      window.location.href = `/${stored}/`;
-    } else {
-      // Detect from browser
-      const browserLangs = navigator.languages || [navigator.language];
-      let detected = defaultLoc;
-      
-      for (const lang of browserLangs) {
-        const normalized = lang.toLowerCase();
-        if (supported.includes(lang)) {
-          detected = lang;
-          break;
-        } else if (normalized.startsWith('zh')) {
-          detected = 'zh-CN';
-          break;
-        } else if (normalized.startsWith('ja')) {
-          detected = 'ja';
-          break;
-        } else if (normalized.startsWith('ru')) {
-          detected = 'ru';
-          break;
-        } else if (normalized.startsWith('ko')) {
-          detected = 'ko';
-          break;
-        } else if (normalized.startsWith('vi')) {
-          detected = 'vi';
-          break;
-        } else if (normalized.startsWith('en')) {
-          detected = 'en';
-          break;
-        }
-      }
-      
-      window.location.href = `/${detected}/`;
-    }
-  </script>
-</head>
-<body>
-  <noscript>
-    <h1>Clipcy - Clipboard Manager</h1>
-    <p>Choose your language:</p>
-    <ul>
-      <li><a href="/en/">English</a></li>
-      <li><a href="/zh-CN/">简体中文</a></li>
-      <li><a href="/ja/">日本語</a></li>
-      <li><a href="/ru/">Русский</a></li>
-      <li><a href="/ko/">한국어</a></li>
-      <li><a href="/vi/">Tiếng Việt</a></li>
-    </ul>
-  </noscript>
-</body>
-</html>
+  const target = buildPath('home', detectLocale());
+  window.location.replace(target + window.location.search + window.location.hash);
+</script>

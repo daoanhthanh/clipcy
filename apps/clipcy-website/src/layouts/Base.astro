@@ -6,6 +6,7 @@ import '../styles/site.css';
 import '../styles/themes.css';
 import { locales } from '../locales.mjs';
 import * as catalogs from '../content/index.mjs';
+import { content } from '../content.mjs';
 
 interface Props {
   title: string;
@@ -19,8 +20,42 @@ interface Props {
 const { title, description, ogTitle, ogDescription, locale, currentPath } = Astro.props;
 const catalog = catalogs[locale === 'zh-CN' ? 'zhCN' : locale];
 const siteUrl = 'https://clipcy.dev';
-const canonicalURL = new URL(Astro.url.pathname, siteUrl);
+const canonicalURL = new URL(Astro.url.pathname === '/' ? '/en/' : Astro.url.pathname, siteUrl);
 const ogLocales = { en: 'en_US', vi: 'vi_VN', 'zh-CN': 'zh_CN', ja: 'ja_JP', ko: 'ko_KR', ru: 'ru_RU' };
+const authorId = `${siteUrl}/#author`;
+const websiteId = `${siteUrl}/#website`;
+const applicationId = `${siteUrl}/#application`;
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Person', '@id': authorId, name: 'Đào Anh Thành',
+      sameAs: ['https://github.com/daoanhthanh']
+    },
+    {
+      '@type': 'WebSite', '@id': websiteId, name: 'Clipcy', url: `${siteUrl}/`,
+      publisher: { '@id': authorId }
+    },
+    {
+      '@type': 'SoftwareApplication', '@id': applicationId, name: 'Clipcy',
+      url: new URL(`/${locale}/`, siteUrl).href,
+      description: catalog.meta.description,
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: content.requirements.os,
+      softwareVersion: content.version,
+      license: 'https://opensource.org/license/mit',
+      isAccessibleForFree: true,
+      author: { '@id': authorId }
+    },
+    {
+      '@type': 'WebPage', '@id': `${canonicalURL}#page`, url: canonicalURL.href,
+      name: title, description, inLanguage: locale,
+      isPartOf: { '@id': websiteId }, about: { '@id': applicationId },
+      publisher: { '@id': authorId }
+    }
+  ]
+};
+const structuredDataJSON = JSON.stringify(structuredData).replace(/</g, '\\u003c');
 ---
 
 <!DOCTYPE html>
@@ -31,6 +66,7 @@ const ogLocales = { en: 'en_US', vi: 'vi_VN', 'zh-CN': 'zh_CN', ja: 'ja_JP', ko:
   <script is:inline src="/theme.js"></script>
   <title>{title}</title>
   <meta name="description" content={description}>
+  <script is:inline type="application/ld+json" set:html={structuredDataJSON} />
   
   <!-- Open Graph -->
   <meta property="og:type" content="website">
@@ -66,8 +102,8 @@ const ogLocales = { en: 'en_US', vi: 'vi_VN', 'zh-CN': 'zh_CN', ja: 'ja_JP', ko:
   
   <header class="site-header">
     <nav class="container header-content" aria-label="Main navigation">
-      <a href={`/${locale}/`} class="logo">
-        <img src="/assets/logo-192.png" alt="" width="32" height="32">
+      <a href={`/${locale}/`} class="logo" aria-label={catalog.a11y.logo}>
+        <img src="/assets/logo-192.png" alt="Clipcy" width="32" height="32">
         <span>Clipcy</span>
       </a>
       

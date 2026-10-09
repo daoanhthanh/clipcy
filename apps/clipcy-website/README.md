@@ -16,6 +16,15 @@ The English hero body repeats the H1's product description. Wallpaper previews
 use localized descriptive alt text; decorative logos keep empty alt attributes.
 English comparison benefits and FAQ answers use complete explanatory paragraphs
 alongside the short labels and interactive demos.
+The root route renders the English homepage in static HTML before redirecting
+to the preferred language, preserving query parameters and anchors. Its canonical
+URL points to `/en/`; disabled JavaScript or unavailable browser storage still
+leaves the complete homepage readable. Page content does not require JavaScript.
+Every home and download page includes JSON-LD for the Clipcy application,
+website, page, and the author named in the footer. Product version and Windows
+requirements come from `src/content.mjs`; markup includes no invented ratings.
+Logo images have a Clipcy alternative label, and the header link uses its
+localized accessible name to avoid reading the brand twice.
 
 The homepage replaces the former feature cards and workflow section with five
 carousel feature slides: search, arrow-key selection, pinning, numbered

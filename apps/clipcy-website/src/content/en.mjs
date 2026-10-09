@@ -30,8 +30,8 @@ export default {
     }
 },
   meta: {
-    title: 'Clipcy - Clipboard Manager for Windows',
-    description: 'Clipcy is a free, open-source clipboard manager for Windows. Search copied text, images, and files, pin favorites, and paste from your history with Alt+V.',
+    title: 'Clipcy: Clipboard Manager for Windows | Clipboard History',
+    description: 'Clipcy is a free, open-source clipboard manager for Windows. Search your clipboard history for text, images, and files, pin favorites, and paste with Alt+V.',
     ogTitle: 'Copy once. Use it again anytime.',
     ogDescription: 'Clipboard manager for Windows. Search your history, pin items, and preview before you paste.'
   },
@@ -47,8 +47,8 @@ export default {
 
   hero: {
     eyebrow: 'Free clipboard manager for Windows',
-    title: 'Your clipboard manager for Windows',
-    subtitle: 'Clipcy is your clipboard manager for Windows, keeping copied text, images, and files in a searchable history on your PC so you can reuse them anytime. Open your history with Alt+V, preview the copy you need, and paste it into your current application without switching windows.',
+    title: 'Clipcy clipboard manager for Windows',
+    subtitle: 'The Clipcy clipboard manager for Windows keeps copied text, images, and files in a searchable clipboard history on your PC so you can reuse them anytime. Open your history with Alt+V, preview the copy you need, and paste it into your current application without switching windows.',
     demoPinHint: 'Press Ctrl+P to pin',
     demoUnpinHint: 'Press Ctrl+P to unpin',
     windowsSupport: 'Supports Windows 10+',

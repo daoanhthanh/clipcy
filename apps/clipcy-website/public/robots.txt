@@ -6,4 +6,4 @@ Sitemap: https://clipcy.dev/sitemap-index.xml
 
 # LLM-friendly content
 # Full documentation at https://clipcy.dev/llms.txt
-# Markdown content available at /{locale}/index.md for each page
+# Localized homepage content is available in static HTML without JavaScript
