@@ -7,7 +7,7 @@ export default {
     "label": "Toggle dark theme",
     "light": "Light",
     "dark": "Dark"
-},
+  },
   demo: {
     "search": "Search clipboard history...",
     "settings": "Settings",
@@ -25,10 +25,10 @@ export default {
     "windowsClipboard": "Windows clipboard",
     "fileContent": "Demo notes\nCopy text, images, and files.",
     "itemCount": {
-        "one": "{count} item",
-        "other": "{count} items"
+      "one": "{count} item",
+      "other": "{count} items"
     }
-},
+  },
   meta: {
     title: 'Clipcy: Clipboard Manager for Windows | Clipboard History',
     description: 'Clipcy is a free, open-source clipboard manager for Windows. Search your clipboard history for text, images, and files, pin favorites, and paste with Alt+V.',
@@ -47,14 +47,14 @@ export default {
 
   hero: {
     eyebrow: 'Free clipboard manager for Windows',
-    title: 'Clipcy clipboard manager for Windows',
-    subtitle: 'The Clipcy clipboard manager for Windows keeps copied text, images, and files in a searchable clipboard history on your PC so you can reuse them anytime. Open your history with Alt+V, preview the copy you need, and paste it into your current application without switching windows.',
+    title: 'Copy once. Reuse anytime.',
+    subtitle: 'One job. Done right. Everything you copy, within easy reach.',
     demoPinHint: 'Press Ctrl+P to pin',
     demoUnpinHint: 'Press Ctrl+P to unpin',
     windowsSupport: 'Supports Windows 10+',
     freeOpenSource: 'Free and open source',
     ctaOr: 'or',
-    ctaStore: 'Get in Microsoft Store',
+    ctaStore: 'Get it from Microsoft Store',
     ctaDownload: 'Download now',
     ctaPrimary: 'Download for Windows',
     ctaSecondary: 'See build instructions',
@@ -64,20 +64,20 @@ export default {
   },
 
   problem: {
-    title: 'Your copied text, images, and files—right at your fingertips.',
-    body: 'Pull up earlier copies without switching windows or losing your place.'
+    title: 'Text, images, files. Everything you copy, at your fingertips.',
+    body: 'Get back to something you copied earlier without switching windows or breaking your flow.'
   },
 
   features: {
     heading: 'Features',
     find: {
-      title: 'Find the copy you need',
-      body: 'Search through your clipboard history. Text, images, and files.',
+      title: 'Find what you copied',
+      body: 'Search your clipboard history for text, images, and files.',
       label: 'History & search'
     },
     pin: {
-      title: 'Keep repeat pastes on top',
-      body: 'Press Ctrl+P to pin items you use often.',
+      title: 'Keep your go-to items at the top',
+      body: 'Press Ctrl+P to pin anything you use again and again.',
       label: 'Pinning'
     },
     preview: {
@@ -90,16 +90,16 @@ export default {
   workflow: {
     heading: 'Copy. Find. Paste.',
     step1: {
-      title: '1. Copy in another app',
+      title: '1. Copy from any app',
       body: 'Copy text, images, or files as usual.'
     },
     step2: {
       title: '2. Open Clipcy with Alt+V',
-      body: 'Press Alt+V (configurable) and type to search.'
+      body: 'Press Alt+V, then type to search. You can change the shortcut in Settings.'
     },
     step3: {
       title: '3. Choose and paste',
-      body: 'Use arrow keys to select. Press Enter to paste.'
+      body: 'Choose an item with the arrow keys, then press Enter to paste.'
     },
     shortcuts: {
       open: 'Alt+V',
@@ -111,12 +111,12 @@ export default {
   },
 
   trust: {
-    heading: 'Your history is stored on this PC.',
+    heading: 'Your clipboard history stays on your PC.',
     storage: 'Clipboard history is saved locally in a SQLite database at %LOCALAPPDATA%\\clipcy\\clipcy.db.',
-    warning: 'Clipboard history may contain sensitive content. Local storage does not imply encryption.',
+    warning: 'Clipboard history can contain sensitive information. Stored locally does not mean encrypted.',
     support: {
       windows: 'Windows 10 version 1809+ or Windows 11',
-      languages: 'App UI: English, 简体中文, 日本語, Русский, 한국어, Tiếng Việt'
+      languages: 'Available app languages: English, 简体中文, 日本語, Русский, 한국어, Tiếng Việt'
     },
     privacyLink: 'Read our privacy policy'
   },
@@ -125,11 +125,11 @@ export default {
     heading: 'Frequently asked questions',
     q1: {
       question: 'Which platforms are supported?',
-      answer: 'Clipcy is available for Windows 10 version 1809 or later and Windows 11, while macOS and Linux versions are planned but not yet available.'
+      answer: 'Clipcy is available for Windows 10 and 11. Support for macOS and Linux is planned.'
     },
     q2: {
       question: 'How do I open Clipcy?',
-      answer: 'Press Alt+V to open your clipboard history from the application you are using, or choose a different global hotkey in Settings.'
+      answer: 'Press Alt+V (default). You can change the hotkey in Settings.'
     },
     q3: {
       question: 'Where is clipboard history stored?',
@@ -142,28 +142,28 @@ export default {
   },
 
   comparison: {
-    heading: 'A better alternative to Win+V',
-    body: 'Clipcy gives you a searchable clipboard history for everyday work on Windows, with pinned copies and content previews to help you find the right item before pasting. Compare its history and preview features with the built-in Windows clipboard, then choose the workflow that fits how you copy and reuse content.',
+    heading: 'The best alternative to Win+V',
+    body: 'Everything you need in a clipboard manager.',
     eyebrow: 'Compare',
     windows: 'Windows clipboard',
     rows: [
       {
         label: 'History',
-        clipcy: 'Up to 1,000 items—ready whenever you need them.',
-        windows: 'Up to 25 recent items; unpinned items disappear when you restart.',
+        clipcy: 'Up to 1,000 items, ready when you need them.',
+        windows: 'Up to 25 recent items. Unpinned items are lost when you restart.',
         clipcyPro: true,
         windowsPro: false
       },
       {
         label: 'Content preview',
-        clipcy: "Preview text, images, and files before pasting—so you know exactly what you're getting.",
+        clipcy: 'Preview text, images, and files so you know what you are about to paste.',
         windows: 'None',
         clipcyPro: true,
         windowsPro: false
       },
       {
         label: 'Speed',
-        clipcy: 'Native. Really, really fast.',
+        clipcy: 'A native app. Really, really fast.',
         windows: 'Good',
         clipcyPro: true,
         windowsPro: true
@@ -172,27 +172,27 @@ export default {
     source: 'Microsoft clipboard documentation',
     benefits: [
       {
-        title: 'No clutter',
-        body: 'Clipcy keeps the clipboard workflow in a compact popup, with search, pinned items, and previews close to the copies you need. Open it from your current application, find an earlier copy, and paste it back into your work without opening a separate window to manage your history.'
+        title: 'Just the essentials',
+        body: 'One focus: managing what you copy. No extra features getting in your way.'
       },
       {
         title: 'Privacy first',
-        body: 'Your clipboard history stays on your PC instead of being synchronized to a cloud account, and file previews read the original files without archiving them. If your password manager clears a password from the clipboard, Clipcy removes it from history too; the local history database itself is not encrypted.'
+        body: 'Your clipboard stays on your machine. When your password manager clears a password from the clipboard, Clipcy removes it from history too.'
       },
       {
         title: 'Keyboard first',
-        body: 'Use Alt+V to open your history, type to search, and move through the results with the arrow keys before pressing Enter to paste. Pin frequently used items with Ctrl+P or paste text without formatting with Shift+Enter, keeping these everyday actions available without reaching for the mouse.'
+        body: 'Search, select, pin, and paste without reaching for the mouse. Every action is available from the keyboard.'
       },
       {
         title: 'Open source',
-        body: 'Clipcy is free and open source under the MIT license, so you can inspect the code and build the Windows application from source. The GitHub repository includes setup instructions and the implementation, giving you a place to report bugs, suggest improvements, or contribute changes to the clipboard manager.'
+        body: 'Open source, MIT licensed, and always free.'
       }
     ]
   },
 
   finalCta: {
-    "heading": "Want to contribute a feature?",
-    "body": "Share an idea, report a bug, or help build the next feature. Make Clipcy better with us.",
+    "heading": "Missing a feature?",
+    "body": "Share your idea, report a bug, or help build something new. Let’s make Clipcy better together.",
     "contribute": "Contribute on GitHub"
   },
 
@@ -207,17 +207,17 @@ export default {
     heading: 'Get Clipcy for Windows',
     noRelease: {
       title: 'No public release available',
-      body: 'A verified public package is not currently available. You can build Clipcy from source using the instructions below.'
+      body: 'No verified public download is available right now. You can build Clipcy from source by following the steps below.'
     },
     requirements: {
       heading: 'Requirements',
       runtime: 'Windows 10 version 1809+ or Windows 11',
-      runtimeNote: 'Windows App SDK Runtime (bundled in builds)'
+      runtimeNote: 'Windows App SDK Runtime (included with the build)'
     },
     buildInstructions: {
       heading: 'Build from source',
       prerequisites: {
-        heading: 'Development prerequisites',
+        heading: 'What you need to build',
         items: [
           'Windows 10 version 1809+ (build 17763)',
           'Rust 1.75+',
@@ -235,12 +235,12 @@ export default {
       }
     },
     usage: {
-      heading: 'Usage',
+      heading: 'Getting started',
       step1: 'Run Clipcy.exe',
-      step2: 'Icon appears in system tray',
+      step2: 'Look for the Clipcy icon in the system tray',
       step3: 'Press Alt+V to open clipboard history',
       step4: 'Click an item to paste',
-      step5: 'Right-click tray icon for Settings, Clear History, or Exit'
+      step5: 'Right-click the tray icon to open Settings, clear your history, or exit'
     }
   },
 
@@ -249,19 +249,19 @@ export default {
     effectiveDate: 'Effective date',
     appData: {
       heading: 'Clipboard data',
-      clipboard: 'Clipcy captures clipboard content (text, images, file paths) when you copy.',
+      clipboard: 'When you copy, Clipcy records the clipboard content: text, images, and file paths.',
       storage: 'History is stored locally in %LOCALAPPDATA%\\clipcy\\clipcy.db.',
-      previews: 'File previews read the current file at its original path. Files are not archived or copied.',
-      sensitive: 'Clipboard history may contain sensitive content. Clipcy does not encrypt the local database.',
+      previews: 'File previews read files at their original location. Clipcy does not archive or make copies of those files.',
+      sensitive: 'Clipboard history can contain sensitive information. Clipcy does not encrypt its local database.',
       settings: 'Settings are stored locally in %LOCALAPPDATA%\\clipcy\\settings.json.'
     },
     websiteData: {
       heading: 'Website data',
       noAnalytics: 'This website does not use analytics, tracking cookies, or third-party scripts.',
-      noFonts: 'No remote font requests.',
-      noForms: 'No form submission or account creation.',
-      language: 'Language preference is stored locally in your browser (localStorage) and is not sent to any server.',
-      hosting: 'Standard web server access logs may record IP addresses and request paths. Logging policy is determined by the hosting provider.'
+      noFonts: 'The website does not load fonts from remote servers.',
+      noForms: 'There are no forms to submit or accounts to create.',
+      language: 'Your language preference is saved in your browser using localStorage. It is not sent to a server.',
+      hosting: 'The hosting provider may record IP addresses and requested paths in standard web server access logs. Its logging policy determines how those logs are handled.'
     },
     changes: {
       heading: 'Changes to this policy',
@@ -294,7 +294,7 @@ export default {
     logo: 'Clipcy home',
     menu: 'Navigation menu',
     languageMenu: 'Language menu',
-    externalLink: 'Opens in new tab',
+    externalLink: 'Opens in a new tab',
     loading: 'Loading...'
   }
 };

@@ -32,6 +32,10 @@ selection, and plain-text paste. `src/components/FeatureSlideshow.astro` owns th
 layout and illustrative demos; `src/content/feature-slides.mjs` contains their
 copy for all six supported languages.
 
+Vietnamese is the reference for the English content refresh. English copy in
+`src/content/en.mjs` and the English feature slides follows the same product
+details and intent, with idiomatic wording rather than literal translation.
+
 Demos loop while their slide is in view. They
 stop when the page is hidden and display static examples for reduced motion.
 Arrow buttons, progress links, Left/Right and Home/End keys, and touch swipes

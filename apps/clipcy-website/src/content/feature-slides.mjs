@@ -1,10 +1,10 @@
 const copy = {
   en: [
-    ['Search clipboard history for text, images, and files', 'Open Clipcy with Alt+V, then start typing to find an earlier copy. Your clipboard history narrows down as you type, so you can reuse a saved snippet or file path without copying it again from the original application.'],
-    ['Use shortcuts to select faster', 'Move through your clipboard history with the arrow keys. Preview the selected text, image, or file before you paste it, then press Enter to insert it into the application you were using. Press Escape to close the popup.'],
-    ['Pin clipboard items with Ctrl+P', 'Keep frequently used copies at the top of your clipboard history. Select an item and press Ctrl+P to pin it, making reusable text and file paths easier to find. Press Ctrl+P again when you no longer need that item pinned.'],
-    ['Select an item with Ctrl + its number', 'Jump straight to an item by its position. Ctrl+3 selects the third item.'],
-    ['Paste as plain text with Shift+Enter', 'Paste the selected text item without formatting by pressing Shift+Enter. Keep the words and leave the styles behind when moving text between documents, emails, or other applications. Use Enter for the regular paste action.']
+    ['Type to find it', 'Press Alt+V to open Clipcy, then start typing. Your history filters as you type.'],
+    ['Choose faster with the keyboard', 'Use the arrow keys to browse your history, then press Enter to paste your selection.'],
+    ['Keep favorites handy with Ctrl+P', 'Keep frequently used items at the top of your list. Select an item and press Ctrl+P to pin it.'],
+    ['Jump to an item with Ctrl + its number', 'Select an item directly by its position in the list. Ctrl+3 selects the third item.'],
+    ['Skip the formatting with Shift+Enter', 'Paste your selection as plain text. Keep the words, not the formatting.']
   ],
   vi: [
     ['Gõ để tìm kiếm', 'Mở Clipcy bằng Alt+V rồi bắt đầu gõ. Lịch sử được lọc ngay khi bạn nhập.'],
