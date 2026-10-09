@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows-ui"
+$CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows"
 $CargoToml = Join-Path $ProjectRoot "Cargo.toml"
 $PublishDir = Join-Path $ProjectRoot "dist" "windows" $Runtime
 $OutputDir = Join-Path $ProjectRoot "dist" "installer" $Runtime

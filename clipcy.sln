@@ -4,9 +4,9 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "apps", "apps", "{1787FE1D-075E-9E68-7218-25F1BD1BBEAB}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "clipcy-windows-ui", "clipcy-windows-ui", "{792B1FF6-C416-BF86-73B7-C22174DC18ED}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "clipcy-windows", "clipcy-windows", "{792B1FF6-C416-BF86-73B7-C22174DC18ED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clipcy", "apps\clipcy-windows-ui\Clipcy.csproj", "{51F20215-B119-4863-85A1-792DBB5DF2F9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "clipcy-windows", "apps\clipcy-windows\clipcy-windows.csproj", "{51F20215-B119-4863-85A1-792DBB5DF2F9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -93,5 +93,5 @@ flowchart LR
 - `crates/storage/src/async_init_repository.rs`
 - `crates/bridge/src/lib.rs`
 - `crates/core/src/application/clipboard_service.rs`
-- `apps/clipcy-windows-ui/ViewModels/MainViewModel.cs`
-- `apps/clipcy-windows-ui/Services/RustBridgeService.cs`
+- `apps/clipcy-windows/ViewModels/MainViewModel.cs`
+- `apps/clipcy-windows/Services/RustBridgeService.cs`

@@ -5,6 +5,7 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>Clipcy</RootNamespace>
+    <AssemblyName>Clipcy</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AppxManifest>Package.appxmanifest</AppxManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>

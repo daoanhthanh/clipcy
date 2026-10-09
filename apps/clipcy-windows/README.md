@@ -45,12 +45,12 @@ This application uses a "Logic Sandwich" architecture:
 2. Generate C# bindings (requires uniffi-bindgen-cs):
    ```bash
    # Install uniffi-bindgen-cs first
-   uniffi-bindgen-cs --library target/debug/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+   uniffi-bindgen-cs --library target/debug/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
    ```
 
 3. Build the C# application:
    ```bash
-   cd apps/clipcy-windows-ui
+   cd apps/clipcy-windows
    dotnet build
    ```
 
@@ -66,8 +66,8 @@ Manual preview input and native listener lifecycle checks:
 ## Project Structure
 
 ```
-apps/clipcy-windows-ui/
-├── Clipcy.csproj           # Project file
+apps/clipcy-windows/
+├── clipcy-windows.csproj           # Project file
 ├── App.xaml(.cs)           # Application entry point
 ├── MainWindow.xaml(.cs)    # Main popup window
 ├── SettingsWindow.xaml(.cs)# Settings UI

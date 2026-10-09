@@ -58,7 +58,7 @@ if ($versionParts.Length -eq 3) {
 
 $tagVersion = ($Version.Split(".")[0..2] -join ".")
 
-$CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows-ui"
+$CSharpProject = Join-Path $ProjectRoot "apps" "clipcy-windows"
 $PublishRoot = Join-Path $ProjectRoot "dist" "msix" $Runtime
 $AssetsScript = Join-Path $ProjectRoot "scripts" "generate-msix-assets.ps1"
 

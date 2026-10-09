@@ -10,7 +10,7 @@ members = [
     "crates/bridge",
     "apps/clipcy-macos",
     "apps/clipcy-linux",
-    # Note: apps/clipcy-windows-ui is a C# project (not in Cargo workspace)
+    # Note: apps/clipcy-windows is a C# project (not in Cargo workspace)
 ]
 
 [workspace.package]

@@ -23,7 +23,7 @@
 #endif
 
 #ifndef IconPath
-#define IconPath "..\apps\clipcy-windows-ui\Assets\icon.ico"
+#define IconPath "..\apps\clipcy-windows\Assets\icon.ico"
 #endif
 
 #ifndef AppArch

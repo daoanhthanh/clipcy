@@ -32,10 +32,10 @@ cargo build --release -p clipcy-bridge
 # Output: target/release/clipcy_core.dll
 
 # 2. Generate C# bindings (requires uniffi-bindgen-cs v0.10.0+v0.29.4)
-uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
 
 # 3. Build/run WinUI 3 app
-cd apps/clipcy-windows-ui
+cd apps/clipcy-windows
 dotnet run                    # Debug
 dotnet build -c Release       # Release
 ```
@@ -115,7 +115,7 @@ Clipcy uses a "Logic Sandwich" architecture with **Hexagonal (Ports & Adapters)*
 - `BridgeEvent` enum: Events sent to UI (HistoryUpdated, HotkeyTriggered, ThemeChanged, ClipboardChanged, etc.)
 - `UiCallback` trait: Implemented by native UI to receive events
 
-**4. Native UI (`apps/clipcy-windows-ui/`)**
+**4. Native UI (`apps/clipcy-windows/`)**
 - WinUI 3 C# application (MVVM pattern)
 - `Services/RustBridgeService.cs`: Wraps Rust ClipboardEngine
 - `ViewModels/`: MainViewModel, ClipboardItemViewModel
@@ -146,13 +146,13 @@ Clipcy uses a "Logic Sandwich" architecture with **Hexagonal (Ports & Adapters)*
 2. Rebuild bridge: `cargo build --release -p clipcy-bridge`
 3. If UniFFI interface changed (`crates/bridge/src/clipcy_core.udl`), regenerate bindings:
    ```bash
-   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
    ```
-4. Rebuild C# app: `cd apps/clipcy-windows-ui && dotnet build`
+4. Rebuild C# app: `cd apps/clipcy-windows && dotnet build`
 
 ### Modifying Windows UI Only
 
-1. Edit files in `apps/clipcy-windows-ui/`
+1. Edit files in `apps/clipcy-windows/`
 2. Run: `dotnet run` (no Rust rebuild needed)
 
 ### Adding New Content Type
@@ -160,13 +160,13 @@ Clipcy uses a "Logic Sandwich" architecture with **Hexagonal (Ports & Adapters)*
 1. Add variant to `ContentType` in `crates/core/src/domain/clipboard_item.rs`
 2. Update `ContentTypeDto` mapping in `crates/bridge/src/lib.rs`
 3. Handle in `crates/storage/src/sqlite_repository.rs`
-4. Update UI rendering in `apps/clipcy-windows-ui/Services/PreviewService.cs`
+4. Update UI rendering in `apps/clipcy-windows/Services/PreviewService.cs`
 
 ### Adding New Setting
 
 1. Add field to `Settings` in `crates/settings-common/src/lib.rs`
 2. Update `SettingsDto` in `crates/bridge/src/lib.rs`
-3. Add UI control in `apps/clipcy-windows-ui/SettingsWindow.xaml`
+3. Add UI control in `apps/clipcy-windows/SettingsWindow.xaml`
 4. Update `Settings::default()` for default value
 5. Apply in `ClipboardEngine::save_settings()` if runtime change needed
 

@@ -34,7 +34,7 @@ Build steps:
 git clone https://github.com/daoanhthanh/clipcy.git
 cd clipcy
 cargo build --release -p clipcy-bridge
-uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
 .\scripts\build-windows-ui.ps1 -Release
 ```
 

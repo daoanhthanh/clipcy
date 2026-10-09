@@ -2,7 +2,7 @@
 
 ## Logo and Icon
 
-**Source:** `apps/clipcy-windows-ui/Assets/Square150x150Logo.png`  
+**Source:** `apps/clipcy-windows/Assets/Square150x150Logo.png`  
 **Dimensions:** 150×150px  
 **Format:** PNG  
 **Description:** Blue gradient rounded square with white stacked paper layers  
@@ -46,7 +46,7 @@
 
 **Blocked:**
 - Screenshot capture requires:
-  1. Running `apps/clipcy-windows-ui/bin/x64/Debug/net10.0-windows10.0.19041.0/win-x64/Clipcy.exe`
+  1. Running `apps/clipcy-windows/bin/x64/Debug/net10.0-windows10.0.19041.0/win-x64/Clipcy.exe`
   2. Populating safe synthetic clipboard examples
   3. Capturing actual UI states
   4. Optimizing to target formats/sizes

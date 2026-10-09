@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
-$DefaultAssetsDir = Join-Path (Join-Path (Join-Path $ProjectRoot "apps") "clipcy-windows-ui") "Assets"
+$DefaultAssetsDir = Join-Path (Join-Path (Join-Path $ProjectRoot "apps") "clipcy-windows") "Assets"
 $ResolvedIconPath = if ($IconPath) { $IconPath } else { Join-Path $DefaultAssetsDir "icon.ico" }
 $ResolvedAssetsDir = if ($AssetsDir) { $AssetsDir } else { $DefaultAssetsDir }
 

@@ -6,6 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../apps/clipcy-windows-ui/Services/PinnedShortcutStore.cs" Link="PinnedShortcutStore.cs" />
+    <Compile Include="../../apps/clipcy-windows/Services/PinnedShortcutStore.cs" Link="PinnedShortcutStore.cs" />
   </ItemGroup>
 </Project>

@@ -62,7 +62,7 @@ export const content = {
   supportedPlatforms: ['Windows'],
   plannedPlatforms: ['macOS', 'Linux'],
   
-  // Must match apps/clipcy-windows-ui/Localization/*.json filenames
+  // Must match apps/clipcy-windows/Localization/*.json filenames
   locales: ['en', 'zh-CN', 'ja', 'ru', 'ko', 'vi'],
   
   routes: [

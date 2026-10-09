@@ -4,7 +4,7 @@
 
 Clipcy is a Rust workspace with native UI apps. Key paths:
 - `crates/` Rust libraries (core domain, storage, platform adapters, bridge).
-- `apps/` native UI apps (Windows WinUI app in `apps/clipcy-windows-ui/`; macOS/Linux placeholders).
+- `apps/` native UI apps (Windows WinUI app in `apps/clipcy-windows/`; macOS/Linux placeholders).
 - `scripts/` build and installer automation (PowerShell + Inno Setup).
 - `public/`, `dist/`, `target/` generated assets/build outputs.
 
@@ -22,11 +22,11 @@ Windows UI:
 - `.\scripts\build-windows-ui.ps1` build WinUI app (Debug).
 - `.\scripts\build-windows-ui.ps1 -Release` release build.
 - `.\scripts\build-windows-installer.ps1` build installer (Inno Setup required).
-- `dotnet run` from `apps/clipcy-windows-ui/` for local UI runs.
+- `dotnet run` from `apps/clipcy-windows/` for local UI runs.
 
 Bridge/bindings:
 - `cargo build --release -p clipcy-bridge`
-- `uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings`
+- `uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings`
 
 ## Coding Style & Naming Conventions
 

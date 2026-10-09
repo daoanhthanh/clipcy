@@ -72,7 +72,7 @@ Package.StoreAssociation.xml
 # ===================
 # UniFFI Generated
 # ===================
-apps/clipcy-windows-ui/Bindings/*.cs
+apps/clipcy-windows/Bindings/*.cs
 
 # ===================
 # JS (legacy - kept for reference)

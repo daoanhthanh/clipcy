@@ -39,7 +39,7 @@ graph LR
 - `crates/platform-windows/`: Windows clipboard monitor, hotkey, paste, theme, autostart, history import.
 - `crates/bridge/`: UniFFI interface, DTOs, and `ClipboardEngine`.
 - `crates/settings-common/`: settings schema + cached settings manager.
-- `apps/clipcy-windows-ui/`: WinUI 3 UI (MainWindow, SettingsWindow, tray, preview).
+- `apps/clipcy-windows/`: WinUI 3 UI (MainWindow, SettingsWindow, tray, preview).
 
 ## Core runtime components
 
@@ -91,17 +91,17 @@ graph LR
   - Owns a tokio runtime, settings manager, repository, and platform handlers.
   - Starts background initialization and emits events to UI via `UiCallback`.
 - `crates/bridge/src/clipcy_core.udl`: UniFFI interface definition.
-- `apps/clipcy-windows-ui/Bindings/clipcy_core.cs`: generated bindings.
+- `apps/clipcy-windows/Bindings/clipcy_core.cs`: generated bindings.
 
 ### Windows UI (WinUI 3)
 
-- `apps/clipcy-windows-ui/App.xaml.cs`: app entry point, creates `RustBridgeService` and windows.
-- `apps/clipcy-windows-ui/Services/RustBridgeService.cs`: wrapper around `ClipboardEngine`.
-- `apps/clipcy-windows-ui/MainWindow.xaml(.cs)`: popup history window and keyboard handling.
-- `apps/clipcy-windows-ui/Services/WindowService.cs`: borderless, always-on-top, positioned at cursor.
-- `apps/clipcy-windows-ui/Services/TrayService.cs`: system tray + hotkey handling.
-- `apps/clipcy-windows-ui/Services/PreviewService.cs`: hover preview popup with async full-data load.
-- `apps/clipcy-windows-ui/Services/ThemeManager.cs`: WinUI theme handling (system/light/dark).
+- `apps/clipcy-windows/App.xaml.cs`: app entry point, creates `RustBridgeService` and windows.
+- `apps/clipcy-windows/Services/RustBridgeService.cs`: wrapper around `ClipboardEngine`.
+- `apps/clipcy-windows/MainWindow.xaml(.cs)`: popup history window and keyboard handling.
+- `apps/clipcy-windows/Services/WindowService.cs`: borderless, always-on-top, positioned at cursor.
+- `apps/clipcy-windows/Services/TrayService.cs`: system tray + hotkey handling.
+- `apps/clipcy-windows/Services/PreviewService.cs`: hover preview popup with async full-data load.
+- `apps/clipcy-windows/Services/ThemeManager.cs`: WinUI theme handling (system/light/dark).
 
 ## Runtime lifecycle (startup to ready)
 
@@ -180,9 +180,9 @@ Key code:
 
 - `crates/platform-windows/src/hotkey.rs`
 - `crates/bridge/src/lib.rs`
-- `apps/clipcy-windows-ui/Services/TrayService.cs`
-- `apps/clipcy-windows-ui/Services/WindowService.cs`
-- `apps/clipcy-windows-ui/ViewModels/MainViewModel.cs`
+- `apps/clipcy-windows/Services/TrayService.cs`
+- `apps/clipcy-windows/Services/WindowService.cs`
+- `apps/clipcy-windows/ViewModels/MainViewModel.cs`
 
 ### 3) Search history
 
@@ -216,7 +216,7 @@ sequenceDiagram
 
 Key code:
 
-- `apps/clipcy-windows-ui/ViewModels/MainViewModel.cs`
+- `apps/clipcy-windows/ViewModels/MainViewModel.cs`
 - `crates/bridge/src/lib.rs`
 - `crates/storage/src/sqlite_repository.rs`
 
@@ -256,8 +256,8 @@ sequenceDiagram
 
 Key code:
 
-- `apps/clipcy-windows-ui/Services/PreviewService.cs`
-- `apps/clipcy-windows-ui/Services/PreviewData.cs`
+- `apps/clipcy-windows/Services/PreviewService.cs`
+- `apps/clipcy-windows/Services/PreviewData.cs`
 - `crates/bridge/src/lib.rs`
 
 ### 5) Paste a selected item
@@ -298,7 +298,7 @@ sequenceDiagram
 
 Key code:
 
-- `apps/clipcy-windows-ui/MainWindow.xaml.cs`
+- `apps/clipcy-windows/MainWindow.xaml.cs`
 - `crates/core/src/application/clipboard_service.rs`
 - `crates/platform-windows/src/paste.rs`
 
@@ -313,7 +313,7 @@ Flow:
 
 Key code:
 
-- `apps/clipcy-windows-ui/MainWindow.xaml.cs`
+- `apps/clipcy-windows/MainWindow.xaml.cs`
 - `crates/bridge/src/lib.rs`
 - `crates/storage/src/sqlite_repository.rs`
 
@@ -327,7 +327,7 @@ Flow:
 
 Key code:
 
-- `apps/clipcy-windows-ui/MainWindow.xaml.cs`
+- `apps/clipcy-windows/MainWindow.xaml.cs`
 - `crates/bridge/src/lib.rs`
 - `crates/storage/src/sqlite_repository.rs`
 
@@ -341,7 +341,7 @@ Flow:
 
 Key code:
 
-- `apps/clipcy-windows-ui/Services/TrayService.cs`
+- `apps/clipcy-windows/Services/TrayService.cs`
 - `crates/bridge/src/lib.rs`
 - `crates/storage/src/sqlite_repository.rs`
 
@@ -363,7 +363,7 @@ Notes:
 
 Key code:
 
-- `apps/clipcy-windows-ui/SettingsWindow.xaml.cs`
+- `apps/clipcy-windows/SettingsWindow.xaml.cs`
 - `crates/bridge/src/lib.rs`
 - `crates/settings-common/src/lib.rs`
 
@@ -392,8 +392,8 @@ Flow:
 
 Key code:
 
-- `apps/clipcy-windows-ui/Services/TrayService.cs`
-- `apps/clipcy-windows-ui/App.xaml.cs`
+- `apps/clipcy-windows/Services/TrayService.cs`
+- `apps/clipcy-windows/App.xaml.cs`
 
 ### 12) Theme changes
 
@@ -406,8 +406,8 @@ Flow:
 
 Key code:
 
-- `apps/clipcy-windows-ui/Services/ThemeManager.cs`
-- `apps/clipcy-windows-ui/Services/ThemeListener.cs`
+- `apps/clipcy-windows/Services/ThemeManager.cs`
+- `apps/clipcy-windows/Services/ThemeListener.cs`
 - `crates/platform-windows/src/theme.rs`
 
 ### 13) Autostart
@@ -433,8 +433,8 @@ Flow:
 
 Key code:
 
-- `apps/clipcy-windows-ui/Services/TrayService.cs`
-- `apps/clipcy-windows-ui/Services/RustBridgeService.cs`
+- `apps/clipcy-windows/Services/TrayService.cs`
+- `apps/clipcy-windows/Services/RustBridgeService.cs`
 - `crates/bridge/src/lib.rs`
 
 ## Extension points
@@ -443,7 +443,7 @@ Key code:
   - Update `crates/core/src/domain/content_type.rs` and `crates/core/src/domain/clipboard_item.rs`.
   - Extend DTO mappings in `crates/bridge/src/lib.rs`.
   - Store and search in `crates/storage/src/sqlite_repository.rs`.
-  - Render in `apps/clipcy-windows-ui/Services/PreviewService.cs`.
+  - Render in `apps/clipcy-windows/Services/PreviewService.cs`.
 - Add a new platform:
   - Implement ports in `crates/core/src/ports/`.
   - Create `crates/platform-{os}/` adapters.
@@ -451,4 +451,4 @@ Key code:
   - Build a new native UI under `apps/clipcy-{os}/`.
 - Change the UniFFI API:
   - Edit `crates/bridge/src/clipcy_core.udl` and regenerate bindings.
-  - Update `apps/clipcy-windows-ui/Bindings/clipcy_core.cs`.
+  - Update `apps/clipcy-windows/Bindings/clipcy_core.cs`.

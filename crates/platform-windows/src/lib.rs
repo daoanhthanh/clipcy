@@ -7,7 +7,7 @@
 //! - Theme detection
 //! - Autostart management
 //!
-//! Note: UI is now handled by the native WinUI 3 application (apps/clipcy-windows-ui).
+//! Note: UI is now handled by the native WinUI 3 application (apps/clipcy-windows).
 
 #[cfg(target_os = "windows")]
 mod autostart;

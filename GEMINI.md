@@ -11,11 +11,11 @@ The project follows a "Logic Sandwich" or Hexagonal architecture:
 1.  **Rust Core (`crates/core`)**: Contains the business logic, domain models, and ports (interfaces). It is completely UI-agnostic.
 2.  **Storage (`crates/storage`)**: SQLite implementation for persisting clipboard history.
 3.  **Bridge (`crates/bridge`)**: Defines the interface between Rust and the native UIs using **UniFFI**. It exposes the core logic as a C-compatible library (`clipcy_core.dll`).
-4.  **Native UI (`apps/clipcy-windows-ui`)**: A **WinUI 3** application written in **C# (.NET 8)**. It consumes the Rust logic via generated bindings.
+4.  **Native UI (`apps/clipcy-windows`)**: A **WinUI 3** application written in **C# (.NET 8)**. It consumes the Rust logic via generated bindings.
 
 ### Key Directories
 
-*   **`apps/clipcy-windows-ui/`**: The Windows client application (C#, XAML).
+*   **`apps/clipcy-windows/`**: The Windows client application (C#, XAML).
 *   **`crates/`**: The Rust workspace containing all backend modules.
     *   `bridge/`: UniFFI definitions (`clipcy_core.udl`) and library entry point.
     *   `core/`: Core domain logic (history management, search, etc.).
@@ -63,18 +63,18 @@ If you modify the UniFFI interface (`crates/bridge/src/clipcy_core.udl`):
 ### Running the App
 
 After building, the executable is located at:
-*   **Debug**: `apps/clipcy-windows-ui/bin/Debug/net8.0-windows10.0.17763.0/Clipcy.exe`
-*   **Release**: `apps/clipcy-windows-ui/bin/Release/net8.0-windows10.0.17763.0/win-x64/publish/Clipcy.exe`
+*   **Debug**: `apps/clipcy-windows/bin/Debug/net8.0-windows10.0.17763.0/Clipcy.exe`
+*   **Release**: `apps/clipcy-windows/bin/Release/net8.0-windows10.0.17763.0/win-x64/publish/Clipcy.exe`
 
 ### Common Tasks
 
 *   **Modifying Core Logic**: Edit files in `crates/core`. Run `cargo check` in `crates/` to verify.
-*   **Modifying UI**: Edit `.xaml` and `.cs` files in `apps/clipcy-windows-ui`.
+*   **Modifying UI**: Edit `.xaml` and `.cs` files in `apps/clipcy-windows`.
 *   **Adding a New Feature**:
     1.  Implement logic in `crates/core`.
     2.  Expose it in `crates/bridge/src/clipcy_core.udl` and `lib.rs`.
     3.  Regenerate bindings.
-    4.  Update UI in `apps/clipcy-windows-ui` to use the new API.
+    4.  Update UI in `apps/clipcy-windows` to use the new API.
 
 ## Conventions
 

@@ -63,8 +63,8 @@
 - Optional small LRU cache for thumbnails to avoid repeated decode with bounded memory.
 
 ## Concrete Areas to Change
-- `apps/clipcy-windows-ui/Services/RustBridgeService.cs`: `ClipboardItemViewModel.ThumbnailImage` (remove sync decoding in getter).
-- `apps/clipcy-windows-ui/MainWindow.xaml.cs`: `MapToPreviewData` (remove sync `GetItemData`, use async `LoadFullData`).
+- `apps/clipcy-windows/Services/RustBridgeService.cs`: `ClipboardItemViewModel.ThumbnailImage` (remove sync decoding in getter).
+- `apps/clipcy-windows/MainWindow.xaml.cs`: `MapToPreviewData` (remove sync `GetItemData`, use async `LoadFullData`).
 - Optionally add a small cache in `MainViewModel` or a dedicated image service.
 
 ## Validation

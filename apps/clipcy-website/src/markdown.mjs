@@ -115,7 +115,7 @@ export function renderDownloadMarkdown(locale, catalog, content) {
 3. ${catalog.download.buildInstructions.steps.step3}
 
    \`\`\`bash
-   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
    \`\`\`
 
 4. ${catalog.download.buildInstructions.steps.step4}

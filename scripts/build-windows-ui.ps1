@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $RustProject = $ProjectRoot
-$CSharpProject = Join-Path (Join-Path $ProjectRoot "apps") "clipcy-windows-ui"
+$CSharpProject = Join-Path (Join-Path $ProjectRoot "apps") "clipcy-windows"
 $BindingsDir = Join-Path $CSharpProject "Bindings"
 
 Write-Host "=== Clipcy Windows UI Build ===" -ForegroundColor Cyan

@@ -124,7 +124,7 @@ Outputs:
 Clipcy supports Windows auto-update via MSIX + App Installer. Packages are hosted on GitHub Releases.
 
 #### Required Assets
-MSIX needs these PNGs in `apps/clipcy-windows-ui/Assets/`:
+MSIX needs these PNGs in `apps/clipcy-windows/Assets/`:
 - `StoreLogo.png`
 - `Square44x44Logo.png`
 - `Square150x150Logo.png`
@@ -156,7 +156,7 @@ Secrets required:
 Run the workflow and optionally leave `version` empty to use `Cargo.toml`.
 
 #### Publishing Steps
-1. Ensure `Publisher` in `apps/clipcy-windows-ui/Clipcy.csproj` and `apps/clipcy-windows-ui/Package.appxmanifest` matches your cert subject.
+1. Ensure `Publisher` in `apps/clipcy-windows/clipcy-windows.csproj` and `apps/clipcy-windows/Package.appxmanifest` matches your cert subject.
 2. Build/sign MSIX (local or CI).
 3. Upload `Clipcy.msix` + `Clipcy.appinstaller` to GitHub Release `vX.Y.Z`.
 4. Share the `.appinstaller` URL. Windows will auto-check for updates on launch.
@@ -180,12 +180,12 @@ Note: The Inno Setup installer build is separate and uses EXE publishing. The sc
 2. **Generate C# Bindings**
    ```bash
    # Requires uniffi-bindgen-cs
-   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows-ui/Bindings
+   uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
    ```
 
 3. **Build WinUI 3 App**
    ```bash
-   cd apps/clipcy-windows-ui 
+   cd apps/clipcy-windows 
    dotnet run
    # or for release build
    dotnet build -c Release
@@ -196,7 +196,7 @@ Note: The Inno Setup installer build is separate and uses EXE publishing. The sc
 ```
 clipcy/
 ├── apps/
-│   ├── clipcy-windows-ui/    # WinUI 3 Windows app (C#)
+│   ├── clipcy-windows/    # WinUI 3 Windows app (C#)
 │   ├── clipcy-macos/         # macOS app (placeholder)
 │   └── clipcy-linux/         # Linux app (placeholder)
 ├── crates/
