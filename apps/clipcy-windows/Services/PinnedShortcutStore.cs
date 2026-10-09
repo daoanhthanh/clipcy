@@ -1,9 +1,10 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Clipcy.Services;
 
 /// <summary>Permanent, never-reused numeric codes keyed by clipboard item ID.</summary>
-public sealed class PinnedShortcutStore
+public sealed partial class PinnedShortcutStore
 {
     private readonly string _path;
     private Dictionary<string, long>? _codes;
@@ -15,7 +16,8 @@ public sealed class PinnedShortcutStore
         if (_codes == null)
         {
             _codes = File.Exists(_path)
-                ? JsonSerializer.Deserialize<Dictionary<string, long>>(File.ReadAllText(_path))
+                ? JsonSerializer.Deserialize(
+                    File.ReadAllText(_path), ShortcutJsonContext.Default.DictionaryStringInt64)
                     ?? throw new InvalidDataException("Invalid pinned shortcut file.")
                 : new Dictionary<string, long>();
             if (_codes.Values.Any(code => code <= 0) || _codes.Values.Distinct().Count() != _codes.Count)
@@ -36,11 +38,17 @@ public sealed class PinnedShortcutStore
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(_path))!);
             var temporary = _path + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(updated));
+            File.WriteAllText(temporary,
+                JsonSerializer.Serialize(updated, ShortcutJsonContext.Default.DictionaryStringInt64));
             File.Move(temporary, _path, overwrite: true);
             _codes = updated;
         }
         return _codes;
+    }
+
+    [JsonSerializable(typeof(Dictionary<string, long>))]
+    private partial class ShortcutJsonContext : JsonSerializerContext
+    {
     }
 
     // Left-hand keys first. O/P are reserved prefixes so adding pins never delays a direct key.

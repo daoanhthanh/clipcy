@@ -81,9 +81,25 @@ function Resolve-IsccPath {
         }
     }
 
-    $cmd = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
+    $cmd = Get-Command "ISCC.exe" -CommandType Application -ErrorAction SilentlyContinue
     if ($cmd) {
         return $cmd.Path
+    }
+
+    # Saved PATH entries can be newer than the environment of this terminal.
+    foreach ($scope in @("Process", "User", "Machine")) {
+        $pathValue = [Environment]::GetEnvironmentVariable("Path", $scope)
+        foreach ($entry in ($pathValue -split ';')) {
+            $directory = [Environment]::ExpandEnvironmentVariables($entry.Trim().Trim('"'))
+            if ([string]::IsNullOrWhiteSpace($directory)) {
+                continue
+            }
+
+            $candidate = Join-Path $directory "ISCC.exe"
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                return $candidate
+            }
+        }
     }
 
     $candidates = @(
@@ -179,7 +195,7 @@ if (-not (Test-Path $ExePath)) {
 $AppVersion = if ($Version) { $Version } else { Get-WorkspaceVersion -Path $CargoToml }
 $IsccPath = Resolve-IsccPath -Hint $InnoSetupPath
 if (-not $IsccPath) {
-    throw "Inno Setup compiler not found. Install Inno Setup 6 and ensure ISCC.exe is on PATH, or pass -InnoSetupPath."
+    throw "Inno Setup compiler not found. Install Inno Setup 7 and ensure ISCC.exe is on PATH, or pass -InnoSetupPath."
 }
 
 Write-Host "`n[5/5] Building installer with Inno Setup..." -ForegroundColor Yellow

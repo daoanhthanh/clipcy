@@ -16,6 +16,8 @@ Demos loop while their slide is in view. They
 stop when the page is hidden and display static examples for reduced motion.
 Arrow buttons, progress links, Left/Right and Home/End keys, and touch swipes
 switch features within a single page section.
+The copy columns reserve the tallest slide's height, recalculated on resize
+and after fonts load, so the progress navigation stays aligned between slides.
 Features animate into view and advance every six seconds, looping from the last
 back to the first. Slides enter from right to left; the fifth-to-first transition
 reverses to left to right. Playback pauses while hovering the demo or focusing carousel
@@ -50,6 +52,12 @@ and has an accessible localized label.
 On a first visit, the device appearance determines the initial theme. This theme
 and later explicit choices persist in localStorage under `clipcy-theme` across
 locale and download pages, and synchronize between tabs.
+
+The hero download control offers x64 and ARM64. Browser architecture hints set
+the initial selection, with user-agent detection and an x64 fallback. Manual
+choices take precedence over detection. Until verified release artifacts are
+configured in `src/content.mjs`, the button opens the localized download page
+with the selected `arch` query parameter instead of an unverified installer URL.
 `public/theme.js` applies the theme before rendering. Site colors and both types
 of demo use shared tokens in `src/styles/tokens.css`; themed artwork and panels
 are handled in `src/styles/themes.css`. Feature demos remain display-only.

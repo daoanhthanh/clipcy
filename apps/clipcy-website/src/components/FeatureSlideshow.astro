@@ -233,6 +233,23 @@ const countLabel =
 		...carousel.querySelectorAll<HTMLElement>("[data-feature-slide]"),
 	];
 	let selected = 0;
+	carousel.classList.add('has-stable-navigation');
+	// Reserve the tallest copy column so navigation does not move between slides.
+	const copies = slides.map(slide => slide.querySelector<HTMLElement>('.slide-copy')!);
+	const sizeCopyColumns = () => {
+		carousel.style.removeProperty('--slide-copy-height');
+		const height = Math.max(...copies.map(copy => copy.getBoundingClientRect().height));
+		carousel.style.setProperty('--slide-copy-height', `${height}px`);
+	};
+	let previousWidth = 0;
+	new ResizeObserver(entries => {
+		const width = entries[0].contentRect.width;
+		if (width !== previousWidth) {
+			previousWidth = width;
+			sizeCopyColumns();
+		}
+	}).observe(carousel);
+	document.fonts.ready.then(sizeCopyColumns);
 	const movingContent =
 		".slide-copy > :not(.eyebrow):not(.slide-navigation), .slide-demo";
 	let schedulePlayback = () => {};
@@ -555,7 +572,16 @@ const countLabel =
 		overflow-x: clip;
 	}
 	.feature-slide[hidden] {
-		display: none;
+		display: flex;
+		visibility: hidden;
+		pointer-events: none;
+	}
+	.feature-slideshow.has-stable-navigation { display: grid; }
+	.has-stable-navigation .feature-slide { grid-area: 1 / 1; }
+	.slide-copy {
+		display: flex;
+		flex-direction: column;
+		min-height: var(--slide-copy-height, auto);
 	}
 	.feature-slideshow:focus-visible {
 		outline: 2px solid var(--color-accent);
@@ -565,7 +591,8 @@ const countLabel =
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		margin-top: 36px;
+		margin-top: auto;
+		padding-top: 36px;
 	}
 	.slide-arrow {
 		position: absolute;
@@ -788,7 +815,7 @@ const countLabel =
 			margin-top: 16px;
 		}
 		.slide-navigation {
-			margin-top: 8px;
+			padding-top: 8px;
 			gap: 8px;
 		}
 		.slide-progress {

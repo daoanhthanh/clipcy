@@ -105,7 +105,11 @@ graph TD
 ```
 
 #### Build Installer (Windows)
-Requires Inno Setup 6 (`ISCC.exe` on PATH).
+Requires Inno Setup 6 or later (`ISCC.exe` on PATH).
+
+The script checks the current process PATH and saved user/system PATH entries, including when the terminal predates the installation. Use `-InnoSetupPath` to override compiler discovery.
+
+Release publishing keeps trimming enabled. The WinUI project pins the Windows SDK projection package in `apps/clipcy-windows/clipcy-windows.csproj` to avoid interop trim warnings; update settings, GitHub releases, and pinned shortcuts use source-generated JSON metadata.
 
 ```powershell
 # powershell -ExecutionPolicy Bypass -File scripts/build-windows-installer.ps1

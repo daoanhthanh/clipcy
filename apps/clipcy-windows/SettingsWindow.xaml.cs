@@ -471,7 +471,7 @@ public sealed partial class SettingsWindow : Window
         try
         {
             var json = File.ReadAllText(path);
-            _updateState = JsonSerializer.Deserialize<UpdateState>(json) ?? new UpdateState();
+            _updateState = JsonSerializer.Deserialize(json, UpdateJsonContext.Default.UpdateState) ?? new UpdateState();
         }
         catch
         {
@@ -482,7 +482,7 @@ public sealed partial class SettingsWindow : Window
     private async Task SaveUpdateStateAsync()
     {
         var path = GetUpdateStateFilePath();
-        var json = JsonSerializer.Serialize(_updateState, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(_updateState, UpdateJsonContext.Default.UpdateState);
 
         await _updateStateLock.WaitAsync();
         try
@@ -1209,7 +1209,7 @@ public sealed partial class SettingsWindow : Window
             }
 
             var json = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<GitHubRelease>(json);
+            return JsonSerializer.Deserialize(json, UpdateJsonContext.Default.GitHubRelease);
         }
         catch (Exception ex)
         {
@@ -1276,6 +1276,13 @@ public sealed partial class SettingsWindow : Window
         // Reset theme to default (system)
         ThemeManager.SetTheme(ThemeManager.ParseTheme(_settings.Theme));
         TrySetLanguage(LocalizationService.SystemDefaultLanguageCode);
+    }
+
+    [JsonSourceGenerationOptions(WriteIndented = true)]
+    [JsonSerializable(typeof(UpdateState))]
+    [JsonSerializable(typeof(GitHubRelease))]
+    private partial class UpdateJsonContext : JsonSerializerContext
+    {
     }
 
     private sealed class UpdateState

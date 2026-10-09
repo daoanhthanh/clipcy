@@ -1,0 +1,86 @@
+---
+import { content } from "../content.mjs";
+const { catalog, locale } = Astro.props;
+const labels = {
+	en: "Download architecture",
+	vi: "Kiến trúc bản tải xuống",
+	ja: "ダウンロードのアーキテクチャ",
+	ko: "다운로드 아키텍처",
+	ru: "Архитектура для загрузки",
+	"zh-CN": "下载架构",
+};
+const destinations = Object.fromEntries(
+	["x64", "arm64"].map((architecture) => [
+		architecture,
+		content.hasPublicRelease && content.release?.architecture === architecture
+			? content.release.url
+			: `/${locale}/download/?arch=${architecture}`,
+	]),
+);
+---
+
+<div
+	class="download-control"
+	data-download-control
+	data-destinations={JSON.stringify(destinations)}
+>
+	<a href={destinations.x64} class="btn btn-secondary" data-download-link>
+		{catalog.hero.ctaDownload}<span aria-hidden="true">↓</span>
+	</a>
+	<select aria-label={labels[locale] || labels.en} data-download-architecture>
+		<option value="x64">x64</option>
+		<option value="arm64">ARM64</option>
+	</select>
+</div>
+<style>
+	.download-control {
+		display: inline-flex;
+		align-items: stretch;
+		max-width: 100%;
+	}
+	.download-control .btn {
+		border-radius: var(--radius-md, 8px) 0 0 var(--radius-md, 8px);
+	}
+	select {
+		font: inherit;
+		font-weight: 600;
+		color: var(--color-ink);
+		background: var(--color-surface);
+		border: 1px solid var(--color-line);
+		border-left: 0;
+		border-radius: 0 var(--radius-md, 8px) var(--radius-md, 8px) 0;
+		padding: 0 12px;
+		cursor: pointer;
+	}
+	select:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 3px;
+	}
+</style>
+<script>
+	import { detectArchitecture } from "../download-architecture.mjs";
+	document
+		.querySelectorAll<HTMLElement>("[data-download-control]")
+		.forEach(async (control) => {
+			const select = control.querySelector<HTMLSelectElement>(
+				"[data-download-architecture]",
+			)!;
+			const link = control.querySelector<HTMLAnchorElement>(
+				"[data-download-link]",
+			)!;
+			const destinations = JSON.parse(control.dataset.destinations!);
+			let manuallySelected = false;
+			const sync = () => {
+				link.href = destinations[select.value];
+			};
+			select.addEventListener("change", () => {
+				manuallySelected = true;
+				sync();
+			});
+			const architecture = await detectArchitecture(navigator);
+			if (!manuallySelected) {
+				select.value = architecture;
+				sync();
+			}
+		});
+</script>
