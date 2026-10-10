@@ -1,0 +1,186 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const title = "Privacy Policy - Clipcy";
+const description = "Clipcy Privacy Policy - Local clipboard manager with no data collection";
+const locale = "en";
+---
+
+<Base title={title} description={description} locale={locale} currentPath="/privacy">
+  <article class="privacy-page page-panel">
+    <div class="container privacy-content">
+      <h1>Privacy Policy</h1>
+      <p class="privacy-updated muted">Last updated: October 10, 2026</p>
+
+      <p>Clipcy is a local clipboard manager that runs entirely on your device. Your privacy is our top priority.</p>
+
+      <div class="privacy-highlight">
+        <p><strong>Summary:</strong> Clipcy does not collect, transmit, or share any personal information. All data stays on your device.</p>
+      </div>
+
+      <h2>Data Collection</h2>
+      <p><strong>None.</strong> Clipcy does not collect any personal information, usage data, analytics, telemetry, or crash reports.</p>
+
+      <h2>Data Storage</h2>
+      <p>All clipboard history and settings are stored locally on your device:</p>
+      <ul>
+        <li><code>%LOCALAPPDATA%\clipcy\clipcy.db</code> — Clipboard history database (SQLite)</li>
+        <li><code>%LOCALAPPDATA%\clipcy\settings.json</code> — User preferences</li>
+        <li><code>%LOCALAPPDATA%\clipcy\logs\</code> — Debug logs (local only)</li>
+      </ul>
+      <p><strong>No cloud sync.</strong> Your clipboard data never leaves your device.</p>
+
+      <h2>Network Activity</h2>
+      <p>Clipcy does not connect to the internet. There is no:</p>
+      <ul>
+        <li>Analytics or telemetry</li>
+        <li>Crash reporting</li>
+        <li>Cloud synchronization</li>
+        <li>Remote servers or APIs</li>
+        <li>User accounts or authentication</li>
+      </ul>
+
+      <h2>Permissions and Capabilities</h2>
+      <p>Clipcy requires the following system permissions:</p>
+
+      <h3>Clipboard Access</h3>
+      <p>To save and retrieve clipboard history locally on your device.</p>
+
+      <h3>Global Hotkey Registration</h3>
+      <p>To trigger the app with keyboard shortcuts (default: <code>Alt+V</code>).</p>
+
+      <h3>Auto-start (Optional)</h3>
+      <p>To automatically launch Clipcy on Windows startup. You can disable this in settings.</p>
+
+      <h3>Full Trust Execution (<code>runFullTrust</code>)</h3>
+      <p>Required for:</p>
+      <ul>
+        <li>System-wide hotkey registration</li>
+        <li>Clipboard monitoring</li>
+        <li>Paste operation simulation (Ctrl+V)</li>
+      </ul>
+
+      <h2>Data Retention</h2>
+      <p>You control how long clipboard history is kept:</p>
+      <ul>
+        <li>Configure max history items in settings</li>
+        <li>Clear history anytime from the app</li>
+        <li>Uninstalling Clipcy deletes all stored data</li>
+      </ul>
+
+      <h2>Third-Party Services</h2>
+      <p><strong>None.</strong> Clipcy does not integrate with or transmit data to any third-party services.</p>
+
+      <h2>Children's Privacy</h2>
+      <p>Clipcy does not collect information from anyone, including children under 13.</p>
+
+      <h2>Changes to This Policy</h2>
+      <p>Any updates to this policy will be posted at this URL. Continued use of Clipcy after changes constitutes acceptance.</p>
+
+      <h2>Open Source</h2>
+      <p>Clipcy is open-source software. You can review the source code to verify our privacy claims:</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy</a></p>
+
+      <h2>Contact</h2>
+      <p>For privacy questions or concerns, open an issue on GitHub:</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy/issues" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy/issues</a></p>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .privacy-page {
+    min-height: 100vh;
+    padding: 8rem 0 4rem;
+  }
+
+  .privacy-content {
+    max-width: 800px;
+  }
+
+  .privacy-content h1 {
+    font-size: clamp(2.5rem, 4vw, 3.5rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-updated {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .privacy-content h2 {
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .privacy-content h3 {
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-accent);
+  }
+
+  .privacy-content p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+  }
+
+  .privacy-content ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .privacy-content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-content code {
+    background: var(--color-surface);
+    color: var(--color-accent);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  .privacy-content strong {
+    font-weight: 600;
+  }
+
+  .privacy-content a {
+    color: var(--color-accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .privacy-content a:hover {
+    border-bottom-color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .privacy-highlight {
+    background: var(--color-surface);
+    border-left: 4px solid var(--color-accent-warm);
+    padding: 1.25rem;
+    margin: 2rem 0;
+    border-radius: 4px;
+  }
+
+  .privacy-highlight p {
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .privacy-page {
+      padding: 6rem 0 3rem;
+    }
+
+    .privacy-content h2 {
+      margin-top: 2rem;
+    }
+  }
+</style>
