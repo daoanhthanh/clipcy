@@ -1,0 +1,186 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const title = "개인정보 보호정책 - Clipcy";
+const description = "Clipcy 개인정보 보호정책 - 데이터 수집 없는 로컬 클립보드 관리자";
+const locale = "ko";
+---
+
+<Base title={title} description={description} locale={locale} currentPath="/privacy">
+  <article class="privacy-page page-panel">
+    <div class="container privacy-content">
+      <h1>개인정보 보호정책</h1>
+      <p class="privacy-updated muted">최종 업데이트: 2026년 10월 10일</p>
+
+      <p>Clipcy는 사용자의 기기에서 완전히 작동하는 로컬 클립보드 관리자입니다. 귀하의 개인정보 보호가 최우선입니다.</p>
+
+      <div class="privacy-highlight">
+        <p><strong>요약:</strong> Clipcy는 개인 정보를 수집, 전송 또는 공유하지 않습니다. 모든 데이터는 사용자의 기기에 저장됩니다.</p>
+      </div>
+
+      <h2>데이터 수집</h2>
+      <p><strong>없음.</strong> Clipcy는 개인 정보, 사용 데이터, 분석, 원격 측정 또는 충돌 보고서를 수집하지 않습니다.</p>
+
+      <h2>데이터 저장</h2>
+      <p>모든 클립보드 기록 및 설정은 기기에 로컬로 저장됩니다:</p>
+      <ul>
+        <li><code>%LOCALAPPDATA%\clipcy\clipcy.db</code> — 클립보드 기록 데이터베이스 (SQLite)</li>
+        <li><code>%LOCALAPPDATA%\clipcy\settings.json</code> — 사용자 설정</li>
+        <li><code>%LOCALAPPDATA%\clipcy\logs\</code> — 디버그 로그 (로컬 전용)</li>
+      </ul>
+      <p><strong>클라우드 동기화 없음.</strong> 클립보드 데이터는 기기를 벗어나지 않습니다.</p>
+
+      <h2>네트워크 활동</h2>
+      <p>Clipcy는 인터넷에 연결하지 않습니다. 다음이 없습니다:</p>
+      <ul>
+        <li>분석 또는 원격 측정</li>
+        <li>충돌 보고</li>
+        <li>클라우드 동기화</li>
+        <li>원격 서버 또는 API</li>
+        <li>사용자 계정 또는 인증</li>
+      </ul>
+
+      <h2>권한 및 기능</h2>
+      <p>Clipcy는 다음 시스템 권한이 필요합니다:</p>
+
+      <h3>클립보드 액세스</h3>
+      <p>기기에서 클립보드 기록을 로컬로 저장하고 검색하기 위해.</p>
+
+      <h3>전역 단축키 등록</h3>
+      <p>키보드 단축키(기본값: <code>Alt+V</code>)로 앱을 실행하기 위해.</p>
+
+      <h3>자동 시작 (선택 사항)</h3>
+      <p>Windows 시작 시 Clipcy를 자동으로 실행하기 위해. 설정에서 비활성화할 수 있습니다.</p>
+
+      <h3>전체 신뢰 실행 (<code>runFullTrust</code>)</h3>
+      <p>다음을 위해 필요:</p>
+      <ul>
+        <li>시스템 전체 단축키 등록</li>
+        <li>클립보드 모니터링</li>
+        <li>붙여넣기 작업 시뮬레이션 (Ctrl+V)</li>
+      </ul>
+
+      <h2>데이터 보관</h2>
+      <p>클립보드 기록 보관 기간을 제어할 수 있습니다:</p>
+      <ul>
+        <li>설정에서 최대 기록 항목 수 구성</li>
+        <li>앱에서 언제든지 기록 지우기</li>
+        <li>Clipcy 제거 시 저장된 모든 데이터 삭제</li>
+      </ul>
+
+      <h2>제3자 서비스</h2>
+      <p><strong>없음.</strong> Clipcy는 제3자 서비스와 통합하거나 데이터를 전송하지 않습니다.</p>
+
+      <h2>아동 개인정보 보호</h2>
+      <p>Clipcy는 13세 미만의 어린이를 포함하여 누구로부터도 정보를 수집하지 않습니다.</p>
+
+      <h2>정책 변경</h2>
+      <p>이 정책의 모든 업데이트는 이 URL에 게시됩니다. 변경 후 Clipcy를 계속 사용하면 변경 사항에 동의하는 것으로 간주됩니다.</p>
+
+      <h2>오픈 소스</h2>
+      <p>Clipcy는 오픈 소스 소프트웨어입니다. 개인정보 보호 주장을 확인하기 위해 소스 코드를 검토할 수 있습니다:</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy</a></p>
+
+      <h2>연락처</h2>
+      <p>개인정보 보호에 대한 질문이나 우려 사항이 있으면 GitHub에서 이슈를 열어주세요:</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy/issues" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy/issues</a></p>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .privacy-page {
+    min-height: 100vh;
+    padding: 8rem 0 4rem;
+  }
+
+  .privacy-content {
+    max-width: 800px;
+  }
+
+  .privacy-content h1 {
+    font-size: clamp(2.5rem, 4vw, 3.5rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-updated {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .privacy-content h2 {
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .privacy-content h3 {
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-accent);
+  }
+
+  .privacy-content p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+  }
+
+  .privacy-content ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .privacy-content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-content code {
+    background: var(--color-surface);
+    color: var(--color-accent);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  .privacy-content strong {
+    font-weight: 600;
+  }
+
+  .privacy-content a {
+    color: var(--color-accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .privacy-content a:hover {
+    border-bottom-color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .privacy-highlight {
+    background: var(--color-surface);
+    border-left: 4px solid var(--color-accent-warm);
+    padding: 1.25rem;
+    margin: 2rem 0;
+    border-radius: 4px;
+  }
+
+  .privacy-highlight p {
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .privacy-page {
+      padding: 6rem 0 3rem;
+    }
+
+    .privacy-content h2 {
+      margin-top: 2rem;
+    }
+  }
+</style>

@@ -1,0 +1,186 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const title = "Политика конфиденциальности - Clipcy";
+const description = "Политика конфиденциальности Clipcy - локальный менеджер буфера обмена без сбора данных";
+const locale = "ru";
+---
+
+<Base title={title} description={description} locale={locale} currentPath="/privacy">
+  <article class="privacy-page page-panel">
+    <div class="container privacy-content">
+      <h1>Политика конфиденциальности</h1>
+      <p class="privacy-updated muted">Последнее обновление: 10 октября 2026 г.</p>
+
+      <p>Clipcy — это локальный менеджер буфера обмена, который полностью работает на вашем устройстве. Ваша конфиденциальность для нас первостепенна.</p>
+
+      <div class="privacy-highlight">
+        <p><strong>Краткое содержание:</strong> Clipcy не собирает, не передает и не передает какую-либо личную информацию. Все данные остаются на вашем устройстве.</p>
+      </div>
+
+      <h2>Сбор данных</h2>
+      <p><strong>Отсутствует.</strong> Clipcy не собирает никакой личной информации, данных об использовании, аналитики, телеметрии или отчетов о сбоях.</p>
+
+      <h2>Хранение данных</h2>
+      <p>Вся история буфера обмена и настройки хранятся локально на вашем устройстве:</p>
+      <ul>
+        <li><code>%LOCALAPPDATA%\clipcy\clipcy.db</code> — база данных истории буфера обмена (SQLite)</li>
+        <li><code>%LOCALAPPDATA%\clipcy\settings.json</code> — пользовательские настройки</li>
+        <li><code>%LOCALAPPDATA%\clipcy\logs\</code> — журналы отладки (только локально)</li>
+      </ul>
+      <p><strong>Нет облачной синхронизации.</strong> Данные буфера обмена никогда не покидают ваше устройство.</p>
+
+      <h2>Сетевая активность</h2>
+      <p>Clipcy не подключается к интернету. Отсутствуют:</p>
+      <ul>
+        <li>Аналитика или телеметрия</li>
+        <li>Отчеты о сбоях</li>
+        <li>Облачная синхронизация</li>
+        <li>Удаленные серверы или API</li>
+        <li>Учетные записи пользователей или аутентификация</li>
+      </ul>
+
+      <h2>Разрешения и возможности</h2>
+      <p>Clipcy требуются следующие системные разрешения:</p>
+
+      <h3>Доступ к буферу обмена</h3>
+      <p>Для сохранения и извлечения истории буфера обмена локально на вашем устройстве.</p>
+
+      <h3>Регистрация глобальных горячих клавиш</h3>
+      <p>Для запуска приложения с помощью сочетаний клавиш (по умолчанию: <code>Alt+V</code>).</p>
+
+      <h3>Автозапуск (необязательно)</h3>
+      <p>Для автоматического запуска Clipcy при запуске Windows. Вы можете отключить это в настройках.</p>
+
+      <h3>Выполнение с полным доверием (<code>runFullTrust</code>)</h3>
+      <p>Требуется для:</p>
+      <ul>
+        <li>Регистрации системных горячих клавиш</li>
+        <li>Мониторинга буфера обмена</li>
+        <li>Имитации действий вставки (Ctrl+V)</li>
+      </ul>
+
+      <h2>Хранение данных</h2>
+      <p>Вы контролируете, как долго хранится история буфера обмена:</p>
+      <ul>
+        <li>Настройте максимальное количество элементов истории в настройках</li>
+        <li>Очистите историю в любое время из приложения</li>
+        <li>Удаление Clipcy удаляет все сохраненные данные</li>
+      </ul>
+
+      <h2>Сторонние сервисы</h2>
+      <p><strong>Отсутствуют.</strong> Clipcy не интегрируется и не передает данные каким-либо сторонним сервисам.</p>
+
+      <h2>Конфиденциальность детей</h2>
+      <p>Clipcy не собирает информацию ни от кого, включая детей младше 13 лет.</p>
+
+      <h2>Изменения в этой политике</h2>
+      <p>Любые обновления этой политики будут опубликованы по этому URL. Продолжение использования Clipcy после внесения изменений означает согласие с ними.</p>
+
+      <h2>Открытый исходный код</h2>
+      <p>Clipcy — программное обеспечение с открытым исходным кодом. Вы можете просмотреть исходный код, чтобы проверить наши заявления о конфиденциальности:</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy</a></p>
+
+      <h2>Контакты</h2>
+      <p>По вопросам или проблемам, связанным с конфиденциальностью, откройте issue на GitHub:</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy/issues" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy/issues</a></p>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .privacy-page {
+    min-height: 100vh;
+    padding: 8rem 0 4rem;
+  }
+
+  .privacy-content {
+    max-width: 800px;
+  }
+
+  .privacy-content h1 {
+    font-size: clamp(2.5rem, 4vw, 3.5rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-updated {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .privacy-content h2 {
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .privacy-content h3 {
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-accent);
+  }
+
+  .privacy-content p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+  }
+
+  .privacy-content ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .privacy-content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-content code {
+    background: var(--color-surface);
+    color: var(--color-accent);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  .privacy-content strong {
+    font-weight: 600;
+  }
+
+  .privacy-content a {
+    color: var(--color-accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .privacy-content a:hover {
+    border-bottom-color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .privacy-highlight {
+    background: var(--color-surface);
+    border-left: 4px solid var(--color-accent-warm);
+    padding: 1.25rem;
+    margin: 2rem 0;
+    border-radius: 4px;
+  }
+
+  .privacy-highlight p {
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .privacy-page {
+      padding: 6rem 0 3rem;
+    }
+
+    .privacy-content h2 {
+      margin-top: 2rem;
+    }
+  }
+</style>

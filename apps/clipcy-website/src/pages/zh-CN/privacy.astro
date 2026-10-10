@@ -1,0 +1,186 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const title = "隐私政策 - Clipcy";
+const description = "Clipcy隐私政策 - 不收集数据的本地剪贴板管理器";
+const locale = "zh-CN";
+---
+
+<Base title={title} description={description} locale={locale} currentPath="/privacy">
+  <article class="privacy-page page-panel">
+    <div class="container privacy-content">
+      <h1>隐私政策</h1>
+      <p class="privacy-updated muted">最后更新：2026年10月10日</p>
+
+      <p>Clipcy是一个完全在您的设备上运行的本地剪贴板管理器。您的隐私是我们的首要任务。</p>
+
+      <div class="privacy-highlight">
+        <p><strong>摘要：</strong>Clipcy不收集、传输或共享任何个人信息。所有数据都保存在您的设备上。</p>
+      </div>
+
+      <h2>数据收集</h2>
+      <p><strong>无。</strong>Clipcy不收集任何个人信息、使用数据、分析、遥测或崩溃报告。</p>
+
+      <h2>数据存储</h2>
+      <p>所有剪贴板历史记录和设置都本地存储在您的设备上：</p>
+      <ul>
+        <li><code>%LOCALAPPDATA%\clipcy\clipcy.db</code> — 剪贴板历史数据库（SQLite）</li>
+        <li><code>%LOCALAPPDATA%\clipcy\settings.json</code> — 用户偏好设置</li>
+        <li><code>%LOCALAPPDATA%\clipcy\logs\</code> — 调试日志（仅本地）</li>
+      </ul>
+      <p><strong>无云同步。</strong>您的剪贴板数据永远不会离开您的设备。</p>
+
+      <h2>网络活动</h2>
+      <p>Clipcy不连接互联网。没有：</p>
+      <ul>
+        <li>分析或遥测</li>
+        <li>崩溃报告</li>
+        <li>云同步</li>
+        <li>远程服务器或API</li>
+        <li>用户账户或身份验证</li>
+      </ul>
+
+      <h2>权限和功能</h2>
+      <p>Clipcy需要以下系统权限：</p>
+
+      <h3>剪贴板访问</h3>
+      <p>用于在您的设备上本地保存和检索剪贴板历史记录。</p>
+
+      <h3>全局热键注册</h3>
+      <p>用于通过键盘快捷键触发应用程序（默认：<code>Alt+V</code>）。</p>
+
+      <h3>自动启动（可选）</h3>
+      <p>用于在Windows启动时自动启动Clipcy。您可以在设置中禁用此功能。</p>
+
+      <h3>完全信任执行（<code>runFullTrust</code>）</h3>
+      <p>需要用于：</p>
+      <ul>
+        <li>系统范围的热键注册</li>
+        <li>剪贴板监控</li>
+        <li>模拟粘贴操作（Ctrl+V）</li>
+      </ul>
+
+      <h2>数据保留</h2>
+      <p>您可以控制剪贴板历史记录的保留时间：</p>
+      <ul>
+        <li>在设置中配置最大历史项目数</li>
+        <li>随时从应用程序中清除历史记录</li>
+        <li>卸载Clipcy将删除所有存储的数据</li>
+      </ul>
+
+      <h2>第三方服务</h2>
+      <p><strong>无。</strong>Clipcy不与任何第三方服务集成或传输数据。</p>
+
+      <h2>儿童隐私</h2>
+      <p>Clipcy不收集任何人的信息，包括13岁以下的儿童。</p>
+
+      <h2>政策变更</h2>
+      <p>本政策的任何更新都将发布在此URL上。变更后继续使用Clipcy即表示接受变更。</p>
+
+      <h2>开源</h2>
+      <p>Clipcy是开源软件。您可以查看源代码以验证我们的隐私声明：</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy</a></p>
+
+      <h2>联系方式</h2>
+      <p>如有关于隐私的问题或疑虑，请在GitHub上提交issue：</p>
+      <p><a href="https://github.com/daoanhthanh/clipcy/issues" target="_blank" rel="noopener">github.com/daoanhthanh/clipcy/issues</a></p>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .privacy-page {
+    min-height: 100vh;
+    padding: 8rem 0 4rem;
+  }
+
+  .privacy-content {
+    max-width: 800px;
+  }
+
+  .privacy-content h1 {
+    font-size: clamp(2.5rem, 4vw, 3.5rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-updated {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .privacy-content h2 {
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  .privacy-content h3 {
+    font-size: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-accent);
+  }
+
+  .privacy-content p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+  }
+
+  .privacy-content ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .privacy-content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .privacy-content code {
+    background: var(--color-surface);
+    color: var(--color-accent);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  .privacy-content strong {
+    font-weight: 600;
+  }
+
+  .privacy-content a {
+    color: var(--color-accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .privacy-content a:hover {
+    border-bottom-color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .privacy-highlight {
+    background: var(--color-surface);
+    border-left: 4px solid var(--color-accent-warm);
+    padding: 1.25rem;
+    margin: 2rem 0;
+    border-radius: 4px;
+  }
+
+  .privacy-highlight p {
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .privacy-page {
+      padding: 6rem 0 3rem;
+    }
+
+    .privacy-content h2 {
+      margin-top: 2rem;
+    }
+  }
+</style>

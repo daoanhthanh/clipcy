@@ -708,6 +708,16 @@ kbd {
   font-size: .75rem;
 }
 
+.footer-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.footer-link:hover {
+  opacity: 0.8;
+}
+
 main {
   min-height: 65vh;
 }
