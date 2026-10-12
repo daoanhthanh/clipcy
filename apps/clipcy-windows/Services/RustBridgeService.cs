@@ -440,7 +440,7 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
             if (ContentType == "Html" && Preview == "Table")
                 return LocalizationService.Get("content.table");
             if (ContentType == "Files")
-                return LocalizeFileSummary(Preview);
+                return ExtractFileDisplayName(Preview);
 
             if (string.IsNullOrWhiteSpace(Preview))
             {
@@ -472,6 +472,69 @@ public class ClipboardItemViewModel : INotifyPropertyChanged
     public bool IsTablePreview =>
         (ContentType == "Html" && (Preview == "Table" || Preview.Contains('\t') || Preview.Contains('\n')))
         || (ContentType == "Text" && Preview.Contains('\t'));
+
+    /// <summary>
+    /// Extracts a display name for Files content type.
+    /// For single files, shows drive:\...\filename format. For multiple files, shows localized summary.
+    /// </summary>
+    private static string ExtractFileDisplayName(string preview)
+    {
+        if (string.IsNullOrEmpty(preview))
+            return string.Empty;
+
+        // Check if this is a summary (starts with a digit, like "2 files" or "1 folder")
+        if (preview.Length > 0 && preview[0] >= '0' && preview[0] <= '9')
+        {
+            return LocalizeFileSummary(preview);
+        }
+
+        // Single file path - format as drive:\...\filename
+        try
+        {
+            // Handle both Windows and Unix path separators
+            var lastBackslash = preview.LastIndexOf('\\');
+            var lastForwardSlash = preview.LastIndexOf('/');
+            var lastSeparator = Math.Max(lastBackslash, lastForwardSlash);
+
+            if (lastSeparator < 0)
+            {
+                // No path separator found, return as-is
+                return preview;
+            }
+
+            var filename = preview.Substring(lastSeparator + 1);
+
+            // Extract drive/root for Windows paths (C:\) or Unix paths (/)
+            string root;
+            if (preview.Length >= 3 && preview[1] == ':' && (preview[2] == '\\' || preview[2] == '/'))
+            {
+                // Windows absolute path: C:\...\filename
+                root = preview.Substring(0, 3); // "C:\" or "C:/"
+            }
+            else if (preview.StartsWith("\\\\"))
+            {
+                // UNC path: \\server\...\filename
+                var secondSeparator = preview.IndexOf('\\', 2);
+                root = secondSeparator > 2 ? preview.Substring(0, secondSeparator + 1) : "\\\\";
+            }
+            else if (preview[0] == '/')
+            {
+                // Unix absolute path: /...\filename
+                root = "/";
+            }
+            else
+            {
+                // Relative path or other: just show filename
+                return filename;
+            }
+
+            return $"{root}...\\{filename}";
+        }
+        catch
+        {
+            return preview;
+        }
+    }
 
     private static string LocalizeFileSummary(string preview)
     {
