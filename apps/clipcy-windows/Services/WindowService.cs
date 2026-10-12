@@ -72,6 +72,9 @@ public class WindowService : IWindowService
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS margins);
+
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hwnd);
 
@@ -79,6 +82,15 @@ public class WindowService : IWindowService
     private const int DWMWA_BORDER_COLOR = 34;
     private const int DWMWCP_ROUND = 2;
     private const uint DWMWA_COLOR_NONE = 0xFFFFFFFE;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MARGINS
+    {
+        public int cxLeftWidth;
+        public int cxRightWidth;
+        public int cyTopHeight;
+        public int cyBottomHeight;
+    }
 
     private const int GWL_STYLE = -16;
     private const int GWL_EXSTYLE = -20;
@@ -269,6 +281,27 @@ public class WindowService : IWindowService
 
             uint borderColor = DWMWA_COLOR_NONE;
             DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderColor, sizeof(uint));
+
+            // Enable shadow for Windows 10
+            ApplyWindowShadow(hwnd);
+        }
+        catch { }
+    }
+
+    private void ApplyWindowShadow(IntPtr hwnd)
+    {
+        try
+        {
+            // Extend the window frame into the client area to enable shadow rendering
+            // This works on both Windows 10 and Windows 11
+            var margins = new MARGINS
+            {
+                cxLeftWidth = 1,
+                cxRightWidth = 1,
+                cyTopHeight = 1,
+                cyBottomHeight = 1
+            };
+            DwmExtendFrameIntoClientArea(hwnd, ref margins);
         }
         catch { }
     }
