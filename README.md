@@ -1,6 +1,20 @@
+<div align="center">
+
+<img src="apps/clipcy-windows/Assets/Square150x150Logo.png" alt="Clipcy Logo" width="128" />
+
 # Clipcy
 
-A fast, modern clipboard manager built with a hybrid architecture: Rust backend + native UI.
+**A fast, modern clipboard manager built with a hybrid architecture: Rust backend + native UI.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D4.svg)](https://www.microsoft.com/windows)
+[![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
+
+[Features](#features) • [Installation](#installation) • [Architecture](#architecture) • [Contributing](#contributing)
+
+</div>
+
+---
 
 ## Architecture
 
