@@ -12,8 +12,8 @@ const labels = {
 const destinations = Object.fromEntries(
 	["x64", "arm64"].map((architecture) => [
 		architecture,
-		content.hasPublicRelease && content.release?.architecture === architecture
-			? content.release.url
+		content.hasPublicRelease && content.release?.downloads[architecture]
+			? content.release.downloads[architecture]
 			: `/${locale}/download/?arch=${architecture}`,
 	]),
 );

@@ -1,11 +1,13 @@
 ---
 import Base from '../../layouts/Base.astro';
+import DownloadButton from '../../components/DownloadButton.astro';
+import { content } from '../../content.mjs';
 import catalog from '../../content/ko.mjs';
 ---
 
 <Base 
   title="Download Clipcy"
-  description={catalog.download.noRelease.body}
+  description={catalog.download.heading}
   locale="ko"
   currentPath="/download/"
 >
@@ -14,8 +16,12 @@ import catalog from '../../content/ko.mjs';
       <h1 style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: var(--space-8);">{catalog.download.heading}</h1>
       
       <section style="margin-bottom: var(--space-12);">
-        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-3);">{catalog.download.noRelease.title}</h2>
-        <p class="muted">{catalog.download.noRelease.body}</p>
+        {content.hasPublicRelease ? (
+          <><p>Clipcy {content.release.version}</p><DownloadButton catalog={catalog} locale="ko" /></>
+        ) : (
+          <><h2 style="font-size: 1.5rem; margin-bottom: var(--space-3);">{catalog.download.noRelease.title}</h2>
+        <p class="muted">{catalog.download.noRelease.body}</p></>
+        )}
       </section>
 
       <section id="build">
