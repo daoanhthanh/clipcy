@@ -131,7 +131,9 @@ ${catalog.download.buildInstructions.steps.runNote}
 ## ${catalog.download.noRelease.title}
 
 ${catalog.download.noRelease.body}
-` : '';
+` : Object.entries(content.release.downloads)
+    .map(([architecture, url]) => `- [${architecture === 'arm64' ? 'ARM64' : 'x64'} — ${content.release.version}](${url})`)
+    .join('\n');
 
   return `# ${catalog.download.heading}
 ${noReleaseSection}

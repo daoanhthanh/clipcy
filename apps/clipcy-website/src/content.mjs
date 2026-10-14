@@ -20,11 +20,8 @@
 /**
  * @typedef {Object} ReleaseInfo
  * @property {string} version
- * @property {string} date - ISO date
- * @property {string} url - Direct download URL
+ * @property {Object<string, string>} downloads - Direct download URLs by architecture
  * @property {string} format - 'exe' | 'msix'
- * @property {string} architecture - 'x64' | 'arm64'
- * @property {boolean} signed
  */
 
 /**
@@ -50,9 +47,15 @@ export const content = {
   repositoryOwner: 'daoanhthanh/clipcy',
   siteUrl: 'https://clipcy.dev',
   
-  // No verified public release available during implementation
-  hasPublicRelease: false,
-  release: null,
+  hasPublicRelease: true,
+  release: {
+    version: '0.5.1',
+    format: 'exe',
+    downloads: {
+      x64: 'https://github.com/daoanhthanh/clipcy/releases/download/0.5.1/Clipcy-Setup-0.5.1-x64compatible.exe',
+      arm64: 'https://github.com/daoanhthanh/clipcy/releases/download/0.5.1/Clipcy-Setup-0.5.1-arm64.exe'
+    }
+  },
   
   requirements: {
     os: 'Windows 10 version 1809+ or Windows 11',

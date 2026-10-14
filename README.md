@@ -12,6 +12,8 @@
 
 [Features](#features) • [Installation](#installation) • [Architecture](#architecture) • [Contributing](#contributing)
 
+English | [Tiếng Việt](docs/README.vi.md)
+
 </div>
 
 ---
@@ -95,13 +97,13 @@ graph TD
 ### Requirements
 
 #### Development
-- Windows 10 version 1809+ (build 17763)
+- Windows 10 version 2004+ (build 19041)
 - [Rust](https://rustup.rs/) 1.75+
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Visual Studio 2022 with "Windows App SDK" workload
 
 #### Runtime
-- Windows 10 version 1809+ or Windows 11
+- Windows 10 version 2004+ (build 19041) or Windows 11
 - Windows App SDK Runtime (bundled)
 
 ### Quick Start
@@ -203,7 +205,7 @@ Note: The Inno Setup installer build is separate and uses EXE publishing. The sc
 
 3. **Build WinUI 3 App**
    ```bash
-   cd apps/clipcy-windows 
+   cd apps/clipcy-windows
    dotnet run
    # or for release build
    dotnet build -c Release
@@ -264,7 +266,7 @@ Database: `%LOCALAPPDATA%\clipcy\clipcy.db`
 - Drag the icon to the taskbar
 
 #### App crashes on startup
-- Ensure .NET 8 Runtime is installed
+- Ensure .NET 10 Runtime is installed
 - Check logs in `%LOCALAPPDATA%\clipcy\logs\`
 
 ---
