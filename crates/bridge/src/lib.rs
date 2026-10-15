@@ -280,6 +280,8 @@ pub enum BridgeEvent {
     Ready,
     /// User-facing notification message
     Notification { message: String },
+    /// Capture pause reached the acknowledged worker barrier
+    CapturePausedChanged { paused: bool },
 }
 
 // ============================================
@@ -680,7 +682,12 @@ impl ClipboardEngine {
         #[cfg(target_os = "windows")]
         {
             if let Some(service) = self.clipboard_service.read().as_ref() {
+                let was_paused = service.is_capture_paused();
                 let _ = service.stop_monitoring();
+                if was_paused {
+                    self.ui_handler
+                        .send_event(BridgeEvent::CapturePausedChanged { paused: false });
+                }
             }
             let _ = self.hotkey_handler.unregister_all();
             let _ = self.theme_detector.stop_observing();
@@ -950,5 +957,31 @@ impl ClipboardEngine {
     /// Get app version (from Cargo metadata)
     pub fn get_app_version(&self) -> String {
         env!("CARGO_PKG_VERSION").to_string()
+    }
+
+    /// Pause or resume new clipboard capture. The result is the acknowledged
+    /// worker state. Restart and `stop` return to active capture.
+    pub fn set_capture_paused(&self, paused: bool) -> Result<(), BridgeError> {
+        if !*self.is_running.read() {
+            return Err(BridgeError::NotInitialized);
+        }
+        let Some(service) = self.clipboard_service.read().as_ref().cloned() else {
+            return Err(BridgeError::NotInitialized);
+        };
+        self.runtime
+            .block_on(service.set_capture_paused(paused))
+            .map_err(|e| BridgeError::PlatformError(e.to_string()))?;
+        self.ui_handler
+            .send_event(BridgeEvent::CapturePausedChanged { paused });
+        Ok(())
+    }
+
+    /// Authoritative acknowledged pause state, not the monitor thread liveness.
+    pub fn is_capture_paused(&self) -> bool {
+        self.clipboard_service
+            .read()
+            .as_ref()
+            .map(|service| service.is_capture_paused())
+            .unwrap_or(false)
     }
 }

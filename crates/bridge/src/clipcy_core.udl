@@ -56,6 +56,7 @@ interface BridgeEvent {
     Error(string message);
     Ready();
     Notification(string message);
+    CapturePausedChanged(boolean paused);
 };
 
 // ============================================
@@ -128,4 +129,9 @@ interface ClipboardEngine {
 
     // App info
     string get_app_version();
+
+    [Throws=BridgeError]
+    void set_capture_paused(boolean paused);
+
+    boolean is_capture_paused();
 };
