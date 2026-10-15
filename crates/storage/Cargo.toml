@@ -18,3 +18,5 @@ parking_lot.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+async-trait.workspace = true
+parking_lot.workspace = true

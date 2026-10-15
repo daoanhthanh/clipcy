@@ -37,6 +37,12 @@ impl ClipboardMonitor for TestMonitor {
             Ok(())
         }
     }
+    fn sample_sequence(&self) -> Result<u32> {
+        Ok(1)
+    }
+    fn apply_capture_policy(&self, _: bool, _: u64, _: Option<u32>) -> Result<()> {
+        Ok(())
+    }
 }
 
 struct TestPasteHandler {

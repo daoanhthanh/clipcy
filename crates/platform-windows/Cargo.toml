@@ -36,5 +36,11 @@ once_cell.workspace = true
 image.workspace = true
 chrono.workspace = true
 
+[dev-dependencies]
+clipboard-core = { path = "../core" }
+clipboard-storage = { path = "../storage" }
+tempfile.workspace = true
+tokio.workspace = true
+
 [build-dependencies]
 embed-resource = "3.0"

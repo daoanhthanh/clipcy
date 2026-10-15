@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::mem::size_of;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, AtomicU64, Ordering};
 use std::thread;
 
 use parking_lot::RwLock;
@@ -27,7 +27,7 @@ use windows::core::{PCWSTR, PWSTR};
 
 use clipboard_core::domain::{ClipboardItem, ContentType, html_to_text};
 use clipboard_core::error::{ClipboardError, Result};
-use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor};
+use clipboard_core::ports::{ClipboardCallback, ClipboardMonitor, ClipboardObservation};
 
 use once_cell::sync::Lazy;
 
@@ -53,6 +53,9 @@ pub struct WindowsClipboardMonitor {
     callback: Arc<RwLock<Option<ClipboardCallback>>>,
     // Store HWND as isize to avoid Send/Sync issues with raw pointers
     hwnd: Arc<AtomicIsize>,
+    capture_paused: Arc<AtomicBool>,
+    capture_epoch: Arc<AtomicU64>,
+    resume_baseline: Arc<AtomicU32>,
 }
 
 struct SourceAppInfo {
@@ -66,6 +69,9 @@ impl WindowsClipboardMonitor {
             running: Arc::new(AtomicBool::new(false)),
             callback: Arc::new(RwLock::new(None)),
             hwnd: Arc::new(AtomicIsize::new(0)),
+            capture_paused: Arc::new(AtomicBool::new(false)),
+            capture_epoch: Arc::new(AtomicU64::new(1)),
+            resume_baseline: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -1354,6 +1360,9 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
         let running = Arc::clone(&self.running);
         let callback = Arc::clone(&self.callback);
         let hwnd_store = Arc::clone(&self.hwnd);
+        let capture_paused = Arc::clone(&self.capture_paused);
+        let capture_epoch = Arc::clone(&self.capture_epoch);
+        let resume_baseline = Arc::clone(&self.resume_baseline);
 
         thread::spawn(move || {
             unsafe {
@@ -1396,7 +1405,12 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                 let _ = AddClipboardFormatListener(hwnd);
 
                 // Store context in window
-                let ctx = Box::new((callback.clone(), running.clone()));
+                let ctx = Box::new(MonitorWindowContext {
+                    callback: callback.clone(),
+                    capture_paused,
+                    capture_epoch,
+                    resume_baseline,
+                });
                 SetWindowLongPtrW(hwnd, GWLP_USERDATA, Box::into_raw(ctx) as isize);
 
                 // Message loop - use GetMessageW to block until messages arrive
@@ -1460,6 +1474,42 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
 
     fn on_change(&self, callback: ClipboardCallback) {
         *self.callback.write() = Some(callback);
+    }
+
+    fn sample_sequence(&self) -> Result<u32> {
+        let sequence = unsafe { GetClipboardSequenceNumber() };
+        if sequence == 0 {
+            Err(ClipboardError::ClipboardAccess(
+                "Clipboard sequence unavailable".into(),
+            ))
+        } else {
+            Ok(sequence)
+        }
+    }
+
+    fn apply_capture_policy(
+        &self,
+        paused: bool,
+        epoch: u64,
+        resume_baseline: Option<u32>,
+    ) -> Result<()> {
+        if !paused {
+            if let Some(0) = resume_baseline {
+                return Err(ClipboardError::ClipboardAccess(
+                    "Clipboard sequence unavailable; capture remains paused".into(),
+                ));
+            }
+        }
+        if paused {
+            self.capture_paused.store(true, Ordering::SeqCst);
+            self.capture_epoch.store(epoch, Ordering::SeqCst);
+            self.resume_baseline.store(0, Ordering::SeqCst);
+        } else {
+            self.capture_epoch.store(epoch, Ordering::SeqCst);
+            self.resume_baseline.store(resume_baseline.unwrap_or(0), Ordering::SeqCst);
+            self.capture_paused.store(false, Ordering::SeqCst);
+        }
+        Ok(())
     }
 
     fn get_current(&self) -> Result<Option<ClipboardItem>> {
@@ -1821,6 +1871,13 @@ fn get_png_from_bitmap(hbitmap: HBITMAP) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
     }
 }
 
+struct MonitorWindowContext {
+    callback: Arc<RwLock<Option<ClipboardCallback>>>,
+    capture_paused: Arc<AtomicBool>,
+    capture_epoch: Arc<AtomicU64>,
+    resume_baseline: Arc<AtomicU32>,
+}
+
 unsafe extern "system" fn window_proc(
     hwnd: HWND,
     msg: u32,
@@ -1831,14 +1888,45 @@ unsafe extern "system" fn window_proc(
         match msg {
             WM_CLIPBOARDUPDATE => {
                 tracing::debug!("WM_CLIPBOARDUPDATE received");
-                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
-                    as *const (Arc<RwLock<Option<ClipboardCallback>>>, Arc<AtomicBool>);
+                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *const MonitorWindowContext;
 
                 if !ctx_ptr.is_null() {
-                    let (callback, _) = &*ctx_ptr;
+                    let ctx = &*ctx_ptr;
+                    if ctx.capture_paused.load(Ordering::SeqCst) {
+                        return LRESULT(0);
+                    }
 
-                    // Get current clipboard item (text or image)
+                    let baseline = ctx.resume_baseline.load(Ordering::SeqCst);
+                    let sequence = GetClipboardSequenceNumber();
+                    if baseline != 0 && (sequence == 0 || sequence == baseline) {
+                        tracing::debug!(
+                            sequence,
+                            baseline,
+                            "Clipboard update matches resume baseline; not captured"
+                        );
+                        return LRESULT(0);
+                    }
+
+                    let epoch = ctx.capture_epoch.load(Ordering::SeqCst);
+                    if ctx.capture_paused.load(Ordering::SeqCst) {
+                        return LRESULT(0);
+                    }
+
                     if let Some(item) = WindowsClipboardMonitor::get_current_item() {
+                        let sequence_now = GetClipboardSequenceNumber();
+                        let baseline_now = ctx.resume_baseline.load(Ordering::SeqCst);
+                        let epoch_now = ctx.capture_epoch.load(Ordering::SeqCst);
+                        if ctx.capture_paused.load(Ordering::SeqCst)
+                            || epoch_now != epoch
+                            || (baseline_now != 0
+                                && (sequence_now == 0 || sequence_now == baseline_now))
+                        {
+                            tracing::debug!(
+                                "Clipboard snapshot changed during read; not captured"
+                            );
+                            return LRESULT(0);
+                        }
+
                         tracing::debug!(
                             id = %item.id,
                             content_type = ?item.content_type,
@@ -1846,10 +1934,16 @@ unsafe extern "system" fn window_proc(
                             preview_len = item.preview.len(),
                             thumbnail_len = item.thumbnail.as_ref().map(|t| t.len()).unwrap_or(0),
                             source_app = item.source_app.as_deref(),
+                            epoch,
+                            sequence = sequence_now,
                             "Clipboard item captured"
                         );
-                        if let Some(cb) = callback.read().as_ref() {
-                            cb(item);
+                        if let Some(cb) = ctx.callback.read().as_ref() {
+                            cb(ClipboardObservation {
+                                epoch,
+                                sequence: sequence_now,
+                                item,
+                            });
                         }
                     } else {
                         tracing::debug!("Clipboard update received but no item captured");
@@ -1859,8 +1953,8 @@ unsafe extern "system" fn window_proc(
                 LRESULT(0)
             }
             WM_DESTROY => {
-                let ctx_ptr = GetWindowLongPtrW(hwnd, GWLP_USERDATA)
-                    as *mut (Arc<RwLock<Option<ClipboardCallback>>>, Arc<AtomicBool>);
+                let ctx_ptr =
+                    GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut MonitorWindowContext;
 
                 if !ctx_ptr.is_null() {
                     drop(Box::from_raw(ctx_ptr));

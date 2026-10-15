@@ -7,7 +7,7 @@ mod theme_detector;
 mod ui_handler;
 
 pub use autostart_handler::AutostartHandler;
-pub use clipboard_monitor::{ClipboardCallback, ClipboardMonitor};
+pub use clipboard_monitor::{ClipboardCallback, ClipboardMonitor, ClipboardObservation};
 pub use clipboard_repository::ClipboardRepository;
 pub use hotkey_handler::{HotkeyCallback, HotkeyHandler};
 pub use paste_handler::PasteHandler;

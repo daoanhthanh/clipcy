@@ -1,21 +1,45 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use tokio::runtime::Handle;
 use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
 use crate::domain::{ClipboardItem, Settings};
-use crate::error::Result;
-use crate::ports::{ClipboardMonitor, ClipboardRepository, PasteHandler};
+use crate::error::{ClipboardError, Result};
+use crate::ports::{ClipboardMonitor, ClipboardObservation, ClipboardRepository, PasteHandler};
 
 const DEBOUNCE_DURATION_MS: u64 = 300;
 const PASTE_SUPPRESS_DURATION_MS: u64 = 1000;
 
+struct PublishedCapture {
+    paused: AtomicBool,
+    epoch: AtomicU64,
+    baseline: AtomicU32,
+    acknowledged_paused: AtomicBool,
+}
+
+impl PublishedCapture {
+    fn new() -> Self {
+        Self {
+            paused: AtomicBool::new(false),
+            epoch: AtomicU64::new(1),
+            baseline: AtomicU32::new(0),
+            acknowledged_paused: AtomicBool::new(false),
+        }
+    }
+}
+
 enum DebounceMessage {
-    Item(ClipboardItem),
+    Item(ClipboardObservation),
     Flush(oneshot::Sender<Result<()>>),
+    SetPaused {
+        paused: bool,
+        epoch: u64,
+        response: oneshot::Sender<Result<()>>,
+    },
 }
 
 async fn save_pending_item(
@@ -30,26 +54,31 @@ async fn save_pending_item(
             id = %item.id,
             content_type = ?item.content_type,
             data_len = item.data.len(),
-            preview_len = item.preview.len(),
-            thumbnail_len = item.thumbnail.as_ref().map(|t| t.len()).unwrap_or(0),
-            source_app = item.source_app.as_deref(),
-            "Saving clipboard item"
+            "Saving debounced clipboard item"
         );
         repository.save(&item).await?;
         let pruned = repository.prune(max_items).await?;
-        tracing::debug!(
-            id = %item.id,
-            max_items,
-            pruned,
-            "Clipboard item saved and pruned"
-        );
-        
-        // Notify UI that history changed
+        tracing::debug!(pruned, "Pruned clipboard history after save");
+
         if let Some(callback) = on_change_callback.read().as_ref() {
             callback();
         }
     }
     Ok(())
+}
+
+fn admit_observation(observation: &ClipboardObservation, published: &PublishedCapture) -> bool {
+    if observation.epoch != published.epoch.load(Ordering::SeqCst) {
+        return false;
+    }
+    if published.paused.load(Ordering::SeqCst) {
+        return false;
+    }
+    let baseline = published.baseline.load(Ordering::SeqCst);
+    if baseline != 0 && (observation.sequence == 0 || observation.sequence == baseline) {
+        return false;
+    }
+    true
 }
 
 pub struct ClipboardService {
@@ -61,6 +90,8 @@ pub struct ClipboardService {
     suppress_until: Arc<RwLock<Option<Instant>>>,
     runtime_handle: Handle,
     on_change_callback: Arc<RwLock<Option<Box<dyn Fn() + Send + Sync>>>>,
+    published: Arc<PublishedCapture>,
+    policy_lock: Mutex<()>,
 }
 
 impl ClipboardService {
@@ -80,11 +111,22 @@ impl ClipboardService {
             suppress_until: Arc::new(RwLock::new(None)),
             runtime_handle,
             on_change_callback: Arc::new(RwLock::new(None)),
+            published: Arc::new(PublishedCapture::new()),
+            policy_lock: Mutex::new(()),
         }
     }
 
     pub fn start_monitoring(&self) -> Result<()> {
+        let _guard = self.policy_lock.lock();
         tracing::info!("Starting clipboard monitoring");
+        self.published.paused.store(false, Ordering::SeqCst);
+        self.published.epoch.store(1, Ordering::SeqCst);
+        self.published.baseline.store(0, Ordering::SeqCst);
+        self.published
+            .acknowledged_paused
+            .store(false, Ordering::SeqCst);
+        self.monitor.apply_capture_policy(false, 1, None)?;
+
         let (tx, rx) = mpsc::unbounded_channel::<DebounceMessage>();
         *self.debounce_tx.write() = Some(tx.clone());
 
@@ -92,13 +134,21 @@ impl ClipboardService {
         let settings = Arc::clone(&self.settings);
         let suppress_until = Arc::clone(&self.suppress_until);
         let on_change_callback = Arc::clone(&self.on_change_callback);
+        let published = Arc::clone(&self.published);
 
-        self.spawn_debounce_task(rx, repository, settings, suppress_until, on_change_callback);
+        self.spawn_debounce_task(
+            rx,
+            repository,
+            settings,
+            suppress_until,
+            on_change_callback,
+            published,
+        );
 
         let debounce_tx = Arc::clone(&self.debounce_tx);
-        self.monitor.on_change(Box::new(move |item| {
+        self.monitor.on_change(Box::new(move |observation| {
             if let Some(tx) = debounce_tx.read().as_ref() {
-                let _ = tx.send(DebounceMessage::Item(item));
+                let _ = tx.send(DebounceMessage::Item(observation));
             }
         }));
 
@@ -112,10 +162,12 @@ impl ClipboardService {
         settings: Arc<RwLock<Settings>>,
         suppress_until: Arc<RwLock<Option<Instant>>>,
         on_change_callback: Arc<RwLock<Option<Box<dyn Fn() + Send + Sync>>>>,
+        published: Arc<PublishedCapture>,
     ) {
         self.runtime_handle.spawn(async move {
             let debounce_duration = Duration::from_millis(DEBOUNCE_DURATION_MS);
             let mut pending_item: Option<ClipboardItem> = None;
+            let mut pending_epoch: u64 = 0;
 
             loop {
                 let timeout = if pending_item.is_some() {
@@ -126,7 +178,16 @@ impl ClipboardService {
 
                 match timeout.await {
                     Ok(Some(message)) => match message {
-                        DebounceMessage::Item(item) => {
+                        DebounceMessage::Item(observation) => {
+                            if !admit_observation(&observation, &published) {
+                                tracing::debug!(
+                                    epoch = observation.epoch,
+                                    sequence = observation.sequence,
+                                    "Clipboard observation rejected by capture gate"
+                                );
+                                continue;
+                            }
+
                             let suppress_deadline = *suppress_until.read();
                             if let Some(deadline) = suppress_deadline {
                                 if Instant::now() <= deadline {
@@ -138,6 +199,7 @@ impl ClipboardService {
                                 *suppress_until.write() = None;
                             }
 
+                            let item = observation.item;
                             tracing::debug!(
                                 id = %item.id,
                                 content_type = ?item.content_type,
@@ -147,21 +209,55 @@ impl ClipboardService {
                                 source_app = item.source_app.as_deref(),
                                 "Clipboard item queued"
                             );
+                            pending_epoch = observation.epoch;
                             pending_item = Some(item);
                         }
                         DebounceMessage::Flush(response) => {
                             tracing::debug!("Flush requested for pending clipboard item");
-                            let result =
-                                save_pending_item(&mut pending_item, &repository, &settings, &on_change_callback).await;
+                            if published.paused.load(Ordering::SeqCst) {
+                                pending_item = None;
+                                let _ = response.send(Ok(()));
+                                continue;
+                            }
+                            let result = save_pending_item(
+                                &mut pending_item,
+                                &repository,
+                                &settings,
+                                &on_change_callback,
+                            )
+                            .await;
                             let _ = response.send(result);
+                        }
+                        DebounceMessage::SetPaused {
+                            paused,
+                            epoch,
+                            response,
+                        } => {
+                            if paused || pending_epoch != epoch {
+                                pending_item = None;
+                            }
+                            published
+                                .acknowledged_paused
+                                .store(paused, Ordering::SeqCst);
+                            tracing::debug!(paused, epoch, "Capture pause barrier acknowledged");
+                            let _ = response.send(Ok(()));
                         }
                     },
                     Ok(None) => {
                         break;
                     }
                     Err(_) => {
-                        if let Err(e) =
-                            save_pending_item(&mut pending_item, &repository, &settings, &on_change_callback).await
+                        if published.paused.load(Ordering::SeqCst) {
+                            pending_item = None;
+                            continue;
+                        }
+                        if let Err(e) = save_pending_item(
+                            &mut pending_item,
+                            &repository,
+                            &settings,
+                            &on_change_callback,
+                        )
+                        .await
                         {
                             tracing::error!("Failed to save clipboard item: {}", e);
                         }
@@ -172,8 +268,115 @@ impl ClipboardService {
     }
 
     pub fn stop_monitoring(&self) -> Result<()> {
+        let _guard = self.policy_lock.lock();
         *self.debounce_tx.write() = None;
+        self.published.paused.store(false, Ordering::SeqCst);
+        self.published.epoch.store(1, Ordering::SeqCst);
+        self.published.baseline.store(0, Ordering::SeqCst);
+        self.published
+            .acknowledged_paused
+            .store(false, Ordering::SeqCst);
+        let _ = self.monitor.apply_capture_policy(false, 1, None);
         self.monitor.stop()
+    }
+
+    pub fn is_capture_paused(&self) -> bool {
+        self.published.acknowledged_paused.load(Ordering::SeqCst)
+    }
+
+    /// Pause or resume new capture. Restart leaves capture active.
+    ///
+    /// Pause disables native decode immediately, drops queued and pending
+    /// ordinary content, and acknowledges only after the worker has settled
+    /// that barrier. Resume samples the current sequence as a noncapturable
+    /// baseline and does not import the clipboard copied while paused. An
+    /// unavailable sequence leaves the previous policy unchanged.
+    pub async fn set_capture_paused(&self, paused: bool) -> Result<()> {
+        let _guard = self.policy_lock.lock();
+        let sender = self.debounce_tx.read().clone().ok_or_else(|| {
+            ClipboardError::PlatformNotSupported("monitoring is not running".into())
+        })?;
+
+        let previous_paused = self.published.paused.load(Ordering::SeqCst);
+        let previous_epoch = self.published.epoch.load(Ordering::SeqCst);
+        let previous_baseline_raw = self.published.baseline.load(Ordering::SeqCst);
+        let previous_baseline = (previous_baseline_raw != 0).then_some(previous_baseline_raw);
+
+        let epoch = previous_epoch.saturating_add(1);
+        let resume_baseline = if paused {
+            None
+        } else {
+            match self.monitor.sample_sequence() {
+                Ok(sequence) if sequence != 0 => Some(sequence),
+                _ => {
+                    return Err(ClipboardError::ClipboardAccess(
+                        "Clipboard sequence unavailable; capture remains paused".into(),
+                    ));
+                }
+            }
+        };
+
+        if let Err(error) = self
+            .monitor
+            .apply_capture_policy(paused, epoch, resume_baseline)
+        {
+            let _ = self.monitor.apply_capture_policy(
+                previous_paused,
+                previous_epoch,
+                previous_baseline,
+            );
+            return Err(error);
+        }
+
+        self.published
+            .baseline
+            .store(resume_baseline.unwrap_or(0), Ordering::SeqCst);
+        self.published.epoch.store(epoch, Ordering::SeqCst);
+        self.published.paused.store(paused, Ordering::SeqCst);
+
+        let (response_tx, response_rx) = oneshot::channel();
+        if sender
+            .send(DebounceMessage::SetPaused {
+                paused,
+                epoch,
+                response: response_tx,
+            })
+            .is_err()
+        {
+            let _ = self.monitor.apply_capture_policy(
+                previous_paused,
+                previous_epoch,
+                previous_baseline,
+            );
+            self.published.paused.store(previous_paused, Ordering::SeqCst);
+            self.published.epoch.store(previous_epoch, Ordering::SeqCst);
+            self.published
+                .baseline
+                .store(previous_baseline.unwrap_or(0), Ordering::SeqCst);
+            return Err(ClipboardError::PlatformNotSupported(
+                "capture worker is not running".into(),
+            ));
+        }
+
+        match response_rx.await {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(error)) => {
+                let _ = self.monitor.apply_capture_policy(
+                    previous_paused,
+                    previous_epoch,
+                    previous_baseline,
+                );
+                self.published.paused.store(previous_paused, Ordering::SeqCst);
+                self.published.epoch.store(previous_epoch, Ordering::SeqCst);
+                self.published
+                    .baseline
+                    .store(previous_baseline.unwrap_or(0), Ordering::SeqCst);
+                Err(error)
+            }
+            Err(_) => Err(ClipboardError::PlatformNotSupported(
+                "capture worker dropped the pause acknowledgement".into(),
+            )),
+        }
     }
 
     pub async fn flush_pending(&self) -> Result<()> {
@@ -260,7 +463,6 @@ impl ClipboardService {
             }
         }
 
-        // Prune to maintain max items limit
         if let Err(e) = self.repository.prune(max_items).await {
             tracing::warn!("Failed to prune history after import: {}", e);
         }
