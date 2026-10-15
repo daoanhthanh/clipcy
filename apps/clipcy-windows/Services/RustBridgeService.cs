@@ -17,7 +17,7 @@ internal class RustBridgeService : IDisposable, UiCallback
     private bool _disposed;
     private DispatcherQueue? _dispatcherQueue;
     private ClipboardEngine? _engine;
-
+    private bool _engineReady;
     // Event handlers for Rust callbacks
     public event Action? OnHistoryUpdated;
     public event Action? OnHotkeyTriggered;
@@ -26,6 +26,7 @@ internal class RustBridgeService : IDisposable, UiCallback
     public event Action<string>? OnNotification;
     public event Action? OnReady;
     public event Action<bool>? OnPreviewPanelChanged;
+    public event Action<bool>? OnCapturePausedChanged;
 
     public RustBridgeService()
     {
@@ -99,7 +100,15 @@ internal class RustBridgeService : IDisposable, UiCallback
                 break;
 
             case BridgeEvent.Ready:
-                DispatchEvent(() => OnReady?.Invoke());
+                DispatchEvent(() =>
+                {
+                    _engineReady = true;
+                    OnReady?.Invoke();
+                });
+                break;
+
+            case BridgeEvent.CapturePausedChanged pausedEvent:
+                DispatchEvent(() => OnCapturePausedChanged?.Invoke(pausedEvent.paused));
                 break;
         }
     }
@@ -360,6 +369,31 @@ internal class RustBridgeService : IDisposable, UiCallback
             Pinned = dto.pinned,
             HasMultipleLines = dto.hasNewline,
         };
+    }
+    /// <summary>
+    /// True after the Rust engine has emitted Ready. Survives a subscriber that attached late.
+    /// </summary>
+    public bool IsEngineReady => _engineReady;
+
+    /// <summary>
+    /// Authoritative acknowledged capture-pause state. False before the engine is ready.
+    /// </summary>
+    public bool IsCapturePaused()
+    {
+        if (_engine == null)
+            return false;
+        return _engine.IsCapturePaused();
+    }
+
+    /// <summary>
+    /// Pause or resume new capture. Throws if the engine is not ready or the barrier fails.
+    /// Does not change acknowledged state on failure.
+    /// </summary>
+    public void SetCapturePaused(bool paused)
+    {
+        if (_engine == null)
+            throw new InvalidOperationException("Engine not initialized");
+        _engine.SetCapturePaused(paused);
     }
 
     public void Dispose()

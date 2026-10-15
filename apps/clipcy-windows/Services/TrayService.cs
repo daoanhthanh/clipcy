@@ -16,6 +16,14 @@ public class TrayService : IDisposable
     private readonly MainWindow _mainWindow;
     private TaskbarIcon? _trayIcon;
     private MenuFlyout? _contextMenu;
+    private MenuFlyoutItem? _showItem;
+    private MenuFlyoutItem? _pauseItem;
+    private MenuFlyoutItem? _clearItem;
+    private MenuFlyoutItem? _settingsItem;
+    private MenuFlyoutItem? _exitItem;
+    private bool _pauseTransition;
+    private bool _engineReady;
+    private bool _acknowledgedPaused;
     private bool _disposed;
 
     [DllImport("user32.dll")]
@@ -55,6 +63,10 @@ public class TrayService : IDisposable
             App.Bridge.OnHotkeyTriggered += OnHotkeyTriggered;
             App.Bridge.OnHistoryUpdated += OnHistoryUpdated;
             App.Bridge.OnNotification += OnNotification;
+            App.Bridge.OnReady += OnEngineReady;
+            App.Bridge.OnCapturePausedChanged += OnCapturePausedChanged;
+            if (App.Bridge.IsEngineReady)
+                OnEngineReady();
         }
     }
 
@@ -65,33 +77,45 @@ public class TrayService : IDisposable
         // PopupMenu mode only invokes MenuFlyoutItem.Command (Click handlers are ignored).
         _contextMenu = new MenuFlyout();
 
-        _contextMenu.Items.Add(new MenuFlyoutItem
+        _showItem = new MenuFlyoutItem
         {
             Text = LocalizationService.Get("tray.show"),
             Command = new RelayCommand(ShowMainWindow),
-        });
+        };
+        _contextMenu.Items.Add(_showItem);
+
+        _pauseItem = new MenuFlyoutItem
+        {
+            Text = LocalizationService.Get("tray.pause"),
+            IsEnabled = false,
+            Command = new RelayCommand(() => _ = TogglePauseAsync()),
+        };
+        _contextMenu.Items.Add(_pauseItem);
 
         _contextMenu.Items.Add(new MenuFlyoutSeparator());
 
-        _contextMenu.Items.Add(new MenuFlyoutItem
+        _clearItem = new MenuFlyoutItem
         {
             Text = LocalizationService.Get("tray.clear_history"),
             Command = new RelayCommand(ClearHistory),
-        });
+        };
+        _contextMenu.Items.Add(_clearItem);
 
-        _contextMenu.Items.Add(new MenuFlyoutItem
+        _settingsItem = new MenuFlyoutItem
         {
             Text = LocalizationService.Get("common.settings"),
             Command = new RelayCommand(OpenSettings),
-        });
+        };
+        _contextMenu.Items.Add(_settingsItem);
 
         _contextMenu.Items.Add(new MenuFlyoutSeparator());
 
-        _contextMenu.Items.Add(new MenuFlyoutItem
+        _exitItem = new MenuFlyoutItem
         {
             Text = LocalizationService.Get("tray.exit"),
             Command = new RelayCommand(ExitApplication),
-        });
+        };
+        _contextMenu.Items.Add(_exitItem);
 
         _trayIcon = new TaskbarIcon
         {
@@ -118,11 +142,15 @@ public class TrayService : IDisposable
         if (_trayIcon == null || _contextMenu == null)
             return;
 
-        ((MenuFlyoutItem)_contextMenu.Items[0]).Text = LocalizationService.Get("tray.show");
-        ((MenuFlyoutItem)_contextMenu.Items[2]).Text = LocalizationService.Get("tray.clear_history");
-        ((MenuFlyoutItem)_contextMenu.Items[3]).Text = LocalizationService.Get("common.settings");
-        ((MenuFlyoutItem)_contextMenu.Items[5]).Text = LocalizationService.Get("tray.exit");
-        _trayIcon.ToolTipText = LocalizationService.Get("tray.tooltip");
+        if (_showItem != null)
+            _showItem.Text = LocalizationService.Get("tray.show");
+        if (_clearItem != null)
+            _clearItem.Text = LocalizationService.Get("tray.clear_history");
+        if (_settingsItem != null)
+            _settingsItem.Text = LocalizationService.Get("common.settings");
+        if (_exitItem != null)
+            _exitItem.Text = LocalizationService.Get("tray.exit");
+        ApplyPausePresentation(_acknowledgedPaused);
     }
 
     private void OnThemeChanged(AppTheme theme)
@@ -309,6 +337,75 @@ public class TrayService : IDisposable
         );
     }
 
+    private void OnEngineReady()
+    {
+        _engineReady = true;
+        _acknowledgedPaused = App.Bridge?.IsCapturePaused() ?? false;
+        ApplyPausePresentation(_acknowledgedPaused);
+        if (_pauseItem != null && !_pauseTransition)
+            _pauseItem.IsEnabled = true;
+    }
+
+    private void OnCapturePausedChanged(bool paused)
+    {
+        _acknowledgedPaused = paused;
+        ApplyPausePresentation(paused);
+        if (_pauseItem != null && !_pauseTransition)
+            _pauseItem.IsEnabled = _engineReady;
+    }
+
+    private void ApplyPausePresentation(bool paused)
+    {
+        if (_pauseItem != null)
+            _pauseItem.Text = LocalizationService.Get(paused ? "tray.resume" : "tray.pause");
+        if (_trayIcon != null)
+            _trayIcon.ToolTipText = LocalizationService.Get(
+                paused ? "tray.tooltip_paused" : "tray.tooltip"
+            );
+    }
+
+    private async Task TogglePauseAsync()
+    {
+        if (_pauseItem == null || App.Bridge == null || !_engineReady || _pauseTransition)
+            return;
+
+        _pauseTransition = true;
+        _pauseItem.IsEnabled = false;
+        var target = !_acknowledgedPaused;
+        try
+        {
+            await Task.Run(() => App.Bridge.SetCapturePaused(target));
+        }
+        catch (Exception ex)
+        {
+            var message = LocalizationService.Format("tray.pause_error", ex.Message);
+            _mainWindow.DispatcherQueue.TryEnqueue(() =>
+                _trayIcon?.ShowNotification(
+                    "Clipcy",
+                    message,
+                    NotificationIcon.Error,
+                    customIconHandle: null,
+                    largeIcon: false,
+                    sound: true,
+                    respectQuietTime: true,
+                    realtime: true,
+                    timeout: null
+                )
+            );
+        }
+        finally
+        {
+            _pauseTransition = false;
+            _mainWindow.DispatcherQueue.TryEnqueue(() =>
+            {
+                _acknowledgedPaused = App.Bridge?.IsCapturePaused() ?? _acknowledgedPaused;
+                ApplyPausePresentation(_acknowledgedPaused);
+                if (_pauseItem != null)
+                    _pauseItem.IsEnabled = _engineReady;
+            });
+        }
+    }
+
     private void ShowMainWindow()
     {
         _mainWindow.ShowAtCursor();
@@ -353,6 +450,8 @@ public class TrayService : IDisposable
             App.Bridge.OnHotkeyTriggered -= OnHotkeyTriggered;
             App.Bridge.OnHistoryUpdated -= OnHistoryUpdated;
             App.Bridge.OnNotification -= OnNotification;
+            App.Bridge.OnReady -= OnEngineReady;
+            App.Bridge.OnCapturePausedChanged -= OnCapturePausedChanged;
         }
 
         _trayIcon?.Dispose();
