@@ -524,7 +524,7 @@ impl SqliteClipboardRepository {
 
     pub async fn get_all_metadata(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned FROM clipboard_items ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC, id ASC LIMIT $1"
+            "SELECT id, content_type, preview, thumbnail, source_app, source_app_icon, created_at, last_used_at, pinned FROM clipboard_items ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC, id ASC LIMIT ($1 + (SELECT COUNT(*) FROM clipboard_items WHERE pinned != 0))"
         )
             .bind(limit as i64)
             .fetch_all(&self.pool)
@@ -728,7 +728,7 @@ impl ClipboardRepository for SqliteClipboardRepository {
 
     async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>> {
         let rows = sqlx::query(
-            "SELECT * FROM clipboard_items ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC, id ASC LIMIT $1",
+            "SELECT * FROM clipboard_items ORDER BY pinned DESC, CASE WHEN pinned != 0 THEN pinned_at ELSE last_used_at END DESC, id ASC LIMIT ($1 + (SELECT COUNT(*) FROM clipboard_items WHERE pinned != 0))",
         )
         .bind(limit as i64)
         .fetch_all(&self.pool)

@@ -13,7 +13,7 @@ pub trait ClipboardRepository: Send + Sync {
     /// Get item by ID
     async fn get_by_id(&self, id: Uuid) -> Result<Option<ClipboardItem>>;
 
-    /// Get all items, ordered by last_used_at DESC
+    /// Get all pinned items followed by up to limit unpinned items, newest first in each group.
     async fn get_all(&self, limit: usize) -> Result<Vec<ClipboardItem>>;
 
     /// Update last-used timestamp for an item
@@ -31,7 +31,7 @@ pub trait ClipboardRepository: Send + Sync {
     /// Get total count of items
     async fn count(&self) -> Result<usize>;
 
-    /// Delete oldest non-pinned items to maintain max_items limit
+    /// Keep at most max_items unpinned items; never prune pinned items.
     async fn prune(&self, max_items: usize) -> Result<usize>;
 
     /// Update pinned status

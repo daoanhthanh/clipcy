@@ -77,6 +77,72 @@ async fn test_prune() {
 }
 
 #[tokio::test]
+async fn test_history_limit_counts_only_unpinned_items() {
+    let dir = tempdir().unwrap();
+    let repo = SqliteClipboardRepository::new(dir.path().join("test.db"))
+        .await
+        .unwrap();
+
+    let mut pinned_ids = Vec::new();
+    for i in 0..3 {
+        let mut item = ClipboardItem::new_text(format!("Old pinned {i}"));
+        item.last_used_at = chrono::Utc::now() - chrono::Duration::days(30);
+        repo.save(&item).await.unwrap();
+        repo.set_pinned(item.id, true).await.unwrap();
+        pinned_ids.push(item.id);
+    }
+
+    let mut unpinned_ids = Vec::new();
+    let now = chrono::Utc::now();
+    for i in 0..4 {
+        let mut item = ClipboardItem::new_text(format!("Recent unpinned {i}"));
+        item.last_used_at = now + chrono::Duration::seconds(i);
+        repo.save(&item).await.unwrap();
+        unpinned_ids.push(item.id);
+    }
+
+    // Reading must include every pin even before pruning has run.
+    let items = repo.get_all(2).await.unwrap();
+    assert_eq!(items.len(), 5);
+    assert!(items[..3].iter().all(|item| item.pinned));
+    for id in &pinned_ids {
+        assert!(items[..3].iter().any(|item| item.id == *id));
+    }
+    assert_eq!(
+        items[3..].iter().map(|item| item.id).collect::<Vec<_>>(),
+        unpinned_ids[2..].iter().rev().copied().collect::<Vec<_>>()
+    );
+    let expected: Vec<_> = items.iter().map(|item| item.id).collect();
+    assert_eq!(
+        repo.get_all_metadata(2).await.unwrap().iter().map(|item| item.id).collect::<Vec<_>>(),
+        expected
+    );
+
+    assert_eq!(repo.prune(2).await.unwrap(), 2);
+    assert_eq!(repo.count().await.unwrap(), 5);
+    assert_eq!(
+        repo.get_all(2).await.unwrap().iter().map(|item| item.id).collect::<Vec<_>>(),
+        expected
+    );
+    for id in &unpinned_ids[..2] {
+        assert!(repo.get_by_id(*id).await.unwrap().is_none());
+    }
+
+    let pins = repo.get_all(0).await.unwrap();
+    assert_eq!(pins.len(), 3);
+    assert!(pins.iter().all(|item| item.pinned));
+    for id in &pinned_ids {
+        assert!(pins.iter().any(|item| item.id == *id));
+    }
+    assert_eq!(repo.get_all_metadata(0).await.unwrap().len(), 3);
+    assert_eq!(repo.prune(0).await.unwrap(), 2);
+    assert_eq!(repo.count().await.unwrap(), 3);
+    for id in pinned_ids {
+        assert!(repo.get_by_id(id).await.unwrap().unwrap().pinned);
+    }
+}
+
+#[tokio::test]
 async fn test_get_all_ordered() {
     let dir = tempdir().unwrap();
     let db_path = dir.path().join("test.db");
