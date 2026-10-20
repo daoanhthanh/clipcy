@@ -1,0 +1,175 @@
+name: Release EXE Installers
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing stable release tag (for example 0.5.2)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-exe-${{ github.event.release.tag_name || inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Validate release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo 'Expected a stable release tag such as 0.5.2 or v0.5.2.' >&2
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+          stable=$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease --jq '(.isDraft == false) and (.isPrerelease == false)')
+          test "$stable" = true
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: release
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: win-x64
+            target: x86_64-pc-windows-msvc
+            msvc_arch: x64
+            installer_arch: x64compatible
+          - runtime: win-arm64
+            target: aarch64-pc-windows-msvc
+            msvc_arch: x64_arm64
+            installer_arch: arm64
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: release-exe-${{ matrix.runtime }}
+
+      - name: Validate application version
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $metadata = cargo metadata --no-deps --format-version 1 | ConvertFrom-Json
+          $bridge = $metadata.packages | Where-Object name -eq 'clipcy-bridge'
+          if ($bridge.version -ne $env:RELEASE_VERSION) {
+            throw "Release version $env:RELEASE_VERSION does not match app version $($bridge.version)."
+          }
+
+      - name: Install C# binding generator
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs --tag v0.10.0+v0.29.4 --locked
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          choco install innosetup --yes --no-progress
+          $compiler = @(
+            'C:\Program Files (x86)\Inno Setup 7\ISCC.exe',
+            'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
+            'C:\Program Files\Inno Setup 7\ISCC.exe',
+            'C:\Program Files\Inno Setup 6\ISCC.exe'
+          ) | Where-Object { Test-Path $_ -PathType Leaf } | Select-Object -First 1
+          if (-not $compiler) { throw 'Inno Setup compiler was not installed.' }
+          "INNO_SETUP_PATH=$compiler" >> $env:GITHUB_ENV
+
+      - name: Setup MSVC target tools
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
+
+      - name: Build release installer
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+          RELEASE_RUNTIME: ${{ matrix.runtime }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          .\scripts\build-windows-installer.ps1 -Runtime $env:RELEASE_RUNTIME -Version $env:RELEASE_VERSION -InnoSetupPath $env:INNO_SETUP_PATH
+
+      - name: Preserve installer for publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.runtime }}
+          path: dist/installer/${{ matrix.runtime }}/Clipcy-Setup-${{ needs.release.outputs.version }}-${{ matrix.installer_arch }}.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [release, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - name: Download both installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: installer-*
+          path: installers
+          merge-multiple: true
+
+      - name: Upload installers to existing release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          x64="installers/Clipcy-Setup-$RELEASE_VERSION-x64compatible.exe"
+          arm64="installers/Clipcy-Setup-$RELEASE_VERSION-arm64.exe"
+          test -s "$x64"
+          test -s "$arm64"
+          gh release upload "$RELEASE_TAG" "$x64" "$arm64"
+
+      - name: Update website download links
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run deploy-website.yml --ref stable

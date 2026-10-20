@@ -147,6 +147,29 @@ Outputs:
 - Published app: `dist\windows\win-x64`
 - Installer: `dist\installer`
 
+### Automated EXE Releases
+
+Publishing a stable GitHub release runs `.github/workflows/release-exe.yml`.
+It checks out the release tag, verifies that the tag version matches the Rust
+app version, and builds x64 and ARM64 EXE installers using .NET 10, Rust,
+the pinned UniFFI C# generator, and Inno Setup.
+
+Both builds must succeed before the installers are uploaded to that release.
+Successful upload dispatches **Update Website Downloads**, which updates the
+download manifest on `stable` for Netlify. No signing certificate or personal
+access token is required; the installers use the existing unsigned EXE route.
+
+For an already-published release, run:
+
+```sh
+gh workflow run release-exe.yml --ref stable -f release_tag=0.5.2
+```
+
+For future releases, commit and push the version bump before creating the tag
+and publishing the release. Tags may use `X.Y.Z` or `vX.Y.Z`. Drafts and
+prereleases are not published by this workflow. Existing same-name release
+assets are not overwritten; an upload conflict stops publication.
+
 ### MSIX Auto-Update (WinUI)
 
 Clipcy supports Windows auto-update via MSIX + App Installer. Packages are hosted on GitHub Releases.

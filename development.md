@@ -57,8 +57,15 @@ builds the site, and commits changed metadata to `stable` for Netlify's Git-conn
 deployment. Download buttons, version labels, and structured metadata use this file.
 The synchronization job requires `contents: write` to push metadata updates.
 
-After uploading both installers, dispatch **Update Website Downloads** to update
-immediately, or wait for the hourly run. Locally:
+`.github/workflows/release-exe.yml` builds both installers from a published stable
+release tag and dispatches **Update Website Downloads** immediately after uploading
+both files. Its Windows build jobs have read-only repository access; its publication
+job has `contents: write` for uploads and `actions: write` for workflow dispatch.
+The workflow pins the C# generator to `v0.10.0+v0.29.4` to match UniFFI 0.29.
+
+For existing releases, dispatch **Release EXE Installers** with `release_tag`.
+If installers are uploaded manually, dispatch **Update Website Downloads** or wait
+for the hourly run. Locally:
 
 ```sh
 cd apps/clipcy-website
