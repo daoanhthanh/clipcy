@@ -78,6 +78,7 @@ impl ClipboardMonitor for GateMonitor {
     fn set_content(&self, _: &ClipboardItem) -> Result<()> {
         Ok(())
     }
+    fn set_respect_clipboard_exclusion(&self, _: bool) {}
     fn sample_sequence(&self) -> Result<u32> {
         if self.fail_sequence.load(Ordering::SeqCst) {
             return Err(ClipboardError::ClipboardAccess("sequence unavailable".into()));

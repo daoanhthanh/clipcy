@@ -21,6 +21,8 @@ public sealed partial class SettingsWindow : Window
     private bool _isInitializingSettings = true;
     private bool _isInitializingLanguageControls;
     private string? _languageErrorDetail;
+    private string? _clipboardExclusionErrorDetail;
+    private bool _isSavingClipboardExclusion;
     private double _lastValidMaxHistory;
     private SystemBackdropConfiguration? _configurationSource;
     private bool _isSidebarExpanded = true;
@@ -417,6 +419,7 @@ public sealed partial class SettingsWindow : Window
             || ExcludedAppsTextBox == null
             || StartOnBootToggle == null
             || ShowPreviewToggle == null
+            || RespectClipboardExclusionToggle == null
             // || ShowNotificationsToggle == null
         )
             return;
@@ -429,6 +432,7 @@ public sealed partial class SettingsWindow : Window
 
         StartOnBootToggle.IsOn = _settings.StartOnBoot;
         ShowPreviewToggle.IsOn = _settings.ShowPreviewPanel;
+        RespectClipboardExclusionToggle.IsOn = _settings.RespectClipboardExclusion;
         // ShowNotificationsToggle.IsOn = _settings.ShowNotifications;
         ExcludedAppsTextBox.Text = string.Join(Environment.NewLine, _settings.ExcludedApps);
         AdjustExcludedAppsTextBoxHeight();
@@ -578,6 +582,17 @@ public sealed partial class SettingsWindow : Window
     {
         Title = LocalizationService.Get("settings.title");
         InitializeLanguageControls();
+        if (RespectClipboardExclusionToggle != null)
+        {
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(
+                RespectClipboardExclusionToggle,
+                LocalizationService.Get("settings.respect_clipboard_exclusion")
+            );
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetHelpText(
+                RespectClipboardExclusionToggle,
+                LocalizationService.Get("settings.respect_clipboard_exclusion_desc")
+            );
+        }
 
         if (AppVersionText != null)
         {
@@ -602,6 +617,13 @@ public sealed partial class SettingsWindow : Window
             LanguageErrorInfoBar.Message = LocalizationService.Format(
                 "Unable to save language preference: {0}",
                 _languageErrorDetail
+            );
+        }
+        if (_clipboardExclusionErrorDetail != null)
+        {
+            ClipboardExclusionErrorInfoBar.Message = LocalizationService.Format(
+                "settings.clipboard_exclusion_save_failed",
+                _clipboardExclusionErrorDetail
             );
         }
     }
@@ -829,6 +851,36 @@ public sealed partial class SettingsWindow : Window
 
         _settings.ShowPreviewPanel = ShowPreviewToggle.IsOn;
         SaveSettings();
+    }
+
+    private async void RespectClipboardExclusionToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializingSettings || _isSavingClipboardExclusion || RespectClipboardExclusionToggle == null)
+            return;
+
+        _isSavingClipboardExclusion = true;
+        RespectClipboardExclusionToggle.IsEnabled = false;
+        try
+        {
+            await SaveSettingsAsync(RespectClipboardExclusionToggle.IsOn);
+            _clipboardExclusionErrorDetail = null;
+            ClipboardExclusionErrorInfoBar.IsOpen = false;
+        }
+        catch (Exception ex)
+        {
+            RespectClipboardExclusionToggle.IsOn = _settings.RespectClipboardExclusion;
+            _clipboardExclusionErrorDetail = ex.Message;
+            ClipboardExclusionErrorInfoBar.Message = LocalizationService.Format(
+                "settings.clipboard_exclusion_save_failed",
+                _clipboardExclusionErrorDetail
+            );
+            ClipboardExclusionErrorInfoBar.IsOpen = true;
+        }
+        finally
+        {
+            RespectClipboardExclusionToggle.IsEnabled = true;
+            _isSavingClipboardExclusion = false;
+        }
     }
 
     // private void ShowNotificationsToggle_Toggled(object sender, RoutedEventArgs e)
@@ -1249,23 +1301,50 @@ public sealed partial class SettingsWindow : Window
 
     private async void SaveSettings()
     {
-        var settingsToSave = _settings;
-        await Task.Run(async () =>
+        try
         {
-            await _saveLock.WaitAsync();
-            try
+            await SaveSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
+        }
+    }
+
+    private async Task SaveSettingsAsync(bool? respectClipboardExclusion = null)
+    {
+        await _saveLock.WaitAsync();
+        var previousExclusion = _settings.RespectClipboardExclusion;
+        try
+        {
+            if (respectClipboardExclusion.HasValue)
+                _settings.RespectClipboardExclusion = respectClipboardExclusion.Value;
+
+            var settingsToSave = new SettingsViewModel
             {
-                App.Bridge?.SaveSettings(settingsToSave);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to save settings: {ex.Message}");
-            }
-            finally
-            {
-                _saveLock.Release();
-            }
-        });
+                MaxHistoryItems = _settings.MaxHistoryItems,
+                Hotkey = _settings.Hotkey,
+                Theme = _settings.Theme,
+                StartOnBoot = _settings.StartOnBoot,
+                ShowNotifications = _settings.ShowNotifications,
+                ShowPreviewPanel = _settings.ShowPreviewPanel,
+                RespectClipboardExclusion = _settings.RespectClipboardExclusion,
+                FirstRun = _settings.FirstRun,
+                ExcludedApps = _settings.ExcludedApps.ToList(),
+            };
+            var bridge = App.Bridge ?? throw new InvalidOperationException("Clipboard engine is not available.");
+            await Task.Run(() => bridge.SaveSettingsOrThrow(settingsToSave));
+        }
+        catch
+        {
+            if (respectClipboardExclusion.HasValue)
+                _settings.RespectClipboardExclusion = previousExclusion;
+            throw;
+        }
+        finally
+        {
+            _saveLock.Release();
+        }
     }
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)

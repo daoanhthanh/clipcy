@@ -125,6 +125,8 @@ impl ClipboardService {
         self.published
             .acknowledged_paused
             .store(false, Ordering::SeqCst);
+        self.monitor
+            .set_respect_clipboard_exclusion(self.settings.read().respect_clipboard_exclusion);
         self.monitor.apply_capture_policy(false, 1, None)?;
 
         let (tx, rx) = mpsc::unbounded_channel::<DebounceMessage>();
@@ -448,6 +450,9 @@ impl ClipboardService {
     }
 
     pub fn update_settings(&self, settings: Settings) {
+        let _guard = self.policy_lock.lock();
+        self.monitor
+            .set_respect_clipboard_exclusion(settings.respect_clipboard_exclusion);
         *self.settings.write() = settings;
     }
 

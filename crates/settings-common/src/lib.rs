@@ -50,6 +50,9 @@ pub struct Settings {
     /// Whether to show preview panel in popup
     #[serde(default = "default_true")]
     pub show_preview_panel: bool,
+    /// Whether to skip clipboard content marked for exclusion from monitoring
+    #[serde(default)]
+    pub respect_clipboard_exclusion: bool,
     /// Excluded applications (won't capture from these)
     #[serde(default)]
     pub excluded_apps: Vec<String>,
@@ -86,6 +89,7 @@ impl Default for Settings {
             start_on_boot: default_true(),
             show_notifications: false,
             show_preview_panel: default_true(),
+            respect_clipboard_exclusion: false,
             excluded_apps: Vec::new(),
             first_run: default_true(),
         }
@@ -186,6 +190,7 @@ mod tests {
         assert_eq!(settings.hotkey, "Alt+V");
         assert!(settings.start_on_boot);
         assert!(settings.show_preview_panel);
+        assert!(!settings.respect_clipboard_exclusion);
     }
 
     #[test]
@@ -204,6 +209,38 @@ mod tests {
         settings.max_history_items = 10;
         cached.save(&settings).unwrap();
         assert_eq!(cached.get().max_history_items, MIN_MAX_HISTORY_ITEMS);
+    }
+
+    #[test]
+    fn clipboard_exclusion_defaults_off_for_legacy_settings_and_persists_when_enabled() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        fs::write(&path, r#"{"hotkey":"Ctrl+Alt+V"}"#).unwrap();
+        let manager = CachedSettingsManager::with_path(path.clone());
+        let mut settings = manager.load_now().unwrap();
+        assert!(!settings.respect_clipboard_exclusion);
+
+        settings.respect_clipboard_exclusion = true;
+        manager.save(&settings).unwrap();
+        assert!(manager.get().respect_clipboard_exclusion);
+        assert!(SettingsManager::with_path(path).load().unwrap().respect_clipboard_exclusion);
+    }
+
+    #[test]
+    fn failed_save_preserves_cached_clipboard_exclusion_and_persisted_settings() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let manager = CachedSettingsManager::with_path(path.clone());
+        let original = Settings::default();
+        manager.save(&original).unwrap();
+        // A directory at the temporary-file path deterministically prevents writing.
+        fs::create_dir(path.with_extension("json.tmp")).unwrap();
+
+        let mut changed = original.clone();
+        changed.respect_clipboard_exclusion = true;
+        assert!(manager.save(&changed).is_err());
+        assert_eq!(manager.get(), original);
+        assert_eq!(SettingsManager::with_path(path).load().unwrap(), original);
     }
 
     #[test]
@@ -243,6 +280,7 @@ pub struct CachedSettingsManager {
     cache: Arc<RwLock<Settings>>,
     path: PathBuf,
     loaded: Arc<AtomicBool>,
+    io_lock: Arc<parking_lot::Mutex<()>>,
 }
 
 impl CachedSettingsManager {
@@ -258,6 +296,7 @@ impl CachedSettingsManager {
             cache: Arc::new(RwLock::new(Settings::default())),
             path,
             loaded: Arc::new(AtomicBool::new(false)),
+            io_lock: Arc::new(parking_lot::Mutex::new(())),
         }
     }
 
@@ -278,6 +317,7 @@ impl CachedSettingsManager {
 
     /// Load settings from disk synchronously (for immediate use)
     pub fn load_now(&self) -> Result<Settings> {
+        let _guard = self.io_lock.lock();
         let settings = if !self.path.exists() {
             tracing::info!("Settings file not found, using defaults");
             Settings::default()
@@ -302,42 +342,17 @@ impl CachedSettingsManager {
     where
         F: FnOnce(Result<Settings>) + Send + 'static,
     {
-        let cache = self.cache.clone();
-        let path = self.path.clone();
-        let loaded = self.loaded.clone();
-
+        let manager = self.clone();
         std::thread::spawn(move || {
-            let result = if !path.exists() {
-                tracing::info!("Settings file not found (async load), using defaults");
-                Ok(Settings::default())
-            } else {
-                match fs::read_to_string(&path) {
-                    Ok(content) => match serde_json::from_str(&content) {
-                        Ok(settings) => {
-                            tracing::debug!("Loaded settings asynchronously from {:?}", path);
-                            Ok(normalize_settings(settings))
-                        }
-                        Err(e) => Err(SettingsError::Json(e)),
-                    },
-                    Err(e) => Err(SettingsError::Io(e)),
-                }
-            };
-
-            if let Ok(ref settings) = result {
-                *cache.write() = settings.clone();
-                loaded.store(true, Ordering::Release);
-            }
-
+            let result = manager.load_now();
             on_loaded(result);
         });
     }
 
     /// Save settings to file (atomic write)
     pub fn save(&self, settings: &Settings) -> Result<()> {
+        let _guard = self.io_lock.lock();
         let settings = normalize_settings(settings.clone());
-        // Update cache first
-        *self.cache.write() = settings.clone();
-
         // Ensure parent directory exists
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
@@ -355,6 +370,7 @@ impl CachedSettingsManager {
 
         // Atomic rename
         fs::rename(&temp_path, &self.path)?;
+        *self.cache.write() = settings;
         self.loaded.store(true, Ordering::Release);
         tracing::debug!("Saved settings to {:?}", self.path);
         Ok(())

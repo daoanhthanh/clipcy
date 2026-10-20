@@ -235,6 +235,31 @@
                   />
                 </controls:SettingsCard>
 
+                <controls:SettingsCard
+                  services:Localization.Header="settings.respect_clipboard_exclusion"
+                  services:Localization.Description="settings.respect_clipboard_exclusion_desc"
+                >
+                  <controls:SettingsCard.HeaderIcon>
+                    <FontIcon
+                      Glyph="&#xE72E;"
+                      FontSize="20"
+                      Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                    />
+                  </controls:SettingsCard.HeaderIcon>
+                  <ToggleSwitch
+                    x:Name="RespectClipboardExclusionToggle"
+                    Toggled="RespectClipboardExclusionToggle_Toggled"
+                    services:Localization.OnContent="common.on"
+                    services:Localization.OffContent="common.off"
+                  />
+                </controls:SettingsCard>
+                <InfoBar
+                  x:Name="ClipboardExclusionErrorInfoBar"
+                  IsOpen="False"
+                  Severity="Error"
+                  IsClosable="True"
+                />
+
                 <!-- Show notifications -->
                 <!-- <controls:SettingsCard
                   services:Localization.Header="settings.show_notifications"

@@ -35,6 +35,11 @@ pub trait ClipboardMonitor: Send + Sync {
     /// Set clipboard content.
     fn set_content(&self, item: &ClipboardItem) -> Result<()>;
 
+    /// Update whether the platform's clipboard-monitor exclusion marker is honored.
+    ///
+    /// Applies synchronously to future reads without importing or deleting content.
+    fn set_respect_clipboard_exclusion(&self, respect: bool);
+
     /// Read the current clipboard sequence without decoding contents.
     ///
     /// Zero is treated as unavailable and returned as an error.

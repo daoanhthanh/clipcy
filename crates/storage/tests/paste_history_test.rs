@@ -37,6 +37,7 @@ impl ClipboardMonitor for TestMonitor {
             Ok(())
         }
     }
+    fn set_respect_clipboard_exclusion(&self, _: bool) {}
     fn sample_sequence(&self) -> Result<u32> {
         Ok(1)
     }

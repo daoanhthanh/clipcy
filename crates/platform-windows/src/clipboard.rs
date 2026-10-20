@@ -43,6 +43,11 @@ static CF_RTF: Lazy<u32> =
 static CF_PNG: Lazy<u32> =
     Lazy::new(|| unsafe { RegisterClipboardFormatW(windows::core::w!("PNG")) });
 
+/// Presence, not the payload value, requests exclusion from clipboard monitoring.
+static CF_EXCLUDE_FROM_MONITOR_PROCESSING: Lazy<u32> = Lazy::new(|| unsafe {
+    RegisterClipboardFormatW(windows::core::w!("ExcludeClipboardContentFromMonitorProcessing"))
+});
+
 /// PNG file signature (magic bytes)
 /// See: https://www.w3.org/TR/PNG/#5PNG-file-signature
 const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
@@ -56,11 +61,35 @@ pub struct WindowsClipboardMonitor {
     capture_paused: Arc<AtomicBool>,
     capture_epoch: Arc<AtomicU64>,
     resume_baseline: Arc<AtomicU32>,
+    respect_clipboard_exclusion: Arc<RwLock<bool>>,
 }
 
 struct SourceAppInfo {
     name: String,
     icon: Option<Vec<u8>>,
+}
+
+/// Keeps the format check and every payload read on the same clipboard snapshot.
+struct ClipboardReadGuard;
+
+impl ClipboardReadGuard {
+    fn open() -> Option<Self> {
+        for attempt in 0..5 {
+            if unsafe { OpenClipboard(None) }.is_ok() {
+                return Some(Self);
+            }
+            if attempt < 4 {
+                thread::sleep(std::time::Duration::from_millis(50));
+            }
+        }
+        None
+    }
+}
+
+impl Drop for ClipboardReadGuard {
+    fn drop(&mut self) {
+        let _ = unsafe { CloseClipboard() };
+    }
 }
 
 impl WindowsClipboardMonitor {
@@ -72,43 +101,25 @@ impl WindowsClipboardMonitor {
             capture_paused: Arc::new(AtomicBool::new(false)),
             capture_epoch: Arc::new(AtomicU64::new(1)),
             resume_baseline: Arc::new(AtomicU32::new(0)),
+            respect_clipboard_exclusion: Arc::new(RwLock::new(false)),
         }
     }
 
-    fn get_clipboard_text() -> Option<String> {
+    fn get_clipboard_text(_clipboard: &ClipboardReadGuard) -> Option<String> {
         unsafe {
-            // Retry opening clipboard with small delays (clipboard might still be held by another app)
-            let mut opened = false;
-            for attempt in 0..5 {
-                if OpenClipboard(None).is_ok() {
-                    opened = true;
-                    break;
-                }
-                if attempt < 4 {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-            }
-
-            if !opened {
-                return None;
-            }
-
             let handle = GetClipboardData(CF_UNICODETEXT.0 as u32);
             if handle.is_err() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let handle = handle.unwrap();
             if handle.0.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let hglobal = HGLOBAL(handle.0);
             let ptr = GlobalLock(hglobal);
             if ptr.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
@@ -124,31 +135,13 @@ impl WindowsClipboardMonitor {
             let text = String::from_utf16_lossy(slice);
 
             let _ = GlobalUnlock(hglobal);
-            let _ = CloseClipboard();
 
             Some(text)
         }
     }
 
-    fn get_clipboard_image() -> Option<(Vec<u8>, Option<Vec<u8>>)> {
+    fn get_clipboard_image(_clipboard: &ClipboardReadGuard) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
         unsafe {
-            // Retry opening clipboard with small delays (clipboard might still be held by another app)
-            let mut opened = false;
-            for attempt in 0..5 {
-                if OpenClipboard(None).is_ok() {
-                    opened = true;
-                    break;
-                }
-                if attempt < 4 {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-            }
-
-            if !opened {
-                tracing::debug!("get_clipboard_image: OpenClipboard failed after retries");
-                return None;
-            }
-
             // Try CF_DIB / CF_DIBV5 first (Device Independent Bitmap)
             let mut result = None;
 
@@ -188,7 +181,6 @@ impl WindowsClipboardMonitor {
                 }
             }
 
-            let _ = CloseClipboard();
             result
         }
     }
@@ -228,34 +220,15 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get file paths from CF_HDROP format
-    fn get_clipboard_files() -> Option<Vec<String>> {
+    fn get_clipboard_files(_clipboard: &ClipboardReadGuard) -> Option<Vec<String>> {
         unsafe {
-            // Retry opening clipboard with small delays
-            let mut opened = false;
-            for attempt in 0..5 {
-                if OpenClipboard(None).is_ok() {
-                    opened = true;
-                    break;
-                }
-                if attempt < 4 {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-            }
-
-            if !opened {
-                tracing::debug!("get_clipboard_files: OpenClipboard failed after retries");
-                return None;
-            }
-
             let handle = GetClipboardData(CF_HDROP.0 as u32);
             if handle.is_err() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let handle = handle.unwrap();
             if handle.0.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
@@ -283,8 +256,6 @@ impl WindowsClipboardMonitor {
                 }
             }
 
-            let _ = CloseClipboard();
-
             if files.is_empty() {
                 None
             } else {
@@ -295,40 +266,21 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get HTML content from clipboard
-    fn get_clipboard_html() -> Option<String> {
+    fn get_clipboard_html(_clipboard: &ClipboardReadGuard) -> Option<String> {
         unsafe {
-            // Retry opening clipboard with small delays
-            let mut opened = false;
-            for attempt in 0..5 {
-                if OpenClipboard(None).is_ok() {
-                    opened = true;
-                    break;
-                }
-                if attempt < 4 {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-            }
-
-            if !opened {
-                return None;
-            }
-
             let handle = GetClipboardData(*CF_HTML);
             if handle.is_err() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let handle = handle.unwrap();
             if handle.0.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let hglobal = HGLOBAL(handle.0);
             let ptr = GlobalLock(hglobal);
             if ptr.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
@@ -336,7 +288,6 @@ impl WindowsClipboardMonitor {
             let size = GlobalSize(hglobal);
             if size == 0 {
                 let _ = GlobalUnlock(hglobal);
-                let _ = CloseClipboard();
                 return None;
             }
 
@@ -346,7 +297,6 @@ impl WindowsClipboardMonitor {
             let html_str = String::from_utf8_lossy(&bytes[..len]).to_string();
 
             let _ = GlobalUnlock(hglobal);
-            let _ = CloseClipboard();
 
             if let Some(fragment) = extract_html_fragment(&html_str) {
                 tracing::debug!("get_clipboard_html: extracted {} chars", fragment.len());
@@ -361,47 +311,27 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get RTF content from clipboard
-    fn get_clipboard_rtf() -> Option<String> {
+    fn get_clipboard_rtf(_clipboard: &ClipboardReadGuard) -> Option<String> {
         unsafe {
-            // Retry opening clipboard with small delays
-            let mut opened = false;
-            for attempt in 0..5 {
-                if OpenClipboard(None).is_ok() {
-                    opened = true;
-                    break;
-                }
-                if attempt < 4 {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-            }
-
-            if !opened {
-                return None;
-            }
-
             let handle = GetClipboardData(*CF_RTF);
             if handle.is_err() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let handle = handle.unwrap();
             if handle.0.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let hglobal = HGLOBAL(handle.0);
             let ptr = GlobalLock(hglobal);
             if ptr.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let size = GlobalSize(hglobal);
             if size == 0 {
                 let _ = GlobalUnlock(hglobal);
-                let _ = CloseClipboard();
                 return None;
             }
 
@@ -411,7 +341,6 @@ impl WindowsClipboardMonitor {
             let rtf_str = String::from_utf8_lossy(&bytes[..len]).to_string();
 
             let _ = GlobalUnlock(hglobal);
-            let _ = CloseClipboard();
 
             tracing::debug!("get_clipboard_rtf: retrieved {} chars", rtf_str.len());
             Some(rtf_str)
@@ -419,55 +348,33 @@ impl WindowsClipboardMonitor {
     }
 
     /// Get PNG image data directly from clipboard
-    fn get_clipboard_png() -> Option<(Vec<u8>, Option<Vec<u8>>)> {
+    fn get_clipboard_png(_clipboard: &ClipboardReadGuard) -> Option<(Vec<u8>, Option<Vec<u8>>)> {
         unsafe {
-            // Retry opening clipboard with small delays
-            let mut opened = false;
-            for attempt in 0..5 {
-                if OpenClipboard(None).is_ok() {
-                    opened = true;
-                    break;
-                }
-                if attempt < 4 {
-                    std::thread::sleep(std::time::Duration::from_millis(50));
-                }
-            }
-
-            if !opened {
-                tracing::debug!("get_clipboard_png: OpenClipboard failed after retries");
-                return None;
-            }
-
             let handle = GetClipboardData(*CF_PNG);
             if handle.is_err() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let handle = handle.unwrap();
             if handle.0.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let hglobal = HGLOBAL(handle.0);
             let ptr = GlobalLock(hglobal);
             if ptr.is_null() {
-                let _ = CloseClipboard();
                 return None;
             }
 
             let size = GlobalSize(hglobal);
             if size == 0 {
                 let _ = GlobalUnlock(hglobal);
-                let _ = CloseClipboard();
                 return None;
             }
 
             let png_data = std::slice::from_raw_parts(ptr as *const u8, size).to_vec();
 
             let _ = GlobalUnlock(hglobal);
-            let _ = CloseClipboard();
 
             // Validate PNG signature
             if png_data.len() < PNG_SIGNATURE.len()
@@ -483,9 +390,40 @@ impl WindowsClipboardMonitor {
         }
     }
 
+    fn read_current_snapshot(
+        respect_exclusion: bool,
+        expected_sequence: Option<u32>,
+    ) -> Option<(ClipboardItem, u32)> {
+        let clipboard = ClipboardReadGuard::open()?;
+        let sequence = unsafe { GetClipboardSequenceNumber() };
+        if expected_sequence.is_some_and(|expected| sequence != expected)
+            || (respect_exclusion && sequence == 0)
+        {
+            return None;
+        }
+
+        if respect_exclusion {
+            let format = *CF_EXCLUDE_FROM_MONITOR_PROCESSING;
+            if format == 0 || unsafe { IsClipboardFormatAvailable(format) }.is_ok() {
+                tracing::debug!("Clipboard monitoring exclusion marker present; not captured");
+                return None;
+            }
+        }
+
+        // Revalidate after the marker query and before touching any payload.
+        if unsafe { GetClipboardSequenceNumber() } != sequence {
+            return None;
+        }
+        let item = Self::get_current_item(&clipboard)?;
+        if unsafe { GetClipboardSequenceNumber() } != sequence {
+            return None;
+        }
+        Some((item, sequence))
+    }
+
     /// Get current clipboard item, with prioritized format detection
     /// Priority order: Files (unless single image file with image data available) > Images (PNG > CF_DIB/CF_DIBV5 > CF_BITMAP) > HTML Format (as text fallback) > Rich Text Format > CF_UNICODETEXT
-    pub fn get_current_item() -> Option<ClipboardItem> {
+    fn get_current_item(clipboard: &ClipboardReadGuard) -> Option<ClipboardItem> {
         let source_app = get_foreground_process_info();
 
         // Check available formats
@@ -508,7 +446,7 @@ impl WindowsClipboardMonitor {
         // But if we have both files and image formats, and the file is a single image file
         // (like from Windows Snipping Tool), prefer the image format for better preview
         if has_files {
-            if let Some(files) = Self::get_clipboard_files() {
+            if let Some(files) = Self::get_clipboard_files(clipboard) {
                 // Check if this is a single image file with image data also available
                 // Windows Snipping Tool puts screenshots in a temp folder and provides both CF_HDROP and CF_DIB
                 let should_prefer_image = has_image && files.len() == 1 && {
@@ -546,7 +484,7 @@ impl WindowsClipboardMonitor {
         }
 
         let html_content = if has_html {
-            Self::get_clipboard_html()
+            Self::get_clipboard_html(clipboard)
         } else {
             None
         };
@@ -563,7 +501,7 @@ impl WindowsClipboardMonitor {
         }
 
         let text_content = if has_text {
-            Self::get_clipboard_text()
+            Self::get_clipboard_text(clipboard)
         } else {
             None
         };
@@ -581,7 +519,7 @@ impl WindowsClipboardMonitor {
         if has_image {
             // Try PNG format first (higher quality, no conversion needed)
             if Self::has_png_format() {
-                if let Some((png_data, thumbnail)) = Self::get_clipboard_png() {
+                if let Some((png_data, thumbnail)) = Self::get_clipboard_png(clipboard) {
                     tracing::info!("Captured PNG image: {} bytes", png_data.len());
                     let mut item = ClipboardItem::new_image(png_data, thumbnail);
                     apply_source_app(&mut item, &source_app);
@@ -590,7 +528,7 @@ impl WindowsClipboardMonitor {
             }
 
             // Fall back to DIB/Bitmap formats
-            if let Some((png_data, thumbnail)) = Self::get_clipboard_image() {
+            if let Some((png_data, thumbnail)) = Self::get_clipboard_image(clipboard) {
                 tracing::info!(
                     "Captured image: {} bytes, thumbnail: {:?}",
                     png_data.len(),
@@ -620,7 +558,7 @@ impl WindowsClipboardMonitor {
 
         // Priority 4: RTF content
         if has_rtf {
-            if let Some(rtf) = Self::get_clipboard_rtf() {
+            if let Some(rtf) = Self::get_clipboard_rtf(clipboard) {
                 if !rtf.trim().is_empty() {
                     tracing::debug!("Captured RTF: {} chars", rtf.len());
                     let mut item = ClipboardItem::new_rtf(rtf);
@@ -632,7 +570,7 @@ impl WindowsClipboardMonitor {
 
         // Priority 5: Plain text (fallback)
         if has_text {
-            if let Some(text) = text_content.or_else(Self::get_clipboard_text) {
+            if let Some(text) = text_content.or_else(|| Self::get_clipboard_text(clipboard)) {
                 // Skip whitespace-only content
                 if text.trim().is_empty() {
                     tracing::debug!("Skipping whitespace-only clipboard content");
@@ -1363,6 +1301,7 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
         let capture_paused = Arc::clone(&self.capture_paused);
         let capture_epoch = Arc::clone(&self.capture_epoch);
         let resume_baseline = Arc::clone(&self.resume_baseline);
+        let respect_clipboard_exclusion = Arc::clone(&self.respect_clipboard_exclusion);
 
         thread::spawn(move || {
             unsafe {
@@ -1410,6 +1349,7 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
                     capture_paused,
                     capture_epoch,
                     resume_baseline,
+                    respect_clipboard_exclusion,
                 });
                 SetWindowLongPtrW(hwnd, GWLP_USERDATA, Box::into_raw(ctx) as isize);
 
@@ -1476,6 +1416,10 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
         *self.callback.write() = Some(callback);
     }
 
+    fn set_respect_clipboard_exclusion(&self, respect: bool) {
+        *self.respect_clipboard_exclusion.write() = respect;
+    }
+
     fn sample_sequence(&self) -> Result<u32> {
         let sequence = unsafe { GetClipboardSequenceNumber() };
         if sequence == 0 {
@@ -1513,7 +1457,8 @@ impl ClipboardMonitor for WindowsClipboardMonitor {
     }
 
     fn get_current(&self) -> Result<Option<ClipboardItem>> {
-        Ok(Self::get_current_item())
+        let respect_exclusion = self.respect_clipboard_exclusion.read();
+        Ok(Self::read_current_snapshot(*respect_exclusion, None).map(|(item, _)| item))
     }
 
     fn set_content(&self, item: &ClipboardItem) -> Result<()> {
@@ -1876,6 +1821,7 @@ struct MonitorWindowContext {
     capture_paused: Arc<AtomicBool>,
     capture_epoch: Arc<AtomicU64>,
     resume_baseline: Arc<AtomicU32>,
+    respect_clipboard_exclusion: Arc<RwLock<bool>>,
 }
 
 unsafe extern "system" fn window_proc(
@@ -1892,6 +1838,7 @@ unsafe extern "system" fn window_proc(
 
                 if !ctx_ptr.is_null() {
                     let ctx = &*ctx_ptr;
+                    let respect_exclusion = ctx.respect_clipboard_exclusion.read();
                     if ctx.capture_paused.load(Ordering::SeqCst) {
                         return LRESULT(0);
                     }
@@ -1912,8 +1859,9 @@ unsafe extern "system" fn window_proc(
                         return LRESULT(0);
                     }
 
-                    if let Some(item) = WindowsClipboardMonitor::get_current_item() {
-                        let sequence_now = GetClipboardSequenceNumber();
+                    if let Some((item, sequence_now)) =
+                        WindowsClipboardMonitor::read_current_snapshot(*respect_exclusion, Some(sequence))
+                    {
                         let baseline_now = ctx.resume_baseline.load(Ordering::SeqCst);
                         let epoch_now = ctx.capture_epoch.load(Ordering::SeqCst);
                         if ctx.capture_paused.load(Ordering::SeqCst)

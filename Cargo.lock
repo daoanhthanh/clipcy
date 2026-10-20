@@ -334,10 +334,12 @@ version = "0.5.1"
 dependencies = [
  "chrono",
  "clipboard-core",
+ "clipboard-storage",
  "embed-resource",
  "image",
  "once_cell",
  "parking_lot",
+ "tempfile",
  "tokio",
  "tracing",
  "windows",

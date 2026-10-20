@@ -225,6 +225,7 @@ pub struct SettingsDto {
     pub start_on_boot: bool,
     pub show_notifications: bool,
     pub show_preview_panel: bool,
+    pub respect_clipboard_exclusion: bool,
     pub excluded_apps: Vec<String>,
     pub first_run: bool,
 }
@@ -238,6 +239,7 @@ impl From<clipcy_settings_common::Settings> for SettingsDto {
             start_on_boot: s.start_on_boot,
             show_notifications: s.show_notifications,
             show_preview_panel: s.show_preview_panel,
+            respect_clipboard_exclusion: s.respect_clipboard_exclusion,
             excluded_apps: s.excluded_apps,
             first_run: s.first_run,
         }
@@ -253,6 +255,7 @@ impl From<SettingsDto> for clipcy_settings_common::Settings {
             start_on_boot: s.start_on_boot,
             show_notifications: s.show_notifications,
             show_preview_panel: s.show_preview_panel,
+            respect_clipboard_exclusion: s.respect_clipboard_exclusion,
             excluded_apps: s.excluded_apps,
             first_run: s.first_run,
         }
@@ -542,22 +545,23 @@ impl ClipboardEngine {
 
             // Step 4: Get settings (loaded or defaults)
             let settings = settings_manager.get();
-            let core_settings = settings.clone();
             let is_first_run = settings.first_run;
 
             // Step 5: Create and start clipboard service
             #[cfg(target_os = "windows")]
             {
                 if let Some(repo) = repository.read().as_ref() {
+                    let mut service_slot = clipboard_service.write();
                     let service = Arc::new(ClipboardService::new(
                         monitor.clone(),
                         repo.clone(),
                         paste_handler.clone(),
-                        core_settings,
+                        settings_manager.get(),
                         runtime_handle.clone(),
                     ));
 
-                    *clipboard_service.write() = Some(service.clone());
+                    *service_slot = Some(service.clone());
+                    drop(service_slot);
 
                     // Import clipboard history on first run
                     if is_first_run {
@@ -874,6 +878,10 @@ impl ClipboardEngine {
         self.settings_manager
             .save(&settings)
             .map_err(|e| BridgeError::StorageError(e.to_string()))?;
+        let settings = self.settings_manager.get();
+        if let Some(service) = self.clipboard_service.read().as_ref() {
+            service.update_settings(settings.clone());
+        }
 
         // Apply settings immediately
         #[cfg(target_os = "windows")]

@@ -262,6 +262,7 @@ internal class RustBridgeService : IDisposable, UiCallback
                     StartOnBoot = settings.startOnBoot,
                     ShowNotifications = settings.showNotifications,
                     ShowPreviewPanel = settings.showPreviewPanel,
+                    RespectClipboardExclusion = settings.respectClipboardExclusion,
                     FirstRun = settings.firstRun,
                     ExcludedApps = settings.excludedApps.ToList(),
                 };
@@ -278,36 +279,31 @@ internal class RustBridgeService : IDisposable, UiCallback
     /// <summary>
     /// Save settings
     /// </summary>
-    public void SaveSettings(SettingsViewModel settings)
+    public void SaveSettingsOrThrow(SettingsViewModel settings)
     {
-        try
+        var engine = _engine ?? throw new InvalidOperationException("Clipboard engine is not available.");
+        var theme = settings.Theme switch
         {
-            var theme = settings.Theme switch
-            {
-                "Light" => ThemeModeDto.Light,
-                "Dark" => ThemeModeDto.Dark,
-                _ => ThemeModeDto.System,
-            };
+            "Light" => ThemeModeDto.Light,
+            "Dark" => ThemeModeDto.Dark,
+            _ => ThemeModeDto.System,
+        };
 
-            var dto = new SettingsDto(
-                maxHistoryItems: settings.MaxHistoryItems,
-                hotkey: settings.Hotkey,
-                theme: theme,
-                startOnBoot: settings.StartOnBoot,
-                showNotifications: settings.ShowNotifications,
-                showPreviewPanel: settings.ShowPreviewPanel,
-                excludedApps: settings.ExcludedApps.ToArray(),
-                firstRun: settings.FirstRun
-            );
+        var dto = new SettingsDto(
+            maxHistoryItems: settings.MaxHistoryItems,
+            hotkey: settings.Hotkey,
+            theme: theme,
+            startOnBoot: settings.StartOnBoot,
+            showNotifications: settings.ShowNotifications,
+            showPreviewPanel: settings.ShowPreviewPanel,
+            respectClipboardExclusion: settings.RespectClipboardExclusion,
+            excludedApps: settings.ExcludedApps.ToArray(),
+            firstRun: settings.FirstRun
+        );
 
-            _engine?.SaveSettings(dto);
-            var showPreviewPanel = settings.ShowPreviewPanel;
-            _dispatcherQueue?.TryEnqueue(() => OnPreviewPanelChanged?.Invoke(showPreviewPanel));
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"SaveSettings error: {ex.Message}");
-        }
+        engine.SaveSettings(dto);
+        var showPreviewPanel = settings.ShowPreviewPanel;
+        _dispatcherQueue?.TryEnqueue(() => OnPreviewPanelChanged?.Invoke(showPreviewPanel));
     }
 
     /// <summary>
@@ -767,6 +763,7 @@ public class SettingsViewModel
     public bool StartOnBoot { get; set; } = true;
     public bool ShowNotifications { get; set; }
     public bool ShowPreviewPanel { get; set; } = true;
+    public bool RespectClipboardExclusion { get; set; }
     public bool FirstRun { get; set; }
     public List<string> ExcludedApps { get; set; } = new();
 }

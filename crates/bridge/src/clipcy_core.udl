@@ -42,6 +42,7 @@ dictionary SettingsDto {
     boolean start_on_boot;
     boolean show_notifications;
     boolean show_preview_panel;
+    boolean respect_clipboard_exclusion;
     sequence<string> excluded_apps;
     boolean first_run;
 };
