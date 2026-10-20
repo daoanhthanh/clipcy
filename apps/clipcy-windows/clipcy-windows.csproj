@@ -33,7 +33,7 @@
     <Publisher>CN=Clipcy</Publisher>
     <PublisherDisplayName>Clipcy</PublisherDisplayName>
     <ApplicationDisplayName>Clipcy</ApplicationDisplayName>
-    <PackageVersion>1.0.0.0</PackageVersion>
+    <PackageVersion>0.5.2.0</PackageVersion>
     <SelfContained>false</SelfContained>
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
   </PropertyGroup>
