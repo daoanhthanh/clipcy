@@ -1,9 +1,10 @@
 ---
+import { content } from '../content.mjs';
 const { locale } = Astro.props;
 ---
 <footer class="site-footer" role="contentinfo">
 	<div class="container footer-content">
-		<p class="muted">Clipcy v0.5.1 - Clipboard Manager for Windows</p>
+		<p class="muted">Clipcy v{content.version} - Clipboard Manager for Windows</p>
 		<p class="muted">
 			© {new Date().getFullYear()} Đào Anh Thành · <a href="https://opensource.org/license/mit" class="footer-link">MIT License</a> · <a href={`/${locale}/privacy`} class="footer-link">Privacy Policy</a>
 		</p>

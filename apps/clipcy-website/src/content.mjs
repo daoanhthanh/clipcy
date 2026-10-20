@@ -2,10 +2,10 @@
  * Language-independent verified facts, public destinations, and route model.
  * Prose and labels come from locale catalogs in src/content/*.mjs.
  */
-
+import release from './release.json' with { type: 'json' };
 /**
  * @typedef {Object} ContentModel
- * @property {string} version - Workspace version from Cargo.toml
+ * @property {string} version - Version of the release available for download
  * @property {string} repositoryUrl - Public repository URL
  * @property {string} repositoryOwner - GitHub owner/repo identifier
  * @property {boolean} hasPublicRelease - Whether a verified public package exists
@@ -42,20 +42,13 @@
 
 /** @type {ContentModel} */
 export const content = {
-  version: '0.5.1',
+  version: release.version,
   repositoryUrl: 'https://github.com/daoanhthanh/clipcy',
   repositoryOwner: 'daoanhthanh/clipcy',
   siteUrl: 'https://clipcy.dev',
   
   hasPublicRelease: true,
-  release: {
-    version: '0.5.1',
-    format: 'exe',
-    downloads: {
-      x64: 'https://github.com/daoanhthanh/clipcy/releases/download/0.5.1/Clipcy-Setup-0.5.1-x64compatible.exe',
-      arm64: 'https://github.com/daoanhthanh/clipcy/releases/download/0.5.1/Clipcy-Setup-0.5.1-arm64.exe'
-    }
-  },
+  release,
   
   requirements: {
     os: 'Windows 10 version 1809+ or Windows 11',

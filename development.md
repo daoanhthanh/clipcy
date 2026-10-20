@@ -41,6 +41,38 @@ graph LR
 - `crates/settings-common/`: settings schema + cached settings manager.
 - `apps/clipcy-windows/`: WinUI 3 UI (MainWindow, SettingsWindow, tray, preview).
 
+## Website download updates
+
+`clipcy.dev` is hosted on Netlify. `.github/workflows/deploy-website.yml` updates
+download metadata; it does not deploy to GitHub Pages.
+
+The **Update Website Downloads** workflow runs on release publication/edits, relevant
+automation changes on `stable`, manual dispatch, and hourly to detect installers
+uploaded after publication. It selects the newest non-draft, non-prerelease GitHub
+release with both uploaded, nonempty x64 and ARM64 EXE installers. A release without
+both installers is not advertised; the previous complete release remains available.
+
+The workflow tests release selection, updates `apps/clipcy-website/src/release.json`,
+builds the site, and commits changed metadata to `stable` for Netlify's Git-connected
+deployment. Download buttons, version labels, and structured metadata use this file.
+The synchronization job requires `contents: write` to push metadata updates.
+
+After uploading both installers, dispatch **Update Website Downloads** to update
+immediately, or wait for the hourly run. Locally:
+
+```sh
+cd apps/clipcy-website
+npm ci
+npm test
+npm run sync-release
+npm run build
+```
+
+`GH_TOKEN` is optional locally and supplies authenticated GitHub API access in CI.
+If the API request fails or no complete stable release exists, synchronization fails
+without replacing the current manifest. To roll back advertised downloads, revert
+the metadata commit and pause the workflow until the release assets are corrected.
+
 ## Core runtime components
 
 ### Domain and application (Rust)
