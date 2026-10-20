@@ -28,43 +28,20 @@ Clipcy hoạt động trên Windows 10 (19041) trở lên (các bản OS cũ hơ
 
 - [Tính năng](#tính-năng)
 - [Hỗ trợ nền tảng](#hỗ-trợ-nền-tảng)
-- [Windows](#windows)
-  - [Yêu cầu](#yêu-cầu)
-    - [Môi trường phát triển](#môi-trường-phát-triển)
-    - [Môi trường chạy](#môi-trường-chạy)
-  - [Bắt đầu nhanh](#bắt-đầu-nhanh)
-    - [Sử dụng script build](#sử-dụng-script-build)
-    - [Tạo bộ cài đặt Windows](#tạo-bộ-cài-đặt-windows)
-  - [Tự động cập nhật bằng MSIX (WinUI)](#tự-động-cập-nhật-bằng-msix-winui)
-    - [Tài nguyên bắt buộc](#tài-nguyên-bắt-buộc)
-    - [Build MSIX trên máy local](#build-msix-trên-máy-local)
-    - [Workflow phát hành trên GitHub](#workflow-phát-hành-trên-github)
-    - [Các bước phát hành](#các-bước-phát-hành)
-    - [Build thủ công](#build-thủ-công)
-  - [Cấu trúc dự án](#cấu-trúc-dự-án)
-  - [Cấu hình](#cấu-hình)
-  - [Cách sử dụng](#cách-sử-dụng)
-  - [Khắc phục sự cố](#khắc-phục-sự-cố)
-    - [Phím tắt không hoạt động](#phím-tắt-không-hoạt-động)
-    - [Không thấy biểu tượng khay hệ thống](#không-thấy-biểu-tượng-khay-hệ-thống)
-    - [Ứng dụng bị lỗi khi khởi động](#ứng-dụng-bị-lỗi-khi-khởi-động)
-- [macOS](#macos)
-  - [Tính năng dự kiến](#tính-năng-dự-kiến)
-- [Linux](#linux)
+- [Cài đặt](#cài-đặt)
 - [Phát triển](#phát-triển)
-  - [Kiến trúc lục giác](#kiến-trúc-lục-giác)
-  - [Thêm nền tảng mới](#thêm-nền-tảng-mới)
 - [Giấy phép](#giấy-phép)
 
 ---
 
 ## Tính năng
 
-- Nhẹ và rất nhanh.
-- Thiết kế hướng đến bàn phím, với phím tắt toàn hệ thống
-- Bảo mật, riêng tư
-- UI gốc
-- Miễn phí, mã nguồn mở (MIT)
+- **Nhẹ và rất nhanh**.
+- **Thiết kế hướng đến bàn phím**, với phím tắt toàn hệ thống
+- **Tạm dừng thu thập**: mục khay **Tạm dừng Clipcy** / **Tiếp tục Clipcy** chỉ chặn bản ghi mới. Lịch sử, dán và phím tắt vẫn dùng được. Khởi động lại thì tiếp tục thu thập. Clipcy chưa xóa mục khi trình quản lý mật khẩu xóa clipboard, vì chưa có tín hiệu gắn được với Bitwarden, 1Password hoặc NordPass.
+- **Tôn trọng yêu cầu loại trừ clipboard**: trong **Cài đặt → Hoạt động**, bật **Tôn trọng yêu cầu loại trừ khỏi lịch sử bảng nhớ tạm** để bỏ qua bản sao mới có định dạng `ExcludeClipboardContentFromMonitorProcessing`. Mặc định tắt; lưu và áp dụng ngay, không xóa lịch sử cũ và không tự nhận diện trình quản lý mật khẩu.
+- **UI gốc hệ điều hành**. Tương thích với theme và màu sắc của hệ điều hành.
+- **Miễn phí, mã nguồn mở** (MIT)
 
 ## Hỗ trợ nền tảng
 

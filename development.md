@@ -136,9 +136,9 @@ graph LR
 Flow:
 
 1. Windows posts `WM_CLIPBOARDUPDATE` to the hidden monitor window.
-2. `WindowsClipboardMonitor.get_current_item()` reads the clipboard with format prioritization.
-3. `ClipboardService` receives the item, debounces for 300 ms, and ignores events during paste suppression.
-4. The item is saved to SQLite and the history is pruned to `max_history_items`.
+2. If capture is paused, or the sequence matches the resume baseline, the listener does not decode a payload.
+3. Otherwise `WindowsClipboardMonitor` reads one coherent snapshot and sends it with the capture epoch.
+4. `ClipboardService` rejects a stale epoch, debounces for 300 ms, and ignores content events during paste suppression. Pause drops pending unsaved content and acknowledges only after that barrier. Resume does not import the clipboard copied while paused.
 
 Diagram:
 

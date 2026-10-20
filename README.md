@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="apps/clipcy-windows/Assets/Square150x150Logo.png" alt="Clipcy Logo" width="128" />
+<img src="assets/clipcy-social-preview.png" alt="Clipcy Logo" />
 
 # Clipcy
 
@@ -21,6 +21,7 @@ English | [Tiếng Việt](docs/README.vi.md)
 ## Architecture
 
 Clipcy uses a "Logic Sandwich" architecture:
+
 - **Rust Backend**: Core clipboard logic, SQLite storage, system hooks
 - **Native UI**: Platform-specific native UI (WinUI 3 on Windows, SwiftUI on macOS)
 - **UniFFI Bridge**: Connects Rust to native languages (C#, Swift)
@@ -57,8 +58,10 @@ graph TD
   - Pinned items are ordered by pin time (newest first); pasted regular items move to the top of history
 - Global hotkey (default: `Alt+V`)
 - System tray integration with icon and context menu
+  - Pause Clipcy stops new history capture until Resume Clipcy or restart. It does not clear history, disable paste, or replay copies made while paused.
 - SQLite storage
 - Native settings UI
+  - Settings → Behavior/Action → **Respect clipboard history exclusion** (Off by default) skips new copies marked with `ExcludeClipboardContentFromMonitorProcessing`. Applies immediately and persists across restarts; does not delete existing history or detect password managers.
 - Light/Dark/System theme support
 - Auto-start on boot
 - Context menu-style popup with acrylic/mica backdrop (Windows 11)
@@ -85,7 +88,7 @@ graph TD
 ## Platform Support
 
 | Platform | UI Technology | Status |
-|----------|--------------|--------|
+| ---------- | -------------- | -------- |
 | Windows | WinUI 3 (C#) | ✅ Implemented |
 | macOS | SwiftUI | 🔜 Planned |
 | Linux | GTK4 | 🔜 Planned |
@@ -97,18 +100,21 @@ graph TD
 ### Requirements
 
 #### Development
+
 - Windows 10 version 2004+ (build 19041)
 - [Rust](https://rustup.rs/) 1.75+
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Visual Studio 2022 with "Windows App SDK" workload
 
 #### Runtime
+
 - Windows 10 version 2004+ (build 19041) or Windows 11
 - Windows App SDK Runtime (bundled)
 
 ### Quick Start
 
 #### Using Build Script
+
 ```powershell
 # Debug build
 .\scripts\build-windows-ui.ps1
@@ -121,6 +127,7 @@ graph TD
 ```
 
 #### Build Installer (Windows)
+
 Requires Inno Setup 6 or later (`ISCC.exe` on PATH).
 
 The script checks the current process PATH and saved user/system PATH entries, including when the terminal predates the installation. Use `-InnoSetupPath` to override compiler discovery.
@@ -136,6 +143,7 @@ Release publishing keeps trimming enabled. The WinUI project pins the Windows SD
 ```
 
 Outputs:
+
 - Published app: `dist\windows\win-x64`
 - Installer: `dist\installer`
 
@@ -144,38 +152,46 @@ Outputs:
 Clipcy supports Windows auto-update via MSIX + App Installer. Packages are hosted on GitHub Releases.
 
 #### Required Assets
+
 MSIX needs these PNGs in `apps/clipcy-windows/Assets/`:
+
 - `StoreLogo.png`
 - `Square44x44Logo.png`
 - `Square150x150Logo.png`
 - `SplashScreen.png`
 
 Generate them from `icon.ico`:
+
 ```powershell
 ./scripts/generate-msix-assets.ps1
 ```
 
 #### Build MSIX Locally
+
 ```powershell
 ./scripts/build-msix-release.ps1 -Repo ORG/REPO -CertificatePath "path\to\cert.pfx" -CertificatePassword "password"
 ```
 
 Outputs:
+
 - `dist\msix\win-x64\Clipcy.msix`
 - `dist\msix\win-x64\Clipcy.appinstaller`
 
 Version comes from `Cargo.toml` (`[workspace.package].version`) and is converted to 4-part MSIX format (e.g. `0.1.0` → `0.1.0.0`).
 
 #### GitHub Release Workflow
+
 Workflow: `.github/workflows/release-msix.yml`
 
 Secrets required:
+
 - `MSIX_CERT_BASE64` (base64-encoded PFX)
 - `MSIX_CERT_PASSWORD`
 
 Run the workflow and optionally leave `version` empty to use `Cargo.toml`.
 
 #### Publishing Steps
+
 1. Ensure `Publisher` in `apps/clipcy-windows/clipcy-windows.csproj` and `apps/clipcy-windows/Package.appxmanifest` matches your cert subject.
 2. Build/sign MSIX (local or CI).
 3. Upload `Clipcy.msix` + `Clipcy.appinstaller` to GitHub Release `vX.Y.Z`.
@@ -188,6 +204,7 @@ Note: The Inno Setup installer build is separate and uses EXE publishing. The sc
 1. **Build Rust Bridge (cdylib)**
 
     Or you can use any other version compatible with uniffi v0.29. Read here [uniffi-bindgen-cs](https://github.com/NordSecurity/uniffi-bindgen-cs)
+
    ```bash
    cargo install uniffi-bindgen-cs --git https://github.com/NordSecurity/uniffi-bindgen-cs --tag v0.10.0+v0.29.4
    ```
@@ -198,12 +215,14 @@ Note: The Inno Setup installer build is separate and uses EXE publishing. The sc
    ```
 
 2. **Generate C# Bindings**
+
    ```bash
    # Requires uniffi-bindgen-cs
    uniffi-bindgen-cs --library target/release/clipcy_core.dll --out-dir apps/clipcy-windows/Bindings
    ```
 
 3. **Build WinUI 3 App**
+
    ```bash
    cd apps/clipcy-windows
    dotnet run
@@ -258,14 +277,17 @@ Database: `%LOCALAPPDATA%\clipcy\clipcy.db`
 ### Troubleshooting
 
 #### Hotkey not working
+
 - Check if another app is using the same hotkey
 - Modify hotkey in Settings
 
 #### Tray icon not visible
+
 - Click the `^` arrow in Windows taskbar to see hidden icons
 - Drag the icon to the taskbar
 
 #### App crashes on startup
+
 - Ensure .NET 10 Runtime is installed
 - Check logs in `%LOCALAPPDATA%\clipcy\logs\`
 
@@ -276,6 +298,7 @@ Database: `%LOCALAPPDATA%\clipcy\clipcy.db`
 *Coming soon - SwiftUI implementation planned*
 
 ### Planned Features
+
 - Menu bar app with `NSStatusItem`
 - `MenuBarExtra` for macOS 13+
 - Floating `NSPanel` for popup
